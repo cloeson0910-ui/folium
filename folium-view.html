@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLIUM — Dossier</title>
+<style>
+  :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;}
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:#e8e2d2;color:#2b2416;}
+  .toolbar{position:sticky;top:0;background:var(--bronze);color:var(--gold3);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;z-index:50;}
+  .toolbar button{background:linear-gradient(120deg,var(--gold1),var(--gold2));border:none;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;}
+  .page{width:100%;max-width:794px;min-height:1123px;background:#fff;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;padding:40px;}
+  .page-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5dcc3;padding-bottom:14px;margin-bottom:20px;}
+  .client-logo{max-height:50px;max-width:160px;object-fit:contain;}
+  .brand-mark{font-size:11px;letter-spacing:2px;color:var(--gold4);}
+  .page-footer-logo{position:absolute;bottom:12px;right:14px;height:22px;width:auto;opacity:.85;}
+  @media print { .page-footer-logo{opacity:.75;} }
+  h1.title{font-size:22px;font-weight:300;letter-spacing:1px;color:#2b2416;margin:0 0 4px;}
+  .subtitle{font-size:13px;color:#8a7a52;margin-bottom:18px;}
+  .section-label{font-size:12px;letter-spacing:2px;color:var(--gold4);text-transform:uppercase;margin:22px 0 10px;border-bottom:1px solid #eee;padding-bottom:6px;}
+  .photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .photo-wrap{position:relative;}
+  .photo-wrap img{display:block;}
+  .photo-logo{position:absolute;max-height:26px;max-width:72px;object-fit:contain;opacity:.92;background:rgba(255,255,255,.82);padding:3px 6px;border-radius:4px;}
+  .photo-logo.pos-top-left{top:6px;left:6px;}
+  .photo-logo.pos-top-right{top:6px;right:6px;}
+  .photo-logo.pos-bottom-left{bottom:6px;left:6px;}
+  .photo-logo.pos-bottom-right{bottom:6px;right:6px;}
+  .photo-grid img{width:100%;height:160px;object-fit:cover;border-radius:6px;}
+  .data-table{width:100%;font-size:13px;border-collapse:collapse;}
+  .data-table td{padding:6px 0;border-bottom:1px dashed #eee;}
+  .data-table td:first-child{color:#8a7a52;width:40%;}
+  .contact-box{background:#fdf9ef;border:1px solid #eee0bd;border-radius:10px;padding:14px;font-size:13px;margin-top:16px;}
+  .verified-note{font-size:13px;line-height:1.7;white-space:pre-wrap;}
+  .watermark{position:absolute;inset:0;pointer-events:none;opacity:.05;background-image:repeating-linear-gradient(60deg, var(--gold2) 0 1px, transparent 1px 26px), repeating-linear-gradient(-60deg, var(--gold2) 0 1px, transparent 1px 26px);}
+  /* pagina pubblicitaria */
+  .ad-page{background:linear-gradient(160deg,#fdf9ef,#f6ecd2);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .ad-page .tag{font-size:10px;letter-spacing:2px;color:#a4915c;margin-bottom:18px;text-transform:uppercase;}
+  .ad-page img.ad-img{max-width:100%;max-height:500px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);}
+  .ad-page h2{font-size:24px;font-weight:300;color:#2b2416;margin:18px 0 8px;}
+  .ad-page p{font-size:14px;color:#5c4f30;max-width:480px;}
+  .ad-page .cta{margin-top:16px;padding:11px 26px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-radius:24px;text-decoration:none;font-size:13px;letter-spacing:1px;}
+  @media print { .toolbar{display:none;} .page{box-shadow:none;margin:0;page-break-after:always;} }
+  .loading{text-align:center;padding:80px 20px;color:#8a7a52;}
+  .lead-gate{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));display:flex;align-items:center;justify-content:center;padding:20px;}
+  .lead-gate-card{background:#fff;border-radius:16px;padding:32px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .lead-gate-brand{font-weight:300;letter-spacing:4px;font-size:18px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:14px;}
+  .lead-gate-card h2{font-size:19px;font-weight:400;margin:0 0 8px;color:#2b2416;}
+  .lead-gate-card p{font-size:13px;color:#8a7a52;line-height:1.6;margin:0 0 18px;}
+  .lead-gate-card label{display:block;font-size:11px;letter-spacing:.5px;color:#8a7a52;margin:12px 0 5px;text-transform:uppercase;}
+  .lead-gate-card input{width:100%;padding:11px 12px;border:1px solid #ddd2b3;border-radius:8px;font-size:14px;}
+  .lead-gate-card button{width:100%;margin-top:18px;padding:13px;border:none;border-radius:9px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold4));color:#fff;font-size:14px;letter-spacing:.5px;cursor:pointer;}
+  .lead-gate-card button:disabled{opacity:.6;}
+  .lead-gate-msg{font-size:12.5px;color:#a33;margin-top:10px;min-height:16px;}
+  @media print { .lead-gate{display:none !important;} }
+  .lang-switcher{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:10px 16px;background:#fff;position:sticky;top:53px;z-index:40;border-bottom:1px solid #eee;}
+  .lang-pill{border:1px solid #ddd2b3;border-radius:16px;padding:5px 14px;font-size:12px;cursor:pointer;background:#fff;color:#5c4f30;}
+  .dev-tier-pill{border:1px solid #c9d9f5;border-radius:16px;padding:5px 14px;font-size:12px;cursor:pointer;background:#fff;color:#3a5a9c;}
+  .dev-tier-pill.active{background:#3a5a9c;color:#fff;border-color:transparent;}
+  .lang-pill.active{background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-color:transparent;}
+  @media print { .lang-switcher{display:none;} }
+</style>
+<style id="themeStyle"></style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div>FOLIUM</div>
+  <button id="printBtn" onclick="window.print()" style="display:none;">Stampa / Salva PDF</button>
+</div>
+
+<div id="devTierSimulatorView" style="display:none;align-items:center;gap:8px;padding:8px 16px;background:#eef4ff;border-bottom:1px solid #c9d9f5;"></div>
+<div id="langSwitcher" class="lang-switcher" style="display:none;"></div>
+
+<div id="leadGate" class="lead-gate" style="display:none;">
+  <div class="lead-gate-card">
+    <div class="lead-gate-brand">FOLIUM</div>
+    <h2>Scarica questo dossier</h2>
+    <p>Lascia il tuo nome e la tua email per ricevere il link e avviare subito il download.</p>
+    <label>Nome e cognome</label>
+    <input type="text" id="leadName" required>
+    <label>Email</label>
+    <input type="email" id="leadEmail" required>
+    <button id="leadSubmitBtn" onclick="submitLeadGate()">Sblocca e scarica</button>
+    <div id="leadGateMsg" class="lead-gate-msg"></div>
+  </div>
+</div>
+
+<div id="content" class="loading">Caricamento dossier…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.45.4/supabase.min.js"></script>
+<script>
+  const SUPABASE_URL = "https://cspzkofhgfrnkhjpfazb.supabase.co";
+  const SUPABASE_ANON_KEY = "INSERISCI_ANON_KEY_DOMINUS";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Chiamate DIRETTE alle Edge Function di IMMONOVA (progetto separato, a pagamento).
+  // Nessun deploy su Dominus: Dominus non ha un piano Supabase a pagamento proprio,
+  // quindi si riusa l'infrastruttura Immonova via HTTP invece di duplicarla.
+  // Solo lettura/consultazione — Immonova non viene mai toccato/modificato da qui.
+  const IMMONOVA_URL = "https://bpzzmitmbavcmcasswbu.supabase.co";
+  const IMMONOVA_ANON_KEY = "INSERISCI_ANON_KEY_IMMONOVA";
+  const OWNER_EMAIL = "claudio.romano@bluewin.ch"; // account sviluppatore: vede sempre i contenuti Platinum
+
+  async function callImmonovaFunction(name, body){
+    const resp = await fetch(`${IMMONOVA_URL}/functions/v1/${name}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${IMMONOVA_ANON_KEY}`,
+        'apikey': IMMONOVA_ANON_KEY
+      },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) throw new Error(`Errore motore Immonova (${name}): ${await resp.text()}`);
+    return resp.json();
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const dossierId = params.get('id');
+
+  function esc(s){ return (s || '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // Impostata all'inizio di render(): true per Light e Gold (branding Folium),
+  // false per Platinum. pageWrapper la legge per aggiungere il logo Folium in
+  // basso a destra su OGNI pagina del dossier, comprese le pagine pubblicitarie.
+  let currentShowFoliumBrand = false;
+  let currentSimulatedTier = 'platinum'; // solo per l'account sviluppatore: piano simulato in visualizzazione
+
+  function renderDevTierSimulator(activeTier){
+    const box = document.getElementById('devTierSimulatorView');
+    if (!box) return;
+    box.style.display = 'flex';
+    const labels = { light: 'Light', gold: 'Gold', platinum: 'Platinum' };
+    box.innerHTML = `
+      <span style="font-size:11px;letter-spacing:.5px;color:#3a5a9c;text-transform:uppercase;margin-right:6px;">Test come:</span>
+      ${['light','gold','platinum'].map(t => `<div class="dev-tier-pill ${t === activeTier ? 'active' : ''}" onclick="switchDevTier('${t}')">${labels[t]}</div>`).join('')}
+    `;
+  }
+
+  function switchDevTier(t){ render('it', t); }
+
+  function pageWrapper(inner, isAd){
+    const footerLogo = currentShowFoliumBrand
+      ? `<img class="page-footer-logo" src="assets/folium-logo.svg" alt="Folium">`
+      : '';
+    return `<div class="page ${isAd ? 'ad-page' : ''}"><div class="watermark"></div>${inner}${footerLogo}</div>`;
+  }
+
+  // Log ogni chiamata reale ai motori (per statistica admin "chi chiede cosa" e
+  // controllo costi). Non blocca mai il dossier se il log stesso fallisce.
+  async function logEngineCall(engineName, dossier, success){
+    try {
+      await supabase.from('folium_engine_calls').insert({
+        engine_name: engineName, dossier_id: dossier.id,
+        client_id: dossier.client_id, tenant_id: dossier.tenant_id, success
+      });
+    } catch (e) { console.error('Log chiamata motore fallito:', e); }
+  }
+
+  // Riusa immonova-demographics-engine chiamandolo DIRETTAMENTE sul progetto Immonova
+  // (vedi callImmonovaFunction sopra). Stessa lezione di report-view.html Immonova:
+  // verificare che il risultato contenga davvero age_distribution/income_distribution
+  // prima di considerarlo valido, e cachare il risultato sul dossier per non richiamare
+  // il motore ad ogni apertura.
+  async function ensurePopulationComposition(dossier){
+    if (dossier.population_composition?.age_distribution && dossier.population_composition?.income_distribution) {
+      return dossier.population_composition;
+    }
+    try {
+      const data = await callImmonovaFunction('immonova-demographics-engine', {
+        comune: dossier.property_city, provincia: dossier.property_province
+      });
+      await logEngineCall('immonova-demographics-engine', dossier, !!data?.age_distribution);
+      if (!data?.age_distribution) return null;
+      await supabase.from('folium_dossiers').update({ population_composition: data }).eq('id', dossier.id);
+      return data;
+    } catch (e) {
+      console.error('Motore demografico non disponibile:', e);
+      await logEngineCall('immonova-demographics-engine', dossier, false);
+      return null;
+    }
+  }
+
+  // Riusa immonova-ai-valuation-engine chiamandolo DIRETTAMENTE sul progetto Immonova.
+  // Attenzione alla lezione nota: MAI il capoluogo di provincia come comparabile per un
+  // comune piccolo — logica già dentro il motore stesso. Facoltativo (checkbox utente),
+  // per tenere sotto controllo il costo OpenAI.
+  async function ensureAiValuation(dossier){
+    if (dossier.ai_valuation_result) return dossier.ai_valuation_result;
+    if (!dossier._isPlatinum) return null; // sezione riservata a FOLIUM Platinum
+    try {
+      const data = await callImmonovaFunction('immonova-ai-valuation-engine', {
+        comune: dossier.property_city,
+        provincia: dossier.property_province,
+        indirizzo: dossier.property_address,
+        tipologia: dossier.property_type,
+        superficie: dossier.property_size_sqm,
+        prezzo_richiesto: dossier.property_price
+      });
+      await logEngineCall('immonova-ai-valuation-engine', dossier, !!data);
+      if (!data) return null;
+      await supabase.from('folium_dossiers').update({ ai_valuation_result: data }).eq('id', dossier.id);
+      return data;
+    } catch (e) {
+      console.error('Motore valutazione AI non disponibile:', e);
+      await logEngineCall('immonova-ai-valuation-engine', dossier, false);
+      return null;
+    }
+  }
+
+  // Riusa analyze-opportunity chiamandolo DIRETTAMENTE sul progetto Immonova. È A PAGAMENTO
+  // (Claude Sonnet 4.5 + web_search, nessuna cache lato Immonova) — per questo riservato a
+  // Gold/Platinum come le altre sezioni a costo, mai a Light. Cache locale sul dossier per
+  // non richiamarlo ad ogni apertura della pagina.
+  async function ensureEditorialAnalysis(dossier){
+    if (dossier.editorial_analysis_result) return dossier.editorial_analysis_result;
+    if (!dossier._isPlatinum) return null; // sezione riservata a Gold/Platinum
+    try {
+      const data = await callImmonovaFunction('analyze-opportunity', {
+        title: dossier.property_address,
+        category: dossier.property_type,
+        location: dossier.property_city,
+        municipality: dossier.property_city,
+        province: dossier.property_province,
+        price: dossier.property_price,
+        internal_size: dossier.property_size_sqm
+      });
+      await logEngineCall('analyze-opportunity', dossier, !!(data && data.success));
+      if (!data || !data.success) return null;
+      await supabase.from('folium_dossiers').update({ editorial_analysis_result: data.analysis }).eq('id', dossier.id);
+      return data.analysis;
+    } catch (e) {
+      console.error('Analisi editoriale non disponibile:', e);
+      await logEngineCall('analyze-opportunity', dossier, false);
+      return null;
+    }
+  }
+
+
+  // Riusa immonova-discovery-engine chiamandolo DIRETTAMENTE sul progetto Immonova.
+  // ATTENZIONE: è il motore "pesante" — dopo il resolver principale lancia sempre 6
+  // chiamate parallele (accessibility/coastal/heritage/poi/global_demographics/
+  // global_tourism), causa nota di WORKER_RESOURCE_LIMIT su Supabase. Per questo è
+  // SEMPRE facoltativo (checkbox utente "Turismo, trasporti e territorio"), mai
+  // chiamato di default come invece succede per la popolazione.
+  async function ensureDiscoveryData(dossier){
+    if (dossier.discovery_result) return dossier.discovery_result;
+    if (!dossier._isPlatinum) return null; // sezione riservata a FOLIUM Platinum
+    try {
+      const data = await callImmonovaFunction('immonova-discovery-engine', {
+        comune: dossier.property_city,
+        provincia: dossier.property_province,
+        lat: dossier.property_lat, lng: dossier.property_lng
+      });
+      await logEngineCall('immonova-discovery-engine', dossier, !!data);
+      if (!data) return null;
+      await supabase.from('folium_dossiers').update({ discovery_result: data }).eq('id', dossier.id);
+      return data;
+    } catch (e) {
+      console.error('Discovery Engine non disponibile:', e);
+      await logEngineCall('immonova-discovery-engine', dossier, false);
+      return null;
+    }
+  }
+
+  async function pickAdPage(tenantId, preferredSlot, excludeIds){
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: ads } = await supabase.from('folium_ad_pages')
+      .select('*').eq('tenant_id', tenantId).eq('active', true)
+      .lte('subscription_start', today).gte('subscription_end', today); // solo abbonamenti in corso, mai scaduti
+    if (!ads || ads.length === 0) return null;
+
+    const notShown = a => !excludeIds.includes(a.id);
+    // Priorità: stesso slot richiesto → qualunque altro slot attivo (mai lasciare uno
+    // spazio vuoto solo perché quello slot specifico non ha inserzionisti quel mese).
+    const inSlot = ads.filter(a => a.position_slot === preferredSlot && notShown(a));
+    const anyActive = ads.filter(notShown);
+    const list = inSlot.length ? inSlot : (anyActive.length ? anyActive : ads);
+
+    // selezione pesata semplice
+    const weighted = [];
+    list.forEach(a => { for (let i = 0; i < (a.weight || 1); i++) weighted.push(a); });
+    return weighted[Math.floor(Math.random() * weighted.length)];
+  }
+
+  // ---- Formato/stile: temi colore, font, orientamento pagina --------------
+  const COLOR_THEMES = {
+    gold:     { gold1:'#8f6f2c', gold2:'#c79c43', gold3:'#f1d27a', gold4:'#a77d31', bronze:'#20180a', bronze2:'#3a2c14', cream:'#f6f2ea' },
+    navy:     { gold1:'#1f3a5f', gold2:'#3a6ea5', gold3:'#a8c5e8', gold4:'#2c5282', bronze:'#0d1b2a', bronze2:'#1b3352', cream:'#eef2f6' },
+    emerald:  { gold1:'#1f5f3a', gold2:'#3aa568', gold3:'#a8e8c5', gold4:'#2c8250', bronze:'#0d2a1b', bronze2:'#1b5233', cream:'#eef6f0' },
+    graphite: { gold1:'#4a4a4a', gold2:'#7a7a7a', gold3:'#d0d0d0', gold4:'#5a5a5a', bronze:'#1a1a1a', bronze2:'#2e2e2e', cream:'#f0f0f0' },
+  };
+  const FONT_THEMES = {
+    poppins: "'Poppins',Arial,sans-serif",
+    serif: "Georgia,'Times New Roman',serif",
+    mono: "'Courier New',monospace",
+  };
+
+  function applyTheme(dossier){
+    const palette = COLOR_THEMES[dossier.color_theme] || COLOR_THEMES.gold;
+    const font = FONT_THEMES[dossier.font_theme] || FONT_THEMES.poppins;
+    const landscape = dossier.page_orientation === 'landscape';
+    const vars = Object.entries(palette).map(([k,v]) => `--${k}:${v};`).join('');
+    const pageSize = landscape ? 'width:100%;max-width:1123px;min-height:794px;' : 'width:100%;max-width:794px;min-height:1123px;';
+    document.getElementById('themeStyle').textContent = `
+      :root{${vars}}
+      body{font-family:${font};}
+      .page{${pageSize}}
+    `;
+  }
+
+  // ---- Traduzioni: etichette statiche via dizionario locale (gratis, sempre
+  // disponibili), contenuti dinamici (dati verificati/analisi AI/territorio)
+  // via immonova-translate-public-content (chiamata diretta, cache su DB).
+  const UI_LABELS = {
+    it: { photos:'Foto immobile', verified:'Dati verificati', destination:'Zona e dintorni', population:'Popolazione della zona', income:'Reddito medio della zona', market:'Analisi di mercato', territory:'Territorio e accessibilità', dedicated:'Spazio dedicato' },
+    en: { photos:'Property photos', verified:'Verified data', destination:'Area & surroundings', population:'Local population', income:'Average local income', market:'Market analysis', territory:'Territory & accessibility', dedicated:'Dedicated space' },
+    fr: { photos:'Photos du bien', verified:'Données vérifiées', destination:'Zone et alentours', population:'Population locale', income:'Revenu moyen local', market:'Analyse de marché', territory:'Territoire et accessibilité', dedicated:'Espace dédié' },
+    de: { photos:'Immobilienfotos', verified:'Verifizierte Daten', destination:'Umgebung', population:'Bevölkerung der Zone', income:'Durchschnittseinkommen', market:'Marktanalyse', territory:'Gebiet und Erreichbarkeit', dedicated:'Werbefläche' },
+    es: { photos:'Fotos del inmueble', verified:'Datos verificados', destination:'Zona y alrededores', population:'Población de la zona', income:'Renta media de la zona', market:'Análisis de mercado', territory:'Territorio y accesibilidad', dedicated:'Espacio dedicado' },
+    ar: { photos:'صور العقار', verified:'بيانات موثقة', destination:'المنطقة المحيطة', population:'سكان المنطقة', income:'متوسط دخل المنطقة', market:'تحليل السوق', territory:'المنطقة وإمكانية الوصول', dedicated:'مساحة مخصصة' },
+    zh: { photos:'房产照片', verified:'核实数据', destination:'周边区域', population:'该地区人口', income:'该地区平均收入', market:'市场分析', territory:'区域与交通', dedicated:'广告位' },
+  };
+  function t(key, lang){ return (UI_LABELS[lang] && UI_LABELS[lang][key]) || UI_LABELS.it[key] || key; }
+
+  async function ensureDynamicTranslation(dossier, lang){
+    if (lang === 'it') return null;
+    const cached = dossier.translations && dossier.translations[lang];
+    if (cached) return cached;
+
+    const verifiedNotes = dossier.verified_data?.notes || '';
+    const aiNarrative = dossier.ai_valuation_result?.narrative || '';
+    const discoverySummary = dossier.discovery_result?.summary || dossier.discovery_result?.narrative || '';
+    const texts = [verifiedNotes, aiNarrative, discoverySummary];
+    if (!texts.some(x => x)) return null;
+
+    try {
+      const data = await callImmonovaFunction('translate-public-content', {
+        language: lang, source_language: 'it',
+        context: 'Dossier immobiliare FOLIUM per investitori privati.',
+        texts
+      });
+      if (!data?.success || !Array.isArray(data.translations)) return null;
+      const result = { verified_notes: data.translations[0] || '', ai_narrative: data.translations[1] || '', discovery_summary: data.translations[2] || '' };
+      const updatedTranslations = { ...(dossier.translations || {}), [lang]: result };
+      await supabase.from('folium_dossiers').update({ translations: updatedTranslations }).eq('id', dossier.id);
+      dossier.translations = updatedTranslations;
+      return result;
+    } catch (e) {
+      console.error('Traduzione non disponibile:', e);
+      return null;
+    }
+  }
+
+  function renderLanguageSwitcher(dossier, currentLang){
+    const box = document.getElementById('langSwitcher');
+    const langs = dossier.translated_languages || [];
+    if (!langs.length) { box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    const names = { it:'Italiano', en:'English', fr:'Français', de:'Deutsch', es:'Español', ar:'العربية', zh:'中文' };
+    const all = ['it', ...langs];
+    box.innerHTML = all.map(l => `<div class="lang-pill ${l === currentLang ? 'active' : ''}" onclick="switchLanguage('${l}')">${names[l] || l}</div>`).join('');
+  }
+
+  function switchLanguage(lang){ render(lang); }
+
+  async function render(lang, forcedTier){
+    lang = lang || 'it';
+    const el = document.getElementById('content');
+    const { data: dossier, error } = await supabase.from('folium_dossiers').select('*').eq('id', dossierId).single();
+    if (error || !dossier) { el.textContent = 'Dossier non trovato.'; return; }
+
+    const { data: client } = await supabase.from('folium_clients').select('*').eq('id', dossier.client_id).single();
+    const { data: photos } = await supabase.from('folium_dossier_photos').select('*').eq('dossier_id', dossierId).order('sort_order');
+
+    applyTheme(dossier);
+    renderLanguageSwitcher(dossier, lang);
+    const translated = await ensureDynamicTranslation(dossier, lang);
+
+    // Gate lato viewer: le sezioni a costo (AI valuation/Discovery) si generano SOLO se
+    // il piano effettivo al momento della visualizzazione le include, anche se il dossier
+    // è stato salvato con il flag include_* a true (difesa in profondità oltre al form).
+    // Usa sempre il tier ATTUALE del cliente (non tier_at_generation), perché se ha
+    // esaurito i crediti dopo aver creato il dossier le sezioni a costo non vanno più
+    // rigenerate da zero (restano comunque visibili se già in cache su ai_valuation_result/
+    // discovery_result, salvate quando il dossier fu creato in piano pieno).
+    const { data: { user: viewerUser } } = await supabase.auth.getUser();
+    const isOwnerViewing = (viewerUser?.email || '').toLowerCase() === OWNER_EMAIL;
+    let tier = 'light';
+    if (isOwnerViewing) {
+      renderDevTierSimulator(forcedTier || currentSimulatedTier);
+      tier = forcedTier || currentSimulatedTier;
+      currentSimulatedTier = tier;
+    }
+    else if (client?.plan !== 'light' && client?.credits_remaining > 0) tier = client.plan;
+    dossier._isPlatinum = (tier !== 'light'); // sblocca chiamata motori per Gold E Platinum
+    const showAds = (tier !== 'platinum'); // Light e Gold hanno pubblicità, solo Platinum no
+    const showFoliumBrand = (tier !== 'platinum'); // Platinum: nessun logo/marchio Folium sul dossier
+    currentShowFoliumBrand = showFoliumBrand; // letta da pageWrapper() per il logo in basso a destra su ogni pagina
+
+    const propertyPhotos = (photos || []).filter(p => p.photo_kind === 'property');
+    const destPhotos = (photos || []).filter(p => p.photo_kind === 'destination');
+
+    const header = `
+      <div class="page-header">
+        ${client?.logo_url ? `<img class="client-logo" src="${esc(client.logo_url)}">` : `<div></div>`}
+        ${showFoliumBrand ? `<div class="brand-mark">FOLIUM DOSSIER</div>` : `<div></div>`}
+      </div>`;
+
+    const pages = [];
+
+    // Pagina 1 — copertina + dati principali
+    pages.push(pageWrapper(`
+      ${header}
+      <h1 class="title">${esc(dossier.property_address)}</h1>
+      <div class="subtitle">${esc(dossier.property_city)}${dossier.property_province ? ' (' + esc(dossier.property_province) + ')' : ''}</div>
+      <table class="data-table">
+        <tr><td>Tipologia</td><td>${esc(dossier.property_type)}</td></tr>
+        <tr><td>Superficie</td><td>${dossier.property_size_sqm ? esc(dossier.property_size_sqm) + ' mq' : '—'}</td></tr>
+        <tr><td>Prezzo richiesto</td><td>${dossier.property_price ? '€ ' + Number(dossier.property_price).toLocaleString('it-IT') : 'Su richiesta'}</td></tr>
+      </table>
+      <div class="contact-box">
+        <b>${esc(client?.company_name || client?.full_name)}</b><br>
+        ${esc(client?.contact_email)} · ${esc(client?.contact_phone)}
+      </div>
+    `));
+
+    // Pagina foto immobile — con logo in sovrimpressione (Light: cliente+Folium; Gold/Platinum: solo cliente)
+    if (propertyPhotos.length) {
+      pages.push(pageWrapper(`
+        ${header}
+        <div class="section-label">${t('photos', lang)}</div>
+        <div class="photo-grid">${propertyPhotos.map(p => `<img src="${esc(p.photo_url)}">`).join('')}</div>
+      `));
+    }
+
+    // Caratteristiche e annessi — pittogrammi per Gold/Platinum, testo libero per Light
+    const AMENITY_ICONS = { pool:'🏊', sea_view:'🌊', garden:'🌳', garage:'🚗', terrace:'🏛️', annex:'🏡', fireplace:'🔥', air_conditioning:'❄️', elevator:'🛗', gym:'🏋️', wine_cellar:'🍷', security:'🔒', solar_panels:'☀️', sea_access:'⚓' };
+    const AMENITY_LABELS_IT = { pool:'Piscina', sea_view:'Vista mare', garden:'Giardino', garage:'Garage', terrace:'Terrazza', annex:'Annesso/Dependance', fireplace:'Camino', air_conditioning:'Aria condizionata', elevator:'Ascensore', gym:'Palestra', wine_cellar:'Cantina vini', security:'Sistema di sicurezza', solar_panels:'Pannelli solari', sea_access:'Accesso privato al mare' };
+    if (tier !== 'light' && (dossier.amenities || []).length) {
+      pages.push(pageWrapper(`
+        ${header}
+        <div class="section-label">Caratteristiche e annessi</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px;">
+          ${dossier.amenities.map(code => `
+            <div style="display:flex;align-items:center;gap:10px;font-size:14px;">
+              <span style="font-size:22px;">${AMENITY_ICONS[code] || '•'}</span>
+              <span>${esc(AMENITY_LABELS_IT[code] || code)}</span>
+            </div>
+          `).join('')}
+        </div>
+      `));
+    } else if (tier === 'light' && dossier.amenities_description) {
+      pages.push(pageWrapper(`
+        ${header}
+        <div class="section-label">Caratteristiche e annessi</div>
+        <div class="verified-note">${esc(dossier.amenities_description)}</div>
+      `));
+    }
+
+    // Pagina dati verificati
+    const verifiedText = (lang !== 'it' && translated?.verified_notes) || dossier.verified_data?.notes || 'Nessun dato aggiuntivo inserito.';
+    pages.push(pageWrapper(`
+      ${header}
+      <div class="section-label">${t('verified', lang)}</div>
+      <div class="verified-note">${esc(verifiedText)}</div>
+    `));
+
+    // Pagina foto destinazione (facoltativa)
+    if (destPhotos.length) {
+      pages.push(pageWrapper(`
+        ${header}
+        <div class="section-label">${t('destination', lang)}</div>
+        <div class="photo-grid">${destPhotos.map(p => `<img src="${esc(p.photo_url)}">`).join('')}</div>
+      `));
+    }
+
+    // Composizione popolazione (età/reddito) — sempre inclusa, motore leggero/gratuito
+    const popData = await ensurePopulationComposition(dossier);
+    if (popData) {
+      pages.push(pageWrapper(`
+        ${header}
+        <div class="section-label">${t('population', lang)}</div>
+        <table class="data-table">
+          ${(popData.age_distribution || []).map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.value)}%</td></tr>`).join('')}
+        </table>
+        <div class="section-label" style="margin-top:26px;">${t('income', lang)}</div>
+        <table class="data-table">
+          ${(popData.income_distribution || []).map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.value)}%</td></tr>`).join('')}
+        </table>
+      `));
+    }
+
+    // Analisi di mercato AI — sempre inclusa per Gold/Platinum
+    if (dossier.include_ai_valuation) {
+      const val = await ensureAiValuation(dossier);
+      if (val) {
+        const narrativeText = (lang !== 'it' && translated?.ai_narrative) || val.narrative || 'Analisi non disponibile per questo immobile.';
+        pages.push(pageWrapper(`
+          ${header}
+          <div class="section-label">${t('market', lang)}</div>
+          <div class="verified-note">${esc(narrativeText)}</div>
+          ${val.value_range_min && val.value_range_max ? `
+            <table class="data-table" style="margin-top:14px;">
+              <tr><td>Intervallo di valore stimato</td><td>€ ${Number(val.value_range_min).toLocaleString('it-IT')} – € ${Number(val.value_range_max).toLocaleString('it-IT')}</td></tr>
+            </table>` : ''}
+        `));
+      }
+    }
+
+    // Descrizione editoriale — sempre inclusa per Gold/Platinum (a pagamento, mai Light)
+    if (dossier.include_editorial_analysis) {
+      const editorial = await ensureEditorialAnalysis(dossier);
+      if (editorial) {
+        pages.push(pageWrapper(`
+          ${header}
+          <div class="section-label">Presentazione</div>
+          <div class="verified-note" style="margin-bottom:16px;">${esc(editorial.full_description || editorial.short_description || '')}</div>
+          ${editorial.location_summary ? `<div class="section-label" style="margin-top:20px;">Attrattività della zona</div><div class="verified-note">${esc(editorial.location_summary)}</div>` : ''}
+          ${editorial.tourism_summary ? `<div class="section-label" style="margin-top:20px;">Contesto turistico</div><div class="verified-note">${esc(editorial.tourism_summary)}</div>` : ''}
+        `));
+      }
+    }
+
+    // Turismo, trasporti e territorio — sempre incluso per Gold/Platinum (motore pesante)
+    if (dossier.include_discovery) {
+      const disc = await ensureDiscoveryData(dossier);
+      if (disc) {
+        const territoryText = (lang !== 'it' && translated?.discovery_summary) || disc.summary || disc.narrative || 'Dati territoriali non disponibili per questa zona.';
+        pages.push(pageWrapper(`
+          ${header}
+          <div class="section-label">${t('territory', lang)}</div>
+          <div class="verified-note">${esc(territoryText)}</div>
+        `));
+      }
+    }
+
+    // Inserimento pagine pubblicitarie tra una sezione e l'altra (Light e Gold)
+    if (showAds) {
+      const usedAdIds = [];
+      const finalPages = [];
+      let slotNumber = 0;
+      for (let i = 0; i < pages.length; i++) {
+        finalPages.push(pages[i]);
+        if (i < pages.length - 1) {
+          slotNumber++; // slot 1 = subito dopo la prima pagina (copertina), poi 2,3...
+          const ad = await pickAdPage(dossier.tenant_id, slotNumber, usedAdIds);
+          if (ad) {
+            usedAdIds.push(ad.id);
+            finalPages.push(pageWrapper(`
+              <div class="tag">${t('dedicated', lang)}</div>
+              <img class="ad-img" src="${esc(ad.image_url)}">
+              ${ad.headline ? `<h2>${esc(ad.headline)}</h2>` : ''}
+              ${ad.subtext ? `<p>${esc(ad.subtext)}</p>` : ''}
+              ${ad.cta_text && ad.cta_url ? `<a class="cta" href="${esc(ad.cta_url)}" target="_blank">${esc(ad.cta_text)}</a>` : ''}
+            `, true));
+            await supabase.from('folium_ad_impressions').insert({ ad_page_id: ad.id, dossier_id: dossierId });
+          }
+        }
+      }
+      el.innerHTML = finalPages.join('');
+    } else {
+      el.innerHTML = pages.join('');
+    }
+  }
+
+  // ---- Lead gate: chi non è il proprietario del dossier (né l'account
+  // sviluppatore) deve lasciare nome+email prima di vedere/scaricare il
+  // dossier. Il proprietario passa dritto: ha già i suoi dati su Folium.
+  async function checkAccessAndRender(){
+    const { data: dossier } = await supabase.from('folium_dossiers').select('id, client_id, is_shared').eq('id', dossierId).single();
+    if (!dossier) { document.getElementById('content').textContent = 'Dossier non trovato.'; return; }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const isOwnerAccount = (user?.email || '').toLowerCase() === OWNER_EMAIL;
+    const isDossierOwner = user && user.id === dossier.client_id;
+
+    if (isOwnerAccount || isDossierOwner) {
+      document.getElementById('printBtn').style.display = '';
+      render('it');
+      return;
+    }
+
+    // Visitatore esterno (es. investitore a cui l'agente ha mandato il link): gate attivo.
+    document.getElementById('content').innerHTML = '';
+    document.getElementById('leadGate').style.display = 'flex';
+  }
+
+  async function submitLeadGate(){
+    const name = document.getElementById('leadName').value.trim();
+    const email = document.getElementById('leadEmail').value.trim();
+    const msg = document.getElementById('leadGateMsg');
+    const btn = document.getElementById('leadSubmitBtn');
+    if (!name || !email) { msg.textContent = 'Inserisci nome ed email.'; return; }
+
+    btn.disabled = true; btn.textContent = 'Sblocco in corso…';
+    try {
+      const { data: dossier } = await supabase.from('folium_dossiers').select('tenant_id').eq('id', dossierId).single();
+      const { error } = await supabase.from('folium_dossier_leads').insert({
+        dossier_id: dossierId, tenant_id: dossier?.tenant_id, name, email
+      });
+      if (error) throw error;
+
+      document.getElementById('leadGate').style.display = 'none';
+      document.getElementById('printBtn').style.display = '';
+      await render('it');
+      window.print(); // avvia subito il download/salvataggio PDF come richiesto
+    } catch (e) {
+      msg.textContent = 'Errore: ' + (e.message || e);
+      btn.disabled = false; btn.textContent = 'Sblocca e scarica';
+    }
+  }
+
+  checkAccessAndRender();
+</script>
+</body>
+</html>

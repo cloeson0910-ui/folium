@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLIUM — Crea il tuo dossier immobiliare</title>
+<style>
+  :root{
+    --gold1:#8f6f2c; --gold2:#c79c43; --gold3:#f1d27a; --gold4:#a77d31;
+    --bronze:#20180a; --bronze2:#3a2c14; --cream:#f6f2ea;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:var(--cream);color:#2b2416;}
+  .hero{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:48px 24px;text-align:center;color:var(--gold3);}
+  .hero h1{font-weight:300;letter-spacing:4px;font-size:28px;margin:0 0 6px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .hero p{font-size:13px;letter-spacing:2px;opacity:.85;margin:0;}
+  .wrap{max-width:440px;margin:-24px auto 40px;padding:0 16px;}
+  .card{background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:28px 22px;margin-top:24px;}
+  .tabs{display:flex;background:#efe8d8;border-radius:10px;overflow:hidden;margin-bottom:20px;}
+  .tab{flex:1;text-align:center;padding:10px;font-size:13px;letter-spacing:1px;cursor:pointer;color:#8a7a52;}
+  .tab.active{background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;}
+  label{display:block;font-size:12px;letter-spacing:.5px;color:#7a6b45;margin:14px 0 5px;}
+  input{width:100%;padding:11px 12px;border:1px solid #ddd2b3;border-radius:8px;font-size:14px;}
+  input:focus{outline:none;border-color:var(--gold2);}
+  .btn{width:100%;margin-top:22px;padding:13px;border:none;border-radius:9px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold4));color:#fff;font-size:14px;letter-spacing:1px;cursor:pointer;}
+  .btn:disabled{opacity:.6;}
+  .note{font-size:11.5px;color:#8a7a52;margin-top:14px;line-height:1.5;}
+  .msg{font-size:13px;margin-top:14px;padding:10px;border-radius:8px;display:none;}
+  .msg.err{background:#fbe4e4;color:#a33;display:block;}
+  .msg.ok{background:#e5f4e6;color:#2f7d3a;display:block;}
+  .hidden{display:none;}
+  a{color:var(--gold4);}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>FOLIUM</h1>
+  <p>DOSSIER IMMOBILIARI · SERVIZIO DOMINUS</p>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" id="tabRegister" onclick="showTab('register')">Registrati</div>
+      <div class="tab" id="tabLogin" onclick="showTab('login')">Accedi</div>
+    </div>
+
+    <form id="formRegister">
+      <label>Nome e cognome</label>
+      <input type="text" id="regName" required>
+      <label>Azienda / attività (facoltativo)</label>
+      <input type="text" id="regCompany">
+      <label>Email</label>
+      <input type="email" id="regEmail" required>
+      <label>Telefono</label>
+      <input type="tel" id="regPhone">
+      <label>Password</label>
+      <input type="password" id="regPassword" minlength="8" required>
+      <button type="submit" class="btn" id="btnRegister">Crea account gratuito</button>
+      <div class="note">Registrandoti accetti che, con il piano gratuito, il tuo dossier includa pagine pubblicitarie di inserzionisti selezionati. Potrai sempre passare a un dossier senza pubblicità a pagamento.</div>
+    </form>
+
+    <form id="formLogin" class="hidden">
+      <label>Email</label>
+      <input type="email" id="loginEmail" required>
+      <label>Password</label>
+      <input type="password" id="loginPassword" required>
+      <button type="submit" class="btn" id="btnLogin">Accedi</button>
+    </form>
+
+    <div id="msg" class="msg"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.45.4/supabase.min.js"></script>
+<script>
+  // ===== CONFIGURAZIONE — sostituire con le chiavi del progetto Supabase DOMINUS =====
+  const SUPABASE_URL = "https://cspzkofhgfrnkhjpfazb.supabase.co";
+  const SUPABASE_ANON_KEY = "INSERISCI_ANON_KEY_DOMINUS";
+  const TENANT_ID = "INSERISCI_TENANT_ID"; // id del tenant Dominus proprietario di questa istanza Folium
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function showTab(which){
+    document.getElementById('formRegister').classList.toggle('hidden', which !== 'register');
+    document.getElementById('formLogin').classList.toggle('hidden', which !== 'login');
+    document.getElementById('tabRegister').classList.toggle('active', which === 'register');
+    document.getElementById('tabLogin').classList.toggle('active', which === 'login');
+    document.getElementById('msg').style.display = 'none';
+  }
+
+  function showMsg(text, ok){
+    const el = document.getElementById('msg');
+    el.textContent = text;
+    el.className = 'msg ' + (ok ? 'ok' : 'err');
+  }
+
+  document.getElementById('formRegister').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnRegister');
+    btn.disabled = true;
+    try {
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+
+      const userId = data.user?.id;
+      if (userId) {
+        const { error: profileError } = await supabase.from('folium_clients').insert({
+          id: userId,
+          tenant_id: TENANT_ID,
+          full_name: document.getElementById('regName').value.trim(),
+          company_name: document.getElementById('regCompany').value.trim() || null,
+          contact_email: email,
+          contact_phone: document.getElementById('regPhone').value.trim() || null,
+          plan: 'free'
+        });
+        if (profileError) throw profileError;
+      }
+
+      showMsg('Registrazione completata. Controlla la tua email per confermare l\'account, poi accedi.', true);
+      showTab('login');
+    } catch (err) {
+      showMsg('Errore registrazione: ' + (err.message || err), false);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('formLogin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnLogin');
+    btn.disabled = true;
+    try {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      window.location.href = 'folium-create.html';
+    } catch (err) {
+      showMsg('Accesso non riuscito: ' + (err.message || err), false);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

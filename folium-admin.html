@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLIUM — Admin</title>
+<style>
+  :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:var(--cream);color:#2b2416;}
+  header{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:20px 18px;color:var(--gold3);}
+  header .brand{font-weight:300;letter-spacing:4px;font-size:20px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .tabs{display:flex;overflow-x:auto;background:#fff;border-bottom:1px solid #eadfb8;position:sticky;top:0;z-index:10;}
+  .tabs div{padding:14px 16px;font-size:12.5px;letter-spacing:.5px;color:#8a7a52;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;}
+  .tabs div.active{color:var(--gold4);border-color:var(--gold2);font-weight:600;}
+  .wrap{max-width:900px;margin:0 auto;padding:18px 14px 60px;}
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+  .stat{background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  .stat .n{font-size:24px;color:var(--gold4);font-weight:300;}
+  .stat .l{font-size:11px;color:#8a7a52;letter-spacing:.5px;}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.06);font-size:12.5px;}
+  th,td{padding:10px 8px;text-align:left;border-bottom:1px solid #f0ead6;}
+  th{background:#fdf9ef;color:#8a7a52;font-weight:600;font-size:11px;letter-spacing:.5px;text-transform:uppercase;}
+  .pill{display:inline-block;padding:3px 9px;border-radius:12px;font-size:10.5px;letter-spacing:.5px;}
+  .pill.free{background:#eee;color:#777;}
+  .pill.paid{background:#e5f4e6;color:#2f7d3a;}
+  .section-title{font-size:14px;letter-spacing:1px;color:var(--gold4);text-transform:uppercase;margin:22px 0 10px;}
+  .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 4px 14px rgba(0,0,0,.06);margin-bottom:14px;}
+  .card h4{margin:0 0 6px;font-size:14px;}
+  .card .meta{font-size:11.5px;color:#8a7a52;margin-bottom:8px;}
+  input,select{padding:9px 10px;border:1px solid #ddd2b3;border-radius:7px;font-size:13px;width:100%;margin-bottom:8px;}
+  .btn-sm{padding:8px 14px;border:none;border-radius:7px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;font-size:12px;cursor:pointer;}
+  .btn-sm.danger{background:#c0392b;}
+  .hidden{display:none;}
+  .empty{text-align:center;color:#a49470;font-size:13px;padding:30px 0;}
+  .field-label{display:block;font-size:11px;letter-spacing:.5px;color:#8a7a52;margin:10px 0 5px;text-transform:uppercase;}
+  select{padding:9px 10px;border:1px solid #ddd2b3;border-radius:7px;font-size:13px;width:100%;margin-bottom:8px;background:#fff;}
+  .upload-box{border:2px dashed #ddd2b3;border-radius:10px;padding:14px;text-align:center;font-size:12px;color:#8a7a52;cursor:pointer;margin-bottom:8px;}
+  .ad-preview{display:flex;gap:8px;margin-bottom:8px;}
+  .ad-preview img{width:70px;height:90px;object-fit:cover;border-radius:6px;}
+  .ad-price-box{background:#fdf9ef;border:1px solid #eee0bd;border-radius:8px;padding:10px 12px;font-size:13px;color:#6b5314;margin:10px 0;}
+  .ad-price-box b{font-size:16px;color:var(--gold4);}
+  .ad-card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .ad-slot-tag{font-size:9.5px;letter-spacing:.5px;padding:2px 8px;border-radius:10px;background:#efe8d8;color:#7a6b45;}
+</style>
+</head>
+<body>
+
+<header><div class="brand">FOLIUM · ADMIN</div></header>
+
+<div class="tabs">
+  <div class="active" onclick="showTab('overview', this)">Panoramica</div>
+  <div onclick="showTab('clients', this)">Clienti</div>
+  <div onclick="showTab('advertisers', this)">Inserzionisti</div>
+  <div onclick="showTab('purchases', this)">Acquisti</div>
+  <div onclick="showTab('engines', this)">Motori dati</div>
+</div>
+
+<div class="wrap">
+
+  <div id="tab-overview">
+    <div class="stat-row">
+      <div class="stat"><div class="n" id="statClients">–</div><div class="l">CLIENTI REGISTRATI</div></div>
+      <div class="stat"><div class="n" id="statDossiers">–</div><div class="l">DOSSIER CREATI</div></div>
+      <div class="stat"><div class="n" id="statRevenue">–</div><div class="l">INCASSATO (€)</div></div>
+    </div>
+    <div class="section-title">Utilizzo recente</div>
+    <table id="usageTable">
+      <thead><tr><th>Data</th><th>Cliente</th><th>Azione</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="tab-clients" class="hidden">
+    <div class="section-title">Clienti registrati</div>
+    <table id="clientsTable">
+      <thead><tr><th>Nome</th><th>Contatti</th><th>Piano</th><th>Dossier creati</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="tab-advertisers" class="hidden">
+    <div class="section-title">Nuovo inserzionista</div>
+    <div class="card">
+      <input type="text" id="advName" placeholder="Nome inserzionista">
+      <input type="email" id="advEmail" placeholder="Email contatto">
+      <input type="tel" id="advPhone" placeholder="Telefono contatto">
+      <button class="btn-sm" onclick="createAdvertiser()">Aggiungi inserzionista</button>
+    </div>
+    <div class="section-title">Inserzionisti</div>
+    <div id="advertisersList"></div>
+
+    <div class="section-title">Nuova pagina pubblicitaria</div>
+    <div class="card">
+      <label class="field-label">Inserzionista</label>
+      <select id="adAdvertiser"></select>
+
+      <label class="field-label">Immagine pagina (A4, già impaginata)</label>
+      <div class="upload-box" onclick="document.getElementById('adImageInput').click()">Tocca per caricare l'immagine</div>
+      <input type="file" id="adImageInput" accept="image/*" style="display:none">
+      <div id="adImagePreview" class="ad-preview"></div>
+
+      <input type="text" id="adHeadline" placeholder="Titolo (facoltativo)">
+      <textarea id="adSubtext" placeholder="Testo breve (facoltativo)" rows="2" style="width:100%;padding:9px 10px;border:1px solid #ddd2b3;border-radius:7px;font-size:13px;margin-bottom:8px;font-family:inherit;"></textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input type="text" id="adCtaText" placeholder="Testo pulsante (facoltativo)">
+        <input type="text" id="adCtaUrl" placeholder="Link pulsante (facoltativo)">
+      </div>
+
+      <label class="field-label">Posizione</label>
+      <select id="adPosition">
+        <option value="1">Slot 1 — Premium (subito dopo copertina)</option>
+        <option value="2">Slot 2 — Alta visibilità</option>
+        <option value="3">Slot 3 — Alta visibilità</option>
+        <option value="4">Slot 4 — Standard</option>
+        <option value="5">Slot 5 — Standard</option>
+        <option value="6">Slot 6 — Standard</option>
+      </select>
+
+      <label class="field-label">Formato</label>
+      <select id="adFormat">
+        <option value="full">Pagina intera</option>
+        <option value="half">Mezza pagina</option>
+      </select>
+
+      <label class="field-label">Piano</label>
+      <select id="adBillingPeriod">
+        <option value="quarterly">Trimestrale (3 mesi) — nessuno sconto</option>
+        <option value="semestral">Semestrale (6 mesi) — sconto 10%</option>
+        <option value="annual">Annuale (12 mesi) — sconto 20%</option>
+      </select>
+
+      <div class="ad-price-box" id="adPriceBox">Prezzo: —</div>
+
+      <button class="btn-sm" onclick="createAdPage()">Attiva pagina pubblicitaria</button>
+    </div>
+    <div class="section-title">Pagine pubblicitarie attive</div>
+    <div id="adPagesList"></div>
+  </div>
+
+  <div id="tab-purchases" class="hidden">
+    <div class="section-title">Acquisti</div>
+    <table id="purchasesTable">
+      <thead><tr><th>Data</th><th>Cliente</th><th>Pacchetto</th><th>Importo</th><th>Stato</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="tab-engines" class="hidden">
+    <div class="section-title">Chiamate per motore</div>
+    <table id="engineStatsTable">
+      <thead><tr><th>Motore</th><th>Chiamate totali</th><th>Riuscite</th><th>Fallite</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="section-title">Chi chiede cosa (ultime 50 chiamate)</div>
+    <table id="engineCallsTable">
+      <thead><tr><th>Data</th><th>Cliente</th><th>Motore</th><th>Esito</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.45.4/supabase.min.js"></script>
+<script>
+  const SUPABASE_URL = "https://cspzkofhgfrnkhjpfazb.supabase.co";
+  const SUPABASE_ANON_KEY = "INSERISCI_ANON_KEY_DOMINUS";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let TENANT_ID = null;
+
+  function showTab(id, el){
+    document.querySelectorAll('.tabs div').forEach(d => d.classList.remove('active'));
+    el.classList.add('active');
+    ['overview','clients','advertisers','purchases','engines'].forEach(t => {
+      document.getElementById('tab-'+t).classList.toggle('hidden', t !== id);
+    });
+  }
+
+  async function init(){
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = 'folium-register.html'; return; }
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    if (!profile?.is_admin) { document.body.innerHTML = '<p style="padding:30px;text-align:center;">Accesso riservato agli amministratori.</p>'; return; }
+
+    const { data: client } = await supabase.from('folium_clients').select('tenant_id').eq('id', user.id).maybeSingle();
+    TENANT_ID = client?.tenant_id || profile.tenant_id;
+
+    loadOverview();
+    loadClients();
+    loadAdvertisers();
+    loadAdPages();
+    updateAdPriceBox();
+    loadPurchases();
+    loadEngineStats();
+  }
+
+  function labelEngine(name){
+    return {
+      'immonova-demographics-engine': 'Popolazione (demografico)',
+      'immonova-ai-valuation-engine': 'Analisi di mercato AI',
+      'immonova-discovery-engine': 'Turismo/territorio (Discovery)'
+    }[name] || name;
+  }
+
+  async function loadEngineStats(){
+    const { data: calls } = await supabase.from('folium_engine_calls')
+      .select('*, folium_clients(full_name, company_name)')
+      .eq('tenant_id', TENANT_ID).order('created_at', { ascending: false }).limit(500);
+
+    const byEngine = {};
+    (calls || []).forEach(c => {
+      byEngine[c.engine_name] = byEngine[c.engine_name] || { total: 0, ok: 0, fail: 0 };
+      byEngine[c.engine_name].total++;
+      byEngine[c.engine_name][c.success ? 'ok' : 'fail']++;
+    });
+
+    const statsBody = document.querySelector('#engineStatsTable tbody');
+    const engines = Object.keys(byEngine);
+    statsBody.innerHTML = engines.length ? engines.map(e => `
+      <tr>
+        <td>${labelEngine(e)}</td>
+        <td>${byEngine[e].total}</td>
+        <td>${byEngine[e].ok}</td>
+        <td>${byEngine[e].fail}</td>
+      </tr>`).join('') : '<tr><td colspan="4" class="empty">Nessuna chiamata registrata ancora</td></tr>';
+
+    const callsBody = document.querySelector('#engineCallsTable tbody');
+    callsBody.innerHTML = (calls || []).slice(0, 50).map(c => `
+      <tr>
+        <td>${new Date(c.created_at).toLocaleString('it-IT')}</td>
+        <td>${c.folium_clients?.company_name || c.folium_clients?.full_name || '—'}</td>
+        <td>${labelEngine(c.engine_name)}</td>
+        <td><span class="pill ${c.success ? 'paid' : 'free'}">${c.success ? 'OK' : 'Errore'}</span></td>
+      </tr>`).join('') || '<tr><td colspan="4" class="empty">Nessuna chiamata registrata ancora</td></tr>';
+  }
+
+  async function loadOverview(){
+    const { count: clientsCount } = await supabase.from('folium_clients').select('*', { count: 'exact', head: true }).eq('tenant_id', TENANT_ID);
+    const { count: dossiersCount } = await supabase.from('folium_dossiers').select('*', { count: 'exact', head: true }).eq('tenant_id', TENANT_ID);
+    const { data: paidPurchases } = await supabase.from('folium_purchases').select('total_amount_cents').eq('tenant_id', TENANT_ID).eq('status', 'paid');
+    const revenue = (paidPurchases || []).reduce((sum, p) => sum + p.total_amount_cents, 0) / 100;
+
+    document.getElementById('statClients').textContent = clientsCount ?? 0;
+    document.getElementById('statDossiers').textContent = dossiersCount ?? 0;
+    document.getElementById('statRevenue').textContent = revenue.toLocaleString('it-IT', { minimumFractionDigits: 2 });
+
+    const { data: usage } = await supabase.from('folium_usage_log')
+      .select('*, folium_clients(full_name, company_name)')
+      .eq('tenant_id', TENANT_ID).order('created_at', { ascending: false }).limit(30);
+
+    const tbody = document.querySelector('#usageTable tbody');
+    tbody.innerHTML = (usage || []).map(u => `
+      <tr>
+        <td>${new Date(u.created_at).toLocaleString('it-IT')}</td>
+        <td>${u.folium_clients?.company_name || u.folium_clients?.full_name || '—'}</td>
+        <td>${labelAction(u.action)}</td>
+      </tr>`).join('') || '<tr><td colspan="3" class="empty">Nessuna attività ancora</td></tr>';
+  }
+
+  function labelAction(a){
+    return { dossier_created: 'Dossier creato', purchase_completed: 'Acquisto completato', dossier_exported: 'Dossier esportato' }[a] || a;
+  }
+
+  async function loadClients(){
+    const { data: clients } = await supabase.from('folium_clients').select('*').eq('tenant_id', TENANT_ID).order('created_at', { ascending: false });
+    const counts = {};
+    const { data: dossiers } = await supabase.from('folium_dossiers').select('client_id').eq('tenant_id', TENANT_ID);
+    (dossiers || []).forEach(d => counts[d.client_id] = (counts[d.client_id] || 0) + 1);
+
+    const tbody = document.querySelector('#clientsTable tbody');
+    tbody.innerHTML = (clients || []).map(c => `
+      <tr>
+        <td>${c.company_name || c.full_name || '—'}</td>
+        <td>${c.contact_email || ''}<br>${c.contact_phone || ''}</td>
+        <td><span class="pill ${c.plan === 'light' ? 'free' : 'paid'}">${c.plan === 'light' ? 'Light' : (c.plan === 'gold' ? 'Gold' : 'Platinum')}</span></td>
+        <td>${counts[c.id] || 0}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="empty">Nessun cliente registrato</td></tr>';
+  }
+
+  async function createAdvertiser(){
+    const name = document.getElementById('advName').value.trim();
+    if (!name) return;
+    await supabase.from('folium_advertisers').insert({
+      tenant_id: TENANT_ID,
+      name,
+      contact_email: document.getElementById('advEmail').value.trim() || null,
+      contact_phone: document.getElementById('advPhone').value.trim() || null
+    });
+    document.getElementById('advName').value = '';
+    document.getElementById('advEmail').value = '';
+    document.getElementById('advPhone').value = '';
+    loadAdvertisers();
+  }
+
+  async function loadAdvertisers(){
+    const { data: advertisers } = await supabase.from('folium_advertisers').select('*').eq('tenant_id', TENANT_ID).order('created_at', { ascending: false });
+    const box = document.getElementById('advertisersList');
+    if (!advertisers || advertisers.length === 0) {
+      box.innerHTML = '<div class="empty">Nessun inserzionista ancora</div>';
+      document.getElementById('adAdvertiser').innerHTML = '<option value="">Crea prima un inserzionista</option>';
+      return;
+    }
+
+    const pages = {};
+    for (const a of advertisers) {
+      const { count } = await supabase.from('folium_ad_pages').select('*', { count: 'exact', head: true }).eq('advertiser_id', a.id);
+      pages[a.id] = count || 0;
+    }
+
+    box.innerHTML = advertisers.map(a => `
+      <div class="card">
+        <h4>${a.name}</h4>
+        <div class="meta">${a.contact_email || ''} ${a.contact_phone ? '· ' + a.contact_phone : ''} · ${pages[a.id]} pagina/e pubblicitaria/e attiva/e</div>
+        <button class="btn-sm" onclick="toggleAdvertiser('${a.id}', ${a.active})">${a.active ? 'Disattiva' : 'Riattiva'}</button>
+      </div>`).join('');
+
+    document.getElementById('adAdvertiser').innerHTML = advertisers
+      .filter(a => a.active)
+      .map(a => `<option value="${a.id}">${a.name}</option>`).join('') || '<option value="">Nessun inserzionista attivo</option>';
+  }
+
+  async function toggleAdvertiser(id, active){
+    await supabase.from('folium_advertisers').update({ active: !active }).eq('id', id);
+    loadAdvertisers();
+  }
+
+  // ---- Pagine pubblicitarie: prezzi base mensili per posizione/formato, con sconto
+  // per periodo. Accesso fisso (vedi LEGGIMI): l'inserzionista paga la posizione, non
+  // un numero di stampe garantito.
+  const AD_BASE_MONTHLY_PRICE = {
+    full: { premium: 79, high: 55, standard: 35 },
+    half: { premium: 45, high: 30, standard: 20 }
+  };
+  const AD_PERIOD_MONTHS = { quarterly: 3, semestral: 6, annual: 12 };
+  const AD_PERIOD_DISCOUNT = { quarterly: 0, semestral: 0.10, annual: 0.20 };
+
+  function slotTier(slot){
+    slot = Number(slot);
+    if (slot === 1) return 'premium';
+    if (slot === 2 || slot === 3) return 'high';
+    return 'standard';
+  }
+
+  function computeAdPrice(slot, format, period){
+    const monthly = AD_BASE_MONTHLY_PRICE[format][slotTier(slot)];
+    const months = AD_PERIOD_MONTHS[period];
+    const discount = AD_PERIOD_DISCOUNT[period];
+    const gross = monthly * months;
+    const net = gross * (1 - discount);
+    return { monthly, months, discount, gross, net: Math.round(net * 100) / 100 };
+  }
+
+  function updateAdPriceBox(){
+    const slot = document.getElementById('adPosition').value;
+    const format = document.getElementById('adFormat').value;
+    const period = document.getElementById('adBillingPeriod').value;
+    const p = computeAdPrice(slot, format, period);
+    const periodLabel = { quarterly: 'trimestre', semestral: 'semestre', annual: 'anno' }[period];
+    document.getElementById('adPriceBox').innerHTML =
+      `${p.monthly}€/mese base × ${p.months} mesi = ${p.gross}€ − sconto ${Math.round(p.discount*100)}% → <b>${p.net}€</b> per l'intero ${periodLabel}`;
+  }
+
+  let adImageFile = null;
+
+  document.getElementById('adImageInput').addEventListener('change', (e) => {
+    adImageFile = e.target.files[0] || null;
+    const box = document.getElementById('adImagePreview');
+    box.innerHTML = '';
+    if (adImageFile) {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(adImageFile);
+      box.appendChild(img);
+    }
+  });
+  document.getElementById('adPosition').addEventListener('change', updateAdPriceBox);
+  document.getElementById('adFormat').addEventListener('change', updateAdPriceBox);
+  document.getElementById('adBillingPeriod').addEventListener('change', updateAdPriceBox);
+
+  async function createAdPage(){
+    const advertiserId = document.getElementById('adAdvertiser').value;
+    if (!advertiserId) { alert('Seleziona un inserzionista.'); return; }
+    if (!adImageFile) { alert('Carica l\'immagine della pagina pubblicitaria.'); return; }
+
+    const slot = Number(document.getElementById('adPosition').value);
+    const format = document.getElementById('adFormat').value;
+    const period = document.getElementById('adBillingPeriod').value;
+    const price = computeAdPrice(slot, format, period);
+
+    const ext = adImageFile.name.split('.').pop();
+    const path = `${TENANT_ID}/${advertiserId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('folium-ads').upload(path, adImageFile, { upsert: false });
+    if (uploadError) { alert('Errore caricamento immagine: ' + uploadError.message); return; }
+    const { data: urlData } = supabase.storage.from('folium-ads').getPublicUrl(path);
+
+    const start = new Date();
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
+
+    const { error } = await supabase.from('folium_ad_pages').insert({
+      advertiser_id: advertiserId,
+      tenant_id: TENANT_ID,
+      image_url: urlData.publicUrl,
+      headline: document.getElementById('adHeadline').value.trim() || null,
+      subtext: document.getElementById('adSubtext').value.trim() || null,
+      cta_text: document.getElementById('adCtaText').value.trim() || null,
+      cta_url: document.getElementById('adCtaUrl').value.trim() || null,
+      position_slot: slot,
+      ad_format: format,
+      billing_period: period,
+      price_paid_cents: Math.round(price.net * 100),
+      subscription_start: start.toISOString().slice(0, 10),
+      subscription_end: end.toISOString().slice(0, 10)
+    });
+    if (error) { alert('Errore creazione pagina pubblicitaria: ' + error.message); return; }
+
+    adImageFile = null;
+    document.getElementById('adImagePreview').innerHTML = '';
+    document.getElementById('adHeadline').value = '';
+    document.getElementById('adSubtext').value = '';
+    document.getElementById('adCtaText').value = '';
+    document.getElementById('adCtaUrl').value = '';
+    loadAdPages();
+  }
+
+  async function loadAdPages(){
+    const { data: adPages } = await supabase.from('folium_ad_pages')
+      .select('*, folium_advertisers(name)')
+      .eq('tenant_id', TENANT_ID).order('position_slot', { ascending: true });
+    const box = document.getElementById('adPagesList');
+    if (!adPages || adPages.length === 0) { box.innerHTML = '<div class="empty">Nessuna pagina pubblicitaria ancora</div>'; return; }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const tierLabel = { premium: 'Premium', high: 'Alta visibilità', standard: 'Standard' };
+    const periodLabel = { quarterly: 'Trimestrale', semestral: 'Semestrale', annual: 'Annuale' };
+
+    box.innerHTML = adPages.map(p => {
+      const expired = p.subscription_end < today;
+      return `
+      <div class="card">
+        <h4>${p.folium_advertisers?.name || '—'}</h4>
+        <div class="ad-card-meta">
+          <span class="ad-slot-tag">Slot ${p.position_slot} · ${tierLabel[slotTier(p.position_slot)]}</span>
+          <span class="ad-slot-tag">${p.ad_format === 'full' ? 'Pagina intera' : 'Mezza pagina'}</span>
+          <span class="ad-slot-tag">${periodLabel[p.billing_period]}</span>
+          <span class="ad-slot-tag">${(p.price_paid_cents/100).toFixed(2)}€ pagati</span>
+        </div>
+        <div class="meta" style="margin-top:6px;">Attiva dal ${p.subscription_start} al ${p.subscription_end} ${expired ? '<b style="color:#c0392b;">— SCADUTA</b>' : ''}</div>
+        <button class="btn-sm ${p.active ? 'danger' : ''}" onclick="toggleAdPage('${p.id}', ${p.active})">${p.active ? 'Disattiva' : 'Riattiva'}</button>
+      </div>`;
+    }).join('');
+  }
+
+  async function toggleAdPage(id, active){
+    await supabase.from('folium_ad_pages').update({ active: !active }).eq('id', id);
+    loadAdPages();
+  }
+
+  async function loadPurchases(){
+    const { data: purchases } = await supabase.from('folium_purchases')
+      .select('*, folium_clients(full_name, company_name)')
+      .eq('tenant_id', TENANT_ID).order('created_at', { ascending: false }).limit(50);
+
+    const tbody = document.querySelector('#purchasesTable tbody');
+    tbody.innerHTML = (purchases || []).map(p => `
+      <tr>
+        <td>${new Date(p.created_at).toLocaleDateString('it-IT')}</td>
+        <td>${p.folium_clients?.company_name || p.folium_clients?.full_name || '—'}</td>
+        <td>${p.tier === 'gold' ? 'Gold' : 'Platinum'} · ${p.package_type}</td>
+        <td>€ ${(p.total_amount_cents / 100).toFixed(2)}</td>
+        <td><span class="pill ${p.status === 'paid' ? 'paid' : 'free'}">${p.status}</span></td>
+      </tr>`).join('') || '<tr><td colspan="5" class="empty">Nessun acquisto ancora</td></tr>';
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLIUM — Gold e Platinum</title>
+<style>
+  :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;--plat1:#5a6570;--plat2:#8b97a3;--plat3:#c7cfd6;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:var(--cream);color:#2b2416;}
+  header{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:32px 18px;text-align:center;color:var(--gold3);}
+  header .brand{font-weight:300;letter-spacing:4px;font-size:22px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  header p{font-size:13px;color:#e8dcb8;margin-top:8px;}
+  .wrap{max-width:480px;margin:0 auto;padding:20px 16px 60px;}
+  .tier-block{margin-bottom:30px;}
+  .tier-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .tier-head h2{font-size:16px;margin:0;letter-spacing:.5px;}
+  .tier-head .dot{width:10px;height:10px;border-radius:50%;}
+  .tier-head.gold .dot{background:linear-gradient(120deg,var(--gold1),var(--gold2));}
+  .tier-head.platinum .dot{background:linear-gradient(120deg,var(--plat1),var(--plat2),var(--plat3));}
+  .tier-desc{font-size:12px;color:#8a7a52;margin:-6px 0 14px;}
+  .plan{background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.08);padding:20px;margin-bottom:14px;border:2px solid transparent;position:relative;}
+  .plan.best{border-color:var(--gold2);}
+  .plan.best.platinum-best{border-color:var(--plat2);}
+  .plan .badge{position:absolute;top:-10px;right:16px;color:#fff;font-size:10px;padding:4px 10px;border-radius:12px;letter-spacing:1px;}
+  .gold .plan .badge{background:linear-gradient(120deg,var(--gold1),var(--gold2));}
+  .platinum .plan .badge{background:linear-gradient(120deg,var(--plat1),var(--plat2));}
+  .plan h3{margin:0 0 4px;font-size:15px;}
+  .plan .price{font-size:26px;font-weight:300;margin:6px 0 2px;}
+  .gold .plan .price{color:var(--gold4);}
+  .platinum .plan .price{color:var(--plat1);}
+  .plan .price span{font-size:12.5px;color:#8a7a52;font-weight:400;}
+  .plan .desc{font-size:12px;color:#8a7a52;margin-bottom:12px;}
+  .plan button{width:100%;padding:12px;border:none;border-radius:9px;color:#fff;font-size:13px;letter-spacing:1px;cursor:pointer;}
+  .gold .plan button{background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold4));}
+  .platinum .plan button{background:linear-gradient(120deg,var(--plat1),var(--plat2));}
+  .plan button:disabled{opacity:.6;}
+  .msg{font-size:13px;margin-top:14px;padding:10px;border-radius:8px;display:none;}
+  .msg.err{background:#fbe4e4;color:#a33;display:block;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">FOLIUM</div>
+  <p>Passa a Gold o Platinum</p>
+</header>
+
+<div class="wrap">
+
+  <div class="tier-block gold">
+    <div class="tier-head gold"><span class="dot"></span><h2>FOLIUM Gold</h2></div>
+    <div class="tier-desc">Tutte le funzioni (popolazione, analisi di mercato AI, turismo/territorio) — con pagine pubblicitarie tra le sezioni e logo Folium.</div>
+
+    <div class="plan">
+      <h3>Dossier singolo</h3>
+      <div class="price">22€ <span>una tantum</span></div>
+      <div class="desc">Un dossier Gold completo.</div>
+      <button onclick="startCheckout('gold','single')">Acquista</button>
+    </div>
+
+    <div class="plan best">
+      <div class="badge">PIÙ SCELTO</div>
+      <h3>Pacchetto 10 dossier</h3>
+      <div class="price">15€ <span>/ cad. — 150€ totali</span></div>
+      <div class="desc">10 dossier Gold da usare quando vuoi.</div>
+      <button onclick="startCheckout('gold','pack10')">Acquista</button>
+    </div>
+
+    <div class="plan">
+      <h3>Pacchetto 50 dossier</h3>
+      <div class="price">11€ <span>/ cad. — 550€ totali</span></div>
+      <div class="desc">Per chi usa Folium regolarmente.</div>
+      <button onclick="startCheckout('gold','pack50')">Acquista</button>
+    </div>
+  </div>
+
+  <div class="tier-block platinum">
+    <div class="tier-head platinum"><span class="dot"></span><h2>FOLIUM Platinum</h2></div>
+    <div class="tier-desc">Tutte le funzioni, senza pagine pubblicitarie e senza logo Folium sul dossier.</div>
+
+    <div class="plan">
+      <h3>Dossier singolo</h3>
+      <div class="price">25€ <span>una tantum</span></div>
+      <div class="desc">Un dossier Platinum completo.</div>
+      <button onclick="startCheckout('platinum','single')">Acquista</button>
+    </div>
+
+    <div class="plan best platinum-best">
+      <div class="badge">PIÙ SCELTO</div>
+      <h3>Pacchetto 10 dossier</h3>
+      <div class="price">19€ <span>/ cad. — 190€ totali</span></div>
+      <div class="desc">10 dossier Platinum da usare quando vuoi.</div>
+      <button onclick="startCheckout('platinum','pack10')">Acquista</button>
+    </div>
+
+    <div class="plan">
+      <h3>Pacchetto 50 dossier</h3>
+      <div class="price">12,50€ <span>/ cad. — 625€ totali</span></div>
+      <div class="desc">Per chi usa Folium regolarmente.</div>
+      <button onclick="startCheckout('platinum','pack50')">Acquista</button>
+    </div>
+  </div>
+
+  <div id="msg" class="msg"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.45.4/supabase.min.js"></script>
+<script>
+  const SUPABASE_URL = "https://cspzkofhgfrnkhjpfazb.supabase.co";
+  const SUPABASE_ANON_KEY = "INSERISCI_ANON_KEY_DOMINUS";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function showMsg(text){
+    const el = document.getElementById('msg');
+    el.textContent = text; el.className = 'msg err';
+  }
+
+  async function startCheckout(tier, packageType){
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { window.location.href = 'folium-register.html'; return; }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('folium-create-checkout', {
+        body: { tier, package_type: packageType }
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url; // redirect a Stripe Checkout
+      } else {
+        throw new Error('URL di pagamento non ricevuto');
+      }
+    } catch (err) {
+      showMsg('Errore avvio pagamento: ' + (err.message || err));
+    }
+  }
+</script>
+</body>
+</html>
