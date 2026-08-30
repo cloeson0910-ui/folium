@@ -1,0 +1,36 @@
+<svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8f6f2c"/>
+      <stop offset="35%" stop-color="#c79c43"/>
+      <stop offset="70%" stop-color="#f1d27a"/>
+      <stop offset="100%" stop-color="#a77d31"/>
+    </linearGradient>
+    <radialGradient id="bronze" cx="35%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#3a2c14"/>
+      <stop offset="100%" stop-color="#20180a"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Icona: pagina/foglio piegato, monogramma "F" -->
+  <g transform="translate(20,20)">
+    <circle cx="80" cy="80" r="80" fill="url(#bronze)"/>
+    <!-- reticolo tenue a triangoli, stesso motivo del brand -->
+    <g stroke="url(#gold)" stroke-width="0.6" opacity="0.25">
+      <path d="M0 40 L160 40 M0 80 L160 80 M0 120 L160 120"/>
+      <path d="M40 0 L40 160 M80 0 L80 160 M120 0 L120 160"/>
+    </g>
+    <!-- pagina piegata -->
+    <path d="M50 34 H100 L112 46 V126 H50 Z" fill="none" stroke="url(#gold)" stroke-width="2.4"/>
+    <path d="M100 34 L100 46 H112 Z" fill="url(#gold)"/>
+    <!-- monogramma F, tratto sottile lineare -->
+    <path d="M64 58 H92 M64 58 V112 M64 82 H86" fill="none" stroke="url(#gold)" stroke-width="3.2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(210,70)" font-family="Poppins, 'Avenir Next', sans-serif">
+    <text x="0" y="40" font-size="46" letter-spacing="6" fill="url(#gold)" font-weight="300">FOLIUM</text>
+    <line x1="2" y1="55" x2="330" y2="55" stroke="url(#gold)" stroke-width="1"/>
+    <text x="2" y="78" font-size="13" letter-spacing="4" fill="#c79c43" font-weight="400">DOSSIER IMMOBILIARI · DOMINUS</text>
+  </g>
+</svg>
