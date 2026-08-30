@@ -163,8 +163,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.45.4/supabase.min.js"></script>
 <script>
-  const SUPABASE_URL = "https://cspzkofhgfrnkhjpfazb.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzcHprb2ZoZ2ZybmtoanBmYXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTgyODQsImV4cCI6MjA5NjQzNDI4NH0.rrlxptwM1FS0lFall3hOAr57K1G2MuT-dx6vw3cB8Xs";
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impnc21lYnRpd2d3ZWdqY3l0bWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMjI5NDcsImV4cCI6MjEwMzY5ODk0N30.TPmyHIU_vcQuQTyttDGATJSmZ1idxTlbHmhqUXQ3-0c";
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let TENANT_ID = null;
 
@@ -179,11 +179,11 @@
   async function init(){
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = 'folium-register.html'; return; }
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    if (!profile?.is_admin) { document.body.innerHTML = '<p style="padding:30px;text-align:center;">Accesso riservato agli amministratori.</p>'; return; }
+    const isAdmin = (user.email || '').toLowerCase() === 'claudio.romano@bluewin.ch';
+    if (!isAdmin) { document.body.innerHTML = '<p style="padding:30px;text-align:center;">Accesso riservato agli amministratori.</p>'; return; }
 
     const { data: client } = await supabase.from('folium_clients').select('tenant_id').eq('id', user.id).maybeSingle();
-    TENANT_ID = client?.tenant_id || profile.tenant_id;
+    TENANT_ID = client?.tenant_id || 'INSERISCI_TENANT_ID_FISSO'; // stesso UUID scelto in folium-register.html
 
     loadOverview();
     loadClients();

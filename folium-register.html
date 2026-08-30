@@ -76,9 +76,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase/2.45.4/supabase.min.js"></script>
 <script>
   // ===== CONFIGURAZIONE — sostituire con le chiavi del progetto Supabase DOMINUS =====
-  const SUPABASE_URL = "https://cspzkofhgfrnkhjpfazb.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzcHprb2ZoZ2ZybmtoanBmYXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTgyODQsImV4cCI6MjA5NjQzNDI4NH0.rrlxptwM1FS0lFall3hOAr57K1G2MuT-dx6vw3cB8Xs";
-  const TENANT_ID = "cspzkofhgfrnkhjpfazb"; // id del tenant Dominus proprietario di questa istanza Folium
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impnc21lYnRpd2d3ZWdqY3l0bWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMjI5NDcsImV4cCI6MjEwMzY5ODk0N30.TPmyHIU_vcQuQTyttDGATJSmZ1idxTlbHmhqUXQ3-0c";
+  const TENANT_ID = "INSERISCI_TENANT_ID_FISSO"; // Folium è un progetto a sé: nessun legame con Dominus, basta un UUID fisso a tua scelta (es. generane uno su https://www.uuidgenerator.net/ e usalo ovunque compare INSERISCI_TENANT_ID_FISSO in tutti i file)
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   function showTab(which){
