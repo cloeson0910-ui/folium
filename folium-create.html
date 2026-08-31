@@ -226,22 +226,28 @@
   let currentClient = null;
 
   async function init(){
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) { window.location.href = 'folium-register.html'; return; }
-    currentUser = user;
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) { window.location.href = 'folium-register.html'; return; }
+      currentUser = user;
 
-    const { data: client, error } = await sb.from('folium_clients').select('*').eq('id', user.id).single();
-    if (error || !client) { showMsg('Profilo non trovato, effettua di nuovo il login.', false); return; }
-    currentClient = client;
-    isOwner = (user.email || '').toLowerCase() === OWNER_EMAIL;
-    document.getElementById('contactEmail').value = client.contact_email || user.email || '';
-    document.getElementById('contactPhone').value = client.contact_phone || '';
-    document.getElementById('displayName').value = client.company_name || client.full_name || '';
+      const { data: client, error } = await sb.from('folium_clients').select('*').eq('id', user.id).single();
+      if (error || !client) { showMsg('Profilo non trovato, effettua di nuovo il login. (' + (error?.message || 'nessun profilo') + ')', false); return; }
+      currentClient = client;
+      isOwner = (user.email || '').toLowerCase() === OWNER_EMAIL;
+      document.getElementById('contactEmail').value = client.contact_email || user.email || '';
+      document.getElementById('contactPhone').value = client.contact_phone || '';
+      document.getElementById('displayName').value = client.company_name || client.full_name || '';
 
-    updatePlanUI();
-    initLanguageChips();
-    initAmenityChips();
-    document.querySelectorAll('input[name="devTier"]').forEach(r => r.addEventListener('change', updatePlanUI));
+      updatePlanUI();
+      initLanguageChips();
+      initAmenityChips();
+      document.querySelectorAll('input[name="devTier"]').forEach(r => r.addEventListener('change', updatePlanUI));
+    } catch (err) {
+      document.getElementById('planBanner').textContent = 'Errore di caricamento: ' + (err.message || err);
+      document.getElementById('planBanner').style.background = '#fbe4e4';
+      console.error('Errore init() folium-create.html:', err);
+    }
   }
 
   // ---- Traduzioni: add-on 5€/lingua, indipendente dal piano ---------------
