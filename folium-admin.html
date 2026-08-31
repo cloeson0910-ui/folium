@@ -183,7 +183,7 @@
     if (!isAdmin) { document.body.innerHTML = '<p style="padding:30px;text-align:center;">Accesso riservato agli amministratori.</p>'; return; }
 
     const { data: client } = await sb.from('folium_clients').select('tenant_id').eq('id', user.id).maybeSingle();
-    TENANT_ID = client?.tenant_id || 'INSERISCI_TENANT_ID_FISSO'; // stesso UUID scelto in folium-register.html
+    TENANT_ID = client?.tenant_id || '724f71d8-b499-46c1-9047-021280e913c9'; // stesso UUID scelto in folium-register.html
 
     loadOverview();
     loadClients();
