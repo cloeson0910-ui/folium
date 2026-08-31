@@ -213,6 +213,7 @@
 <script>
   const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_ToGgNAX4tIn6O7gb6hMa4A_kRi1yztz";
+  const TENANT_ID = "724f71d8-b499-46c1-9047-021280e913c9"; // stesso UUID fisso usato in folium-register.html
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const MAX_PROPERTY_PHOTOS = 15;
@@ -231,8 +232,24 @@
       if (!user) { window.location.href = 'folium-register.html'; return; }
       currentUser = user;
 
-      const { data: client, error } = await sb.from('folium_clients').select('*').eq('id', user.id).single();
-      if (error || !client) { showMsg('Profilo non trovato, effettua di nuovo il login. (' + (error?.message || 'nessun profilo') + ')', false); return; }
+      let { data: client, error } = await sb.from('folium_clients').select('*').eq('id', user.id).single();
+
+      if (error || !client) {
+        // Profilo mancante (es. registrazione interrotta prima del salvataggio): lo creo
+        // al volo qui, così l'account si "autoripara" invece di restare bloccato.
+        const { data: created, error: createError } = await sb.from('folium_clients').upsert({
+          id: user.id,
+          tenant_id: TENANT_ID,
+          full_name: user.email,
+          contact_email: user.email,
+          plan: 'light'
+        }, { onConflict: 'id' }).select().single();
+        if (createError || !created) {
+          showMsg('Impossibile creare/recuperare il profilo cliente: ' + (createError?.message || 'errore sconosciuto') + '. Esci e rifai il login, o contatta l\'assistenza.', false);
+          return;
+        }
+        client = created;
+      }
       currentClient = client;
       isOwner = (user.email || '').toLowerCase() === OWNER_EMAIL;
       document.getElementById('contactEmail').value = client.contact_email || user.email || '';
