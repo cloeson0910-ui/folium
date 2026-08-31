@@ -93,6 +93,7 @@
     const el = document.getElementById('msg');
     el.textContent = text;
     el.className = 'msg ' + (ok ? 'ok' : 'err');
+    el.style.display = ''; // rimuove l'eventuale display:none inline lasciato da showTab()
   }
 
   document.getElementById('formRegister').addEventListener('submit', async (e) => {
@@ -119,8 +120,8 @@
         if (profileError) throw profileError;
       }
 
-      showMsg('Registrazione completata. Controlla la tua email per confermare l\'account, poi accedi.', true);
       showTab('login');
+      showMsg('Registrazione completata. Controlla la tua email per confermare l\'account, poi accedi.', true);
     } catch (err) {
       showMsg('Errore registrazione: ' + (err.message || err), false);
     } finally {
