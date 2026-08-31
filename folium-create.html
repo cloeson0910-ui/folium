@@ -209,11 +209,11 @@
   </form>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sb/sb-js@2"></script>
 <script>
-  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.sb.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impnc21lYnRpd2d3ZWdqY3l0bWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMjI5NDcsImV4cCI6MjEwMzY5ODk0N30.TPmyHIU_vcQuQTyttDGATJSmZ1idxTlbHmhqUXQ3-0c";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const MAX_PROPERTY_PHOTOS = 15;
   const OWNER_EMAIL = "claudio.romano@bluewin.ch"; // account sviluppatore: uso illimitato, mai pubblicità, mai consumo crediti
@@ -226,11 +226,11 @@
   let currentClient = null;
 
   async function init(){
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await sb.auth.getUser();
     if (!user) { window.location.href = 'folium-register.html'; return; }
     currentUser = user;
 
-    const { data: client, error } = await supabase.from('folium_clients').select('*').eq('id', user.id).single();
+    const { data: client, error } = await sb.from('folium_clients').select('*').eq('id', user.id).single();
     if (error || !client) { showMsg('Profilo non trovato, effettua di nuovo il login.', false); return; }
     currentClient = client;
     isOwner = (user.email || '').toLowerCase() === OWNER_EMAIL;
@@ -369,7 +369,7 @@
     document.getElementById(`amenity-${code}`).classList.toggle('on', selectedAmenities.includes(code));
   }
 
-  function logout(){ supabase.auth.signOut().then(()=>window.location.href='folium-register.html'); }
+  function logout(){ sb.auth.signOut().then(()=>window.location.href='folium-register.html'); }
 
   function renderThumb(container, file, onRemove){
     const div = document.createElement('div');
@@ -677,9 +677,9 @@
   async function uploadFile(bucket, file, pathPrefix){
     const ext = file.name.split('.').pop();
     const path = `${pathPrefix}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
+    const { error } = await sb.storage.from(bucket).upload(path, file, { upsert: false });
     if (error) throw error;
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    const { data } = sb.storage.from(bucket).getPublicUrl(path);
     return data.publicUrl;
   }
 
@@ -692,7 +692,7 @@
       let logoUrl = currentClient.logo_url;
       if (logoFile) {
         logoUrl = await uploadFile('folium-logos', logoFile, currentUser.id);
-        await supabase.from('folium_clients').update({ logo_url: logoUrl }).eq('id', currentUser.id);
+        await sb.from('folium_clients').update({ logo_url: logoUrl }).eq('id', currentUser.id);
       }
 
       const willHaveAds = currentTier !== 'platinum'; // Light e Gold hanno pubblicità, solo Platinum no
@@ -702,7 +702,7 @@
       // senza passare da Stripe. Light: restano un add-on a pagamento (gestito dopo l'insert).
       const freeLanguages = (currentTier !== 'light') ? selectedLanguages : [];
 
-      const { data: dossier, error: dossierError } = await supabase.from('folium_dossiers').insert({
+      const { data: dossier, error: dossierError } = await sb.from('folium_dossiers').insert({
         client_id: currentUser.id,
         tenant_id: currentClient.tenant_id,
         status: 'draft',
@@ -740,7 +740,7 @@
         file = await applyPhotoWatermark(file, currentTier, logoUrl, watermarkPosition);
         btn.textContent = `Caricamento foto (${uploaded+1}/${totalPhotos})…`;
         const url = await uploadFile('folium-photos', file, dossier.id);
-        await supabase.from('folium_dossier_photos').insert({
+        await sb.from('folium_dossier_photos').insert({
           dossier_id: dossier.id, photo_url: url, sort_order: i, photo_kind: 'property'
         });
         uploaded++;
@@ -753,7 +753,7 @@
         file = await applyPhotoWatermark(file, currentTier, logoUrl, watermarkPosition);
         btn.textContent = `Caricamento foto (${uploaded+1}/${totalPhotos})…`;
         const url = await uploadFile('folium-photos', file, dossier.id);
-        await supabase.from('folium_dossier_photos').insert({
+        await sb.from('folium_dossier_photos').insert({
           dossier_id: dossier.id, photo_url: url, sort_order: i, photo_kind: 'destination'
         });
         uploaded++;
@@ -762,13 +762,13 @@
 
       // Se ha crediti a pagamento, ne consuma uno (l'account sviluppatore non consuma mai crediti)
       if (!isOwner && currentTier !== 'light' && currentClient.credits_remaining > 0) {
-        await supabase.from('folium_clients').update({
+        await sb.from('folium_clients').update({
           credits_remaining: currentClient.credits_remaining - 1
         }).eq('id', currentUser.id);
       }
 
-      await supabase.from('folium_dossiers').update({ status: 'completed' }).eq('id', dossier.id);
-      await supabase.from('folium_usage_log').insert({
+      await sb.from('folium_dossiers').update({ status: 'completed' }).eq('id', dossier.id);
+      await sb.from('folium_usage_log').insert({
         client_id: currentUser.id, tenant_id: currentClient.tenant_id,
         action: 'dossier_created', dossier_id: dossier.id
       });
@@ -777,7 +777,7 @@
         // Traduzioni: add-on a pagamento indipendente dal piano, checkout dedicato
         // prima di mostrare il dossier finale.
         btn.textContent = 'Avvio pagamento traduzioni…';
-        const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('folium-translation-checkout', {
+        const { data: checkoutData, error: checkoutError } = await sb.functions.invoke('folium-translation-checkout', {
           body: { dossier_id: dossier.id, languages: selectedLanguages }
         });
         if (checkoutError || !checkoutData?.url) {

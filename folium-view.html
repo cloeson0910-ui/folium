@@ -89,17 +89,17 @@
 
 <div id="content" class="loading">Caricamento dossier…</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sb/sb-js@2"></script>
 <script>
-  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.sb.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impnc21lYnRpd2d3ZWdqY3l0bWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMjI5NDcsImV4cCI6MjEwMzY5ODk0N30.TPmyHIU_vcQuQTyttDGATJSmZ1idxTlbHmhqUXQ3-0c";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // Chiamate DIRETTE alle Edge Function di IMMONOVA (progetto separato, a pagamento).
   // Nessun deploy su Dominus: Dominus non ha un piano Supabase a pagamento proprio,
   // quindi si riusa l'infrastruttura Immonova via HTTP invece di duplicarla.
   // Solo lettura/consultazione — Immonova non viene mai toccato/modificato da qui.
-  const IMMONOVA_URL = "https://bpzzmitmbavcmcasswbu.supabase.co";
+  const IMMONOVA_URL = "https://bpzzmitmbavcmcasswbu.sb.co";
   const IMMONOVA_ANON_KEY = "INSERISCI_ANON_KEY_IMMONOVA";
   const OWNER_EMAIL = "claudio.romano@bluewin.ch"; // account sviluppatore: vede sempre i contenuti Platinum
 
@@ -152,7 +152,7 @@
   // controllo costi). Non blocca mai il dossier se il log stesso fallisce.
   async function logEngineCall(engineName, dossier, success){
     try {
-      await supabase.from('folium_engine_calls').insert({
+      await sb.from('folium_engine_calls').insert({
         engine_name: engineName, dossier_id: dossier.id,
         client_id: dossier.client_id, tenant_id: dossier.tenant_id, success
       });
@@ -174,7 +174,7 @@
       });
       await logEngineCall('immonova-demographics-engine', dossier, !!data?.age_distribution);
       if (!data?.age_distribution) return null;
-      await supabase.from('folium_dossiers').update({ population_composition: data }).eq('id', dossier.id);
+      await sb.from('folium_dossiers').update({ population_composition: data }).eq('id', dossier.id);
       return data;
     } catch (e) {
       console.error('Motore demografico non disponibile:', e);
@@ -201,7 +201,7 @@
       });
       await logEngineCall('immonova-ai-valuation-engine', dossier, !!data);
       if (!data) return null;
-      await supabase.from('folium_dossiers').update({ ai_valuation_result: data }).eq('id', dossier.id);
+      await sb.from('folium_dossiers').update({ ai_valuation_result: data }).eq('id', dossier.id);
       return data;
     } catch (e) {
       console.error('Motore valutazione AI non disponibile:', e);
@@ -229,7 +229,7 @@
       });
       await logEngineCall('analyze-opportunity', dossier, !!(data && data.success));
       if (!data || !data.success) return null;
-      await supabase.from('folium_dossiers').update({ editorial_analysis_result: data.analysis }).eq('id', dossier.id);
+      await sb.from('folium_dossiers').update({ editorial_analysis_result: data.analysis }).eq('id', dossier.id);
       return data.analysis;
     } catch (e) {
       console.error('Analisi editoriale non disponibile:', e);
@@ -256,7 +256,7 @@
       });
       await logEngineCall('immonova-discovery-engine', dossier, !!data);
       if (!data) return null;
-      await supabase.from('folium_dossiers').update({ discovery_result: data }).eq('id', dossier.id);
+      await sb.from('folium_dossiers').update({ discovery_result: data }).eq('id', dossier.id);
       return data;
     } catch (e) {
       console.error('Discovery Engine non disponibile:', e);
@@ -267,7 +267,7 @@
 
   async function pickAdPage(tenantId, preferredSlot, excludeIds){
     const today = new Date().toISOString().slice(0, 10);
-    const { data: ads } = await supabase.from('folium_ad_pages')
+    const { data: ads } = await sb.from('folium_ad_pages')
       .select('*').eq('tenant_id', tenantId).eq('active', true)
       .lte('subscription_start', today).gte('subscription_end', today); // solo abbonamenti in corso, mai scaduti
     if (!ads || ads.length === 0) return null;
@@ -345,7 +345,7 @@
       if (!data?.success || !Array.isArray(data.translations)) return null;
       const result = { verified_notes: data.translations[0] || '', ai_narrative: data.translations[1] || '', discovery_summary: data.translations[2] || '' };
       const updatedTranslations = { ...(dossier.translations || {}), [lang]: result };
-      await supabase.from('folium_dossiers').update({ translations: updatedTranslations }).eq('id', dossier.id);
+      await sb.from('folium_dossiers').update({ translations: updatedTranslations }).eq('id', dossier.id);
       dossier.translations = updatedTranslations;
       return result;
     } catch (e) {
@@ -369,11 +369,11 @@
   async function render(lang, forcedTier){
     lang = lang || 'it';
     const el = document.getElementById('content');
-    const { data: dossier, error } = await supabase.from('folium_dossiers').select('*').eq('id', dossierId).single();
+    const { data: dossier, error } = await sb.from('folium_dossiers').select('*').eq('id', dossierId).single();
     if (error || !dossier) { el.textContent = 'Dossier non trovato.'; return; }
 
-    const { data: client } = await supabase.from('folium_clients').select('*').eq('id', dossier.client_id).single();
-    const { data: photos } = await supabase.from('folium_dossier_photos').select('*').eq('dossier_id', dossierId).order('sort_order');
+    const { data: client } = await sb.from('folium_clients').select('*').eq('id', dossier.client_id).single();
+    const { data: photos } = await sb.from('folium_dossier_photos').select('*').eq('dossier_id', dossierId).order('sort_order');
 
     applyTheme(dossier);
     renderLanguageSwitcher(dossier, lang);
@@ -386,7 +386,7 @@
     // esaurito i crediti dopo aver creato il dossier le sezioni a costo non vanno più
     // rigenerate da zero (restano comunque visibili se già in cache su ai_valuation_result/
     // discovery_result, salvate quando il dossier fu creato in piano pieno).
-    const { data: { user: viewerUser } } = await supabase.auth.getUser();
+    const { data: { user: viewerUser } } = await sb.auth.getUser();
     const isOwnerViewing = (viewerUser?.email || '').toLowerCase() === OWNER_EMAIL;
     let tier = 'light';
     if (isOwnerViewing) {
@@ -556,7 +556,7 @@
               ${ad.subtext ? `<p>${esc(ad.subtext)}</p>` : ''}
               ${ad.cta_text && ad.cta_url ? `<a class="cta" href="${esc(ad.cta_url)}" target="_blank">${esc(ad.cta_text)}</a>` : ''}
             `, true));
-            await supabase.from('folium_ad_impressions').insert({ ad_page_id: ad.id, dossier_id: dossierId });
+            await sb.from('folium_ad_impressions').insert({ ad_page_id: ad.id, dossier_id: dossierId });
           }
         }
       }
@@ -570,10 +570,10 @@
   // sviluppatore) deve lasciare nome+email prima di vedere/scaricare il
   // dossier. Il proprietario passa dritto: ha già i suoi dati su Folium.
   async function checkAccessAndRender(){
-    const { data: dossier } = await supabase.from('folium_dossiers').select('id, client_id, is_shared').eq('id', dossierId).single();
+    const { data: dossier } = await sb.from('folium_dossiers').select('id, client_id, is_shared').eq('id', dossierId).single();
     if (!dossier) { document.getElementById('content').textContent = 'Dossier non trovato.'; return; }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await sb.auth.getUser();
     const isOwnerAccount = (user?.email || '').toLowerCase() === OWNER_EMAIL;
     const isDossierOwner = user && user.id === dossier.client_id;
 
@@ -597,8 +597,8 @@
 
     btn.disabled = true; btn.textContent = 'Sblocco in corso…';
     try {
-      const { data: dossier } = await supabase.from('folium_dossiers').select('tenant_id').eq('id', dossierId).single();
-      const { error } = await supabase.from('folium_dossier_leads').insert({
+      const { data: dossier } = await sb.from('folium_dossiers').select('tenant_id').eq('id', dossierId).single();
+      const { error } = await sb.from('folium_dossier_leads').insert({
         dossier_id: dossierId, tenant_id: dossier?.tenant_id, name, email
       });
       if (error) throw error;

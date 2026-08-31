@@ -161,11 +161,11 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sb/sb-js@2"></script>
 <script>
-  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.sb.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impnc21lYnRpd2d3ZWdqY3l0bWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMjI5NDcsImV4cCI6MjEwMzY5ODk0N30.TPmyHIU_vcQuQTyttDGATJSmZ1idxTlbHmhqUXQ3-0c";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let TENANT_ID = null;
 
   function showTab(id, el){
@@ -177,12 +177,12 @@
   }
 
   async function init(){
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await sb.auth.getUser();
     if (!user) { window.location.href = 'folium-register.html'; return; }
     const isAdmin = (user.email || '').toLowerCase() === 'claudio.romano@bluewin.ch';
     if (!isAdmin) { document.body.innerHTML = '<p style="padding:30px;text-align:center;">Accesso riservato agli amministratori.</p>'; return; }
 
-    const { data: client } = await supabase.from('folium_clients').select('tenant_id').eq('id', user.id).maybeSingle();
+    const { data: client } = await sb.from('folium_clients').select('tenant_id').eq('id', user.id).maybeSingle();
     TENANT_ID = client?.tenant_id || 'INSERISCI_TENANT_ID_FISSO'; // stesso UUID scelto in folium-register.html
 
     loadOverview();
@@ -203,7 +203,7 @@
   }
 
   async function loadEngineStats(){
-    const { data: calls } = await supabase.from('folium_engine_calls')
+    const { data: calls } = await sb.from('folium_engine_calls')
       .select('*, folium_clients(full_name, company_name)')
       .eq('tenant_id', TENANT_ID).order('created_at', { ascending: false }).limit(500);
 
@@ -235,16 +235,16 @@
   }
 
   async function loadOverview(){
-    const { count: clientsCount } = await supabase.from('folium_clients').select('*', { count: 'exact', head: true }).eq('tenant_id', TENANT_ID);
-    const { count: dossiersCount } = await supabase.from('folium_dossiers').select('*', { count: 'exact', head: true }).eq('tenant_id', TENANT_ID);
-    const { data: paidPurchases } = await supabase.from('folium_purchases').select('total_amount_cents').eq('tenant_id', TENANT_ID).eq('status', 'paid');
+    const { count: clientsCount } = await sb.from('folium_clients').select('*', { count: 'exact', head: true }).eq('tenant_id', TENANT_ID);
+    const { count: dossiersCount } = await sb.from('folium_dossiers').select('*', { count: 'exact', head: true }).eq('tenant_id', TENANT_ID);
+    const { data: paidPurchases } = await sb.from('folium_purchases').select('total_amount_cents').eq('tenant_id', TENANT_ID).eq('status', 'paid');
     const revenue = (paidPurchases || []).reduce((sum, p) => sum + p.total_amount_cents, 0) / 100;
 
     document.getElementById('statClients').textContent = clientsCount ?? 0;
     document.getElementById('statDossiers').textContent = dossiersCount ?? 0;
     document.getElementById('statRevenue').textContent = revenue.toLocaleString('it-IT', { minimumFractionDigits: 2 });
 
-    const { data: usage } = await supabase.from('folium_usage_log')
+    const { data: usage } = await sb.from('folium_usage_log')
       .select('*, folium_clients(full_name, company_name)')
       .eq('tenant_id', TENANT_ID).order('created_at', { ascending: false }).limit(30);
 
@@ -262,9 +262,9 @@
   }
 
   async function loadClients(){
-    const { data: clients } = await supabase.from('folium_clients').select('*').eq('tenant_id', TENANT_ID).order('created_at', { ascending: false });
+    const { data: clients } = await sb.from('folium_clients').select('*').eq('tenant_id', TENANT_ID).order('created_at', { ascending: false });
     const counts = {};
-    const { data: dossiers } = await supabase.from('folium_dossiers').select('client_id').eq('tenant_id', TENANT_ID);
+    const { data: dossiers } = await sb.from('folium_dossiers').select('client_id').eq('tenant_id', TENANT_ID);
     (dossiers || []).forEach(d => counts[d.client_id] = (counts[d.client_id] || 0) + 1);
 
     const tbody = document.querySelector('#clientsTable tbody');
@@ -280,7 +280,7 @@
   async function createAdvertiser(){
     const name = document.getElementById('advName').value.trim();
     if (!name) return;
-    await supabase.from('folium_advertisers').insert({
+    await sb.from('folium_advertisers').insert({
       tenant_id: TENANT_ID,
       name,
       contact_email: document.getElementById('advEmail').value.trim() || null,
@@ -293,7 +293,7 @@
   }
 
   async function loadAdvertisers(){
-    const { data: advertisers } = await supabase.from('folium_advertisers').select('*').eq('tenant_id', TENANT_ID).order('created_at', { ascending: false });
+    const { data: advertisers } = await sb.from('folium_advertisers').select('*').eq('tenant_id', TENANT_ID).order('created_at', { ascending: false });
     const box = document.getElementById('advertisersList');
     if (!advertisers || advertisers.length === 0) {
       box.innerHTML = '<div class="empty">Nessun inserzionista ancora</div>';
@@ -303,7 +303,7 @@
 
     const pages = {};
     for (const a of advertisers) {
-      const { count } = await supabase.from('folium_ad_pages').select('*', { count: 'exact', head: true }).eq('advertiser_id', a.id);
+      const { count } = await sb.from('folium_ad_pages').select('*', { count: 'exact', head: true }).eq('advertiser_id', a.id);
       pages[a.id] = count || 0;
     }
 
@@ -320,7 +320,7 @@
   }
 
   async function toggleAdvertiser(id, active){
-    await supabase.from('folium_advertisers').update({ active: !active }).eq('id', id);
+    await sb.from('folium_advertisers').update({ active: !active }).eq('id', id);
     loadAdvertisers();
   }
 
@@ -388,15 +388,15 @@
 
     const ext = adImageFile.name.split('.').pop();
     const path = `${TENANT_ID}/${advertiserId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-    const { error: uploadError } = await supabase.storage.from('folium-ads').upload(path, adImageFile, { upsert: false });
+    const { error: uploadError } = await sb.storage.from('folium-ads').upload(path, adImageFile, { upsert: false });
     if (uploadError) { alert('Errore caricamento immagine: ' + uploadError.message); return; }
-    const { data: urlData } = supabase.storage.from('folium-ads').getPublicUrl(path);
+    const { data: urlData } = sb.storage.from('folium-ads').getPublicUrl(path);
 
     const start = new Date();
     const end = new Date(start);
     end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
 
-    const { error } = await supabase.from('folium_ad_pages').insert({
+    const { error } = await sb.from('folium_ad_pages').insert({
       advertiser_id: advertiserId,
       tenant_id: TENANT_ID,
       image_url: urlData.publicUrl,
@@ -423,7 +423,7 @@
   }
 
   async function loadAdPages(){
-    const { data: adPages } = await supabase.from('folium_ad_pages')
+    const { data: adPages } = await sb.from('folium_ad_pages')
       .select('*, folium_advertisers(name)')
       .eq('tenant_id', TENANT_ID).order('position_slot', { ascending: true });
     const box = document.getElementById('adPagesList');
@@ -451,12 +451,12 @@
   }
 
   async function toggleAdPage(id, active){
-    await supabase.from('folium_ad_pages').update({ active: !active }).eq('id', id);
+    await sb.from('folium_ad_pages').update({ active: !active }).eq('id', id);
     loadAdPages();
   }
 
   async function loadPurchases(){
-    const { data: purchases } = await supabase.from('folium_purchases')
+    const { data: purchases } = await sb.from('folium_purchases')
       .select('*, folium_clients(full_name, company_name)')
       .eq('tenant_id', TENANT_ID).order('created_at', { ascending: false }).limit(50);
 

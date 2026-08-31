@@ -105,11 +105,11 @@
   <div id="msg" class="msg"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sb/sb-js@2"></script>
 <script>
-  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.sb.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impnc21lYnRpd2d3ZWdqY3l0bWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMjI5NDcsImV4cCI6MjEwMzY5ODk0N30.TPmyHIU_vcQuQTyttDGATJSmZ1idxTlbHmhqUXQ3-0c";
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   function showMsg(text){
     const el = document.getElementById('msg');
@@ -117,11 +117,11 @@
   }
 
   async function startCheckout(tier, packageType){
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await sb.auth.getUser();
     if (!user) { window.location.href = 'folium-register.html'; return; }
 
     try {
-      const { data, error } = await supabase.functions.invoke('folium-create-checkout', {
+      const { data, error } = await sb.functions.invoke('folium-create-checkout', {
         body: { tier, package_type: packageType }
       });
       if (error) throw error;

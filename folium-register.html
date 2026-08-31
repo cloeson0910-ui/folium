@@ -73,13 +73,13 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@sb/sb-js@2"></script>
 <script>
   // ===== CONFIGURAZIONE — sostituire con le chiavi del progetto Supabase DOMINUS =====
-  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.sb.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impnc21lYnRpd2d3ZWdqY3l0bWVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMjI5NDcsImV4cCI6MjEwMzY5ODk0N30.TPmyHIU_vcQuQTyttDGATJSmZ1idxTlbHmhqUXQ3-0c";
   const TENANT_ID = "INSERISCI_TENANT_ID_FISSO"; // Folium è un progetto a sé: nessun legame con Dominus, basta un UUID fisso a tua scelta (es. generane uno su https://www.uuidgenerator.net/ e usalo ovunque compare INSERISCI_TENANT_ID_FISSO in tutti i file)
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   function showTab(which){
     document.getElementById('formRegister').classList.toggle('hidden', which !== 'register');
@@ -102,12 +102,12 @@
     try {
       const email = document.getElementById('regEmail').value.trim();
       const password = document.getElementById('regPassword').value;
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await sb.auth.signUp({ email, password });
       if (error) throw error;
 
       const userId = data.user?.id;
       if (userId) {
-        const { error: profileError } = await supabase.from('folium_clients').insert({
+        const { error: profileError } = await sb.from('folium_clients').insert({
           id: userId,
           tenant_id: TENANT_ID,
           full_name: document.getElementById('regName').value.trim(),
@@ -135,7 +135,7 @@
     try {
       const email = document.getElementById('loginEmail').value.trim();
       const password = document.getElementById('loginPassword').value;
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
       window.location.href = 'folium-create.html';
     } catch (err) {
