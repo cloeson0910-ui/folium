@@ -433,6 +433,7 @@
   function showMsg(text, ok){
     const el = document.getElementById('msg');
     el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err');
+    el.style.display = '';
   }
 
   // ============================================================================
@@ -691,6 +692,7 @@
 
   document.getElementById('dossierForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!currentClient) { showMsg('Profilo cliente non trovato: esci e rifai il login (l\'account potrebbe essere stato creato prima di un fix precedente).', false); return; }
     if (propertyFiles.length === 0) { showMsg('Carica almeno una foto dell\'immobile.', false); return; }
     const btn = document.getElementById('btnSubmit');
     btn.disabled = true; btn.textContent = 'Caricamento in corso…';
