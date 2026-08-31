@@ -10,37 +10,70 @@
   body{margin:0;font-family:'Poppins',Arial,sans-serif;background:#e8e2d2;color:#2b2416;}
   .toolbar{position:sticky;top:0;background:var(--bronze);color:var(--gold3);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;z-index:50;}
   .toolbar button{background:linear-gradient(120deg,var(--gold1),var(--gold2));border:none;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;}
-  .page{width:100%;max-width:794px;min-height:1123px;background:#fff;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;padding:40px;}
-  .page-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5dcc3;padding-bottom:14px;margin-bottom:20px;}
-  .client-logo{max-height:50px;max-width:160px;object-fit:contain;}
-  .brand-mark{font-size:11px;letter-spacing:2px;color:var(--gold4);}
-  .page-footer-logo{position:absolute;bottom:12px;right:14px;height:22px;width:auto;opacity:.85;}
-  @media print { .page-footer-logo{opacity:.75;} }
-  h1.title{font-size:22px;font-weight:300;letter-spacing:1px;color:#2b2416;margin:0 0 4px;}
-  .subtitle{font-size:13px;color:#8a7a52;margin-bottom:18px;}
-  .section-label{font-size:12px;letter-spacing:2px;color:var(--gold4);text-transform:uppercase;margin:22px 0 10px;border-bottom:1px solid #eee;padding-bottom:6px;}
-  .photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .photo-wrap{position:relative;}
-  .photo-wrap img{display:block;}
-  .photo-logo{position:absolute;max-height:26px;max-width:72px;object-fit:contain;opacity:.92;background:rgba(255,255,255,.82);padding:3px 6px;border-radius:4px;}
-  .photo-logo.pos-top-left{top:6px;left:6px;}
-  .photo-logo.pos-top-right{top:6px;right:6px;}
-  .photo-logo.pos-bottom-left{bottom:6px;left:6px;}
-  .photo-logo.pos-bottom-right{bottom:6px;right:6px;}
-  .photo-grid img{width:100%;height:160px;object-fit:cover;border-radius:6px;}
+
+  /* ---- Formato orizzontale (A4 landscape), come il report reale di riferimento ---- */
+  /* Dimensioni di default: verticale. applyTheme() le sovrascrive in orizzontale
+     (max-width:1123px;min-height:794px) quando il cliente ha scelto quel formato
+     in fase di creazione — vedi #themeStyle iniettato più sotto. */
+  .page{width:100%;max-width:794px;min-height:1123px;background:#fffdf8;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;font-family:"Avenir Next","Helvetica Neue",Arial,sans-serif;color:#735f36;}
+  .page.pattern{background:#f4ecdf;}
+  .page.pattern::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,.72) 0%,rgba(255,255,255,.30) 42%,rgba(244,236,223,.06) 75%),#f4ecdf;z-index:0;}
+  .page.pattern::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(60deg,transparent 0 86px,rgba(188,149,78,.23) 87px,transparent 90px),repeating-linear-gradient(-60deg,transparent 0 86px,rgba(188,149,78,.22) 87px,transparent 90px),repeating-linear-gradient(0deg,transparent 0 148px,rgba(188,149,78,.13) 149px,transparent 152px);background-size:230px 199px;opacity:.34;z-index:0;}
+  .page-inner{position:relative;z-index:2;padding:44px 48px;}
+
+  /* ---- Copertina: foto piena pagina, overlay da sinistra, titolo grande ---- */
+  .cover{color:#fff;}
+  .cover .cover-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:space-between;padding:38px 48px;}
+  .cover::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(31,22,8,.80),rgba(31,22,8,.50),rgba(31,22,8,.12));z-index:1;}
+  .cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+  .brand{font-size:26px;letter-spacing:.20em;color:#f1d27a;font-weight:300;}
+  .brand-sub{margin-top:6px;font-size:9px;letter-spacing:.22em;color:#d8c48f;text-transform:uppercase;}
+  .cover-client-logo{max-height:38px;max-width:150px;object-fit:contain;filter:brightness(0) invert(1);opacity:.92;}
+  .cover-kicker{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:#f1d27a;margin-bottom:18px;}
+  .cover-title{max-width:640px;font-size:38px;line-height:1.12;font-weight:200;letter-spacing:.06em;text-transform:uppercase;color:#fdfbf5;margin:0;}
+  .cover-meta{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#d8c48f;line-height:1.9;}
+
+  /* ---- Header pagine di contenuto (non copertina) ---- */
+  .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .client-logo{max-height:36px;max-width:140px;object-fit:contain;}
+  .brand-mark{font-size:10px;letter-spacing:.20em;color:var(--gold4);text-transform:uppercase;}
+
+  /* ---- Footer editoriale (page-folio), identico nome/stile al report reale ---- */
+  .page-folio{position:absolute;left:48px;right:48px;bottom:18px;z-index:3;display:flex;justify-content:space-between;align-items:center;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(166,127,52,.6);}
+  .page-folio.on-image{color:rgba(241,210,122,.85);}
+  .page-footer-logo{height:14px;width:auto;opacity:.85;margin-left:10px;}
+
+  h1.title{font-weight:200;font-size:24px;letter-spacing:.06em;color:#2b2416;margin:0 0 6px;}
+  .subtitle{font-size:12px;color:#8a7a52;margin-bottom:18px;letter-spacing:.03em;}
+
+  /* ---- Etichetta di sezione: kicker + titolo + riga oro, identico al report reale ---- */
+  .section-kicker{font-size:10px;letter-spacing:.30em;text-transform:uppercase;color:#a58139;margin-bottom:8px;}
+  .section-title{font-size:22px;font-weight:300;letter-spacing:.12em;text-transform:uppercase;color:#a67f34;margin:0 0 14px;}
+  .lux-rule{height:1px;background:linear-gradient(to right,rgba(166,127,52,.70),transparent);margin:0 0 20px;}
+
+  /* ---- Gallery foto: PAGINATA 2 per pagina, alta qualità, aspect-ratio fisso ---- */
+  .gallery-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px;}
+  .gallery-photo-grid.single{grid-template-columns:1fr;max-width:66%;margin-left:auto;margin-right:auto;}
+  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background:#f4ecdf;overflow:hidden;aspect-ratio:3/2;}
+  .gallery-photo-cell img{width:100%;height:100%;object-fit:cover;display:block;}
+
+  .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
+  .metric-card{border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:18px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between;}
+  .metric-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:#a58139;line-height:1.35;}
+  .metric-value{font-size:24px;font-weight:200;color:#a67f34;line-height:1.05;margin-top:8px;}
+
   .data-table{width:100%;font-size:13px;border-collapse:collapse;}
-  .data-table td{padding:6px 0;border-bottom:1px dashed #eee;}
-  .data-table td:first-child{color:#8a7a52;width:40%;}
-  .contact-box{background:#fdf9ef;border:1px solid #eee0bd;border-radius:10px;padding:14px;font-size:13px;margin-top:16px;}
-  .verified-note{font-size:13px;line-height:1.7;white-space:pre-wrap;}
-  .watermark{position:absolute;inset:0;pointer-events:none;opacity:.05;background-image:repeating-linear-gradient(60deg, var(--gold2) 0 1px, transparent 1px 26px), repeating-linear-gradient(-60deg, var(--gold2) 0 1px, transparent 1px 26px);}
+  .data-table td{padding:9px 0;border-bottom:1px solid rgba(166,127,52,.12);}
+  .data-table td:first-child{color:#a58139;width:40%;font-size:10.5px;letter-spacing:.10em;text-transform:uppercase;}
+  .contact-box{background:rgba(255,255,255,.5);border:1px solid rgba(166,127,52,.18);padding:16px 18px;font-size:13px;margin-top:20px;}
+  .verified-note{font-size:13.5px;line-height:1.8;white-space:pre-wrap;color:#5c4a20;}
   /* pagina pubblicitaria */
   .ad-page{background:linear-gradient(160deg,#fdf9ef,#f6ecd2);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
-  .ad-page .tag{font-size:10px;letter-spacing:2px;color:#a4915c;margin-bottom:18px;text-transform:uppercase;}
-  .ad-page img.ad-img{max-width:100%;max-height:500px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);}
-  .ad-page h2{font-size:24px;font-weight:300;color:#2b2416;margin:18px 0 8px;}
-  .ad-page p{font-size:14px;color:#5c4f30;max-width:480px;}
-  .ad-page .cta{margin-top:16px;padding:11px 26px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-radius:24px;text-decoration:none;font-size:13px;letter-spacing:1px;}
+  .ad-page .tag{font-size:9px;letter-spacing:.20em;color:#a4915c;margin-bottom:16px;text-transform:uppercase;}
+  .ad-page img.ad-img{max-width:100%;max-height:420px;box-shadow:0 8px 24px rgba(0,0,0,.1);}
+  .ad-page h2{font-weight:200;font-size:22px;letter-spacing:.04em;color:#2b2416;margin:16px 0 8px;}
+  .ad-page p{font-size:13px;color:#5c4f30;max-width:440px;}
+  .ad-page .cta{margin-top:14px;padding:10px 24px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-radius:24px;text-decoration:none;font-size:12px;letter-spacing:1px;}
   @media print { .toolbar{display:none;} .page{box-shadow:none;margin:0;page-break-after:always;} }
   .loading{text-align:center;padding:80px 20px;color:#8a7a52;}
   .lead-gate{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));display:flex;align-items:center;justify-content:center;padding:20px;}
@@ -126,6 +159,7 @@
   // false per Platinum. pageWrapper la legge per aggiungere il logo Folium in
   // basso a destra su OGNI pagina del dossier, comprese le pagine pubblicitarie.
   let currentShowFoliumBrand = false;
+  let currentFooterText = 'FOLIUM'; // impostato in render() con l'indirizzo dell'immobile
   let currentSimulatedTier = 'platinum'; // solo per l'account sviluppatore: piano simulato in visualizzazione
 
   function renderDevTierSimulator(activeTier){
@@ -141,11 +175,42 @@
 
   function switchDevTier(t){ render('it', t); }
 
-  function pageWrapper(inner, isAd){
-    const footerLogo = currentShowFoliumBrand
+  // Footer editoriale su ogni pagina interna (non sulla copertina, che ha già il
+  // proprio blocco testo in basso): testo a sinistra + numero pagina a destra +
+  // piccolo logo Folium se il piano lo prevede — stesso principio di Immonova
+  // ("IMMONOVA · TITOLO" a sinistra, "N / TOT" a destra), coerente in tutto il documento.
+  // Il numero di pagina reale non è ancora noto qui (le pagine si costruiscono in
+  // sequenza): si usa un segnaposto {{PAGENUM}}/{{TOTALPAGES}}, sostituito con i
+  // valori veri subito prima di mostrare il dossier finito.
+  function pageWrapper(inner, isAd, isCover){
+    if (isCover) return `<div class="page cover">${inner}</div>`;
+    const logo = currentShowFoliumBrand
       ? `<img class="page-footer-logo" src="assets/folium-logo.svg" alt="Folium">`
       : '';
-    return `<div class="page ${isAd ? 'ad-page' : ''}"><div class="watermark"></div>${inner}${footerLogo}</div>`;
+    const footer = `<div class="page-folio"><span>${esc(currentFooterText)}</span><span style="display:flex;align-items:center;">{{PAGENUM}} / {{TOTALPAGES}}${logo}</span></div>`;
+    return `<div class="page ${isAd ? 'ad-page' : 'pattern'}"><div class="page-inner">${inner}</div>${footer}</div>`;
+  }
+
+  // Etichetta di sezione in 3 pezzi (kicker piccolo + titolo grande + riga oro),
+  // esattamente come nel report Immonova di riferimento — riusata ovunque nel dossier.
+  function sectionHead(kicker, title){
+    return `<div class="section-kicker">${esc(kicker)}</div><div class="section-title">${esc(title)}</div><div class="lux-rule"></div>`;
+  }
+
+  // Spezza un array in gruppi da "size" elementi — usato per la gallery foto,
+  // che va SEMPRE paginata a 2 foto per pagina (mai tutte insieme in una griglia).
+  function chunk(arr, size){
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
+  // Sostituisce i segnaposto {{PAGENUM}}/{{TOTALPAGES}} nel footer di ogni pagina
+  // (la copertina non ne ha, non passa da qui) con i numeri veri, noti solo ora
+  // che l'intero dossier è stato costruito.
+  function numberPages(list){
+    const total = list.length;
+    return list.map((html, i) => html.replaceAll('{{PAGENUM}}', String(i + 1)).replaceAll('{{TOTALPAGES}}', String(total)));
   }
 
   // Log ogni chiamata reale ai motori (per statistica admin "chi chiede cosa" e
@@ -399,6 +464,7 @@
     const showAds = (tier !== 'platinum'); // Light e Gold hanno pubblicità, solo Platinum no
     const showFoliumBrand = (tier !== 'platinum'); // Platinum: nessun logo/marchio Folium sul dossier
     currentShowFoliumBrand = showFoliumBrand; // letta da pageWrapper() per il logo in basso a destra su ogni pagina
+    currentFooterText = `FOLIUM · ${(dossier.property_address || '').toUpperCase()}`;
 
     const propertyPhotos = (photos || []).filter(p => p.photo_kind === 'property');
     const destPhotos = (photos || []).filter(p => p.photo_kind === 'destination');
@@ -406,34 +472,65 @@
     const header = `
       <div class="page-header">
         ${client?.logo_url ? `<img class="client-logo" src="${esc(client.logo_url)}">` : `<div></div>`}
-        ${showFoliumBrand ? `<div class="brand-mark">FOLIUM DOSSIER</div>` : `<div></div>`}
+        ${showFoliumBrand ? `<div class="brand-mark">Folium Dossier</div>` : `<div></div>`}
       </div>`;
 
     const pages = [];
 
-    // Pagina 1 — copertina + dati principali
+    // Pagina 1 — copertina full-bleed: prima foto dell'immobile come sfondo, overlay
+    // da sinistra per leggibilità, titolo grande, come nel report reale di riferimento.
+    const coverPhoto = propertyPhotos[0]?.photo_url;
+    const generatedDate = new Date(dossier.created_at || Date.now()).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+    pages.push(pageWrapper(`
+      ${coverPhoto ? `<img class="cover-bg" src="${esc(coverPhoto)}">` : `<div class="cover-bg" style="background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));"></div>`}
+      <div class="cover-inner">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="brand">FOLIUM</div>
+            <div class="brand-sub">Dossier Immobiliare</div>
+          </div>
+          ${client?.logo_url ? `<img class="cover-client-logo" src="${esc(client.logo_url)}">` : ''}
+        </div>
+        <div>
+          <div class="cover-kicker">Dossier Riservato</div>
+          <h1 class="cover-title">${esc(dossier.property_address)}</h1>
+        </div>
+        <div class="cover-meta">
+          ${esc(dossier.property_city)}${dossier.property_province ? ' (' + esc(dossier.property_province) + ')' : ''}<br>
+          Generato ${generatedDate}
+        </div>
+      </div>
+    `, false, true));
+
+    // Pagina 2 — presentazione: dati sintetici in metric-card + contatti, stile
+    // editoriale (kicker + titolo + riga oro), come la pagina di riferimento.
     pages.push(pageWrapper(`
       ${header}
-      <h1 class="title">${esc(dossier.property_address)}</h1>
-      <div class="subtitle">${esc(dossier.property_city)}${dossier.property_province ? ' (' + esc(dossier.property_province) + ')' : ''}</div>
-      <table class="data-table">
-        <tr><td>Tipologia</td><td>${esc(dossier.property_type)}</td></tr>
-        <tr><td>Superficie</td><td>${dossier.property_size_sqm ? esc(dossier.property_size_sqm) + ' mq' : '—'}</td></tr>
-        <tr><td>Prezzo richiesto</td><td>${dossier.property_price ? '€ ' + Number(dossier.property_price).toLocaleString('it-IT') : 'Su richiesta'}</td></tr>
-      </table>
+      ${sectionHead('Editorial Overview', "Sintesi dell'immobile")}
+      <div class="metric-grid">
+        <div class="metric-card"><div class="metric-label">Tipologia</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_type)}</div></div>
+        <div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${dossier.property_size_sqm ? esc(dossier.property_size_sqm) + ' mq' : '—'}</div></div>
+        <div class="metric-card"><div class="metric-label">Prezzo richiesto</div><div class="metric-value" style="font-size:18px;">${dossier.property_price ? '€ ' + Number(dossier.property_price).toLocaleString('it-IT') : 'Su richiesta'}</div></div>
+      </div>
       <div class="contact-box">
         <b>${esc(client?.company_name || client?.full_name)}</b><br>
         ${esc(client?.contact_email)} · ${esc(client?.contact_phone)}
       </div>
     `));
 
-    // Pagina foto immobile — con logo in sovrimpressione (Light: cliente+Folium; Gold/Platinum: solo cliente)
+    // Pagine foto immobile — PAGINATE 2 per pagina (mai tutte insieme), logo cliente
+    // già bruciato via watermark nel file al momento dell'upload (Light: cliente+Folium;
+    // Gold/Platinum: solo cliente), qui solo il layout ad alta qualità.
     if (propertyPhotos.length) {
-      pages.push(pageWrapper(`
-        ${header}
-        <div class="section-label">${t('photos', lang)}</div>
-        <div class="photo-grid">${propertyPhotos.map(p => `<img src="${esc(p.photo_url)}">`).join('')}</div>
-      `));
+      chunk(propertyPhotos, 2).forEach((pair, idx) => {
+        pages.push(pageWrapper(`
+          ${header}
+          ${idx === 0 ? sectionHead('Media Gallery', t('photos', lang)) : sectionHead('Media Gallery', `${t('photos', lang)} (${idx + 1})`)}
+          <div class="gallery-photo-grid ${pair.length === 1 ? 'single' : ''}">
+            ${pair.map(p => `<div class="gallery-photo-cell"><img src="${esc(p.photo_url)}"></div>`).join('')}
+          </div>
+        `));
+      });
     }
 
     // Caratteristiche e annessi — pittogrammi per Gold/Platinum, testo libero per Light
@@ -442,10 +539,10 @@
     if (tier !== 'light' && (dossier.amenities || []).length) {
       pages.push(pageWrapper(`
         ${header}
-        <div class="section-label">Caratteristiche e annessi</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px;">
+        ${sectionHead('Asset Characteristics', 'Caratteristiche e annessi')}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px;">
           ${dossier.amenities.map(code => `
-            <div style="display:flex;align-items:center;gap:10px;font-size:14px;">
+            <div style="display:flex;align-items:center;gap:12px;font-size:14px;">
               <span style="font-size:22px;">${AMENITY_ICONS[code] || '•'}</span>
               <span>${esc(AMENITY_LABELS_IT[code] || code)}</span>
             </div>
@@ -455,7 +552,7 @@
     } else if (tier === 'light' && dossier.amenities_description) {
       pages.push(pageWrapper(`
         ${header}
-        <div class="section-label">Caratteristiche e annessi</div>
+        ${sectionHead('Asset Characteristics', 'Caratteristiche e annessi')}
         <div class="verified-note">${esc(dossier.amenities_description)}</div>
       `));
     }
@@ -464,17 +561,21 @@
     const verifiedText = (lang !== 'it' && translated?.verified_notes) || dossier.verified_data?.notes || 'Nessun dato aggiuntivo inserito.';
     pages.push(pageWrapper(`
       ${header}
-      <div class="section-label">${t('verified', lang)}</div>
+      ${sectionHead('Verified Data', t('verified', lang))}
       <div class="verified-note">${esc(verifiedText)}</div>
     `));
 
-    // Pagina foto destinazione (facoltativa)
+    // Pagine foto destinazione (facoltative) — stessa paginazione 2-per-pagina
     if (destPhotos.length) {
-      pages.push(pageWrapper(`
-        ${header}
-        <div class="section-label">${t('destination', lang)}</div>
-        <div class="photo-grid">${destPhotos.map(p => `<img src="${esc(p.photo_url)}">`).join('')}</div>
-      `));
+      chunk(destPhotos, 2).forEach((pair, idx) => {
+        pages.push(pageWrapper(`
+          ${header}
+          ${idx === 0 ? sectionHead('Location Gallery', t('destination', lang)) : sectionHead('Location Gallery', `${t('destination', lang)} (${idx + 1})`)}
+          <div class="gallery-photo-grid ${pair.length === 1 ? 'single' : ''}">
+            ${pair.map(p => `<div class="gallery-photo-cell"><img src="${esc(p.photo_url)}"></div>`).join('')}
+          </div>
+        `));
+      });
     }
 
     // Composizione popolazione (età/reddito) — sempre inclusa, motore leggero/gratuito
@@ -482,11 +583,11 @@
     if (popData) {
       pages.push(pageWrapper(`
         ${header}
-        <div class="section-label">${t('population', lang)}</div>
+        ${sectionHead('Demographics', t('population', lang))}
         <table class="data-table">
           ${(popData.age_distribution || []).map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.value)}%</td></tr>`).join('')}
         </table>
-        <div class="section-label" style="margin-top:26px;">${t('income', lang)}</div>
+        <div class="section-kicker" style="margin-top:30px;">${t('income', lang)}</div>
         <table class="data-table">
           ${(popData.income_distribution || []).map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.value)}%</td></tr>`).join('')}
         </table>
@@ -500,10 +601,10 @@
         const narrativeText = (lang !== 'it' && translated?.ai_narrative) || val.narrative || 'Analisi non disponibile per questo immobile.';
         pages.push(pageWrapper(`
           ${header}
-          <div class="section-label">${t('market', lang)}</div>
+          ${sectionHead('Market Intelligence', t('market', lang))}
           <div class="verified-note">${esc(narrativeText)}</div>
           ${val.value_range_min && val.value_range_max ? `
-            <table class="data-table" style="margin-top:14px;">
+            <table class="data-table" style="margin-top:18px;">
               <tr><td>Intervallo di valore stimato</td><td>€ ${Number(val.value_range_min).toLocaleString('it-IT')} – € ${Number(val.value_range_max).toLocaleString('it-IT')}</td></tr>
             </table>` : ''}
         `));
@@ -516,10 +617,10 @@
       if (editorial) {
         pages.push(pageWrapper(`
           ${header}
-          <div class="section-label">Presentazione</div>
-          <div class="verified-note" style="margin-bottom:16px;">${esc(editorial.full_description || editorial.short_description || '')}</div>
-          ${editorial.location_summary ? `<div class="section-label" style="margin-top:20px;">Attrattività della zona</div><div class="verified-note">${esc(editorial.location_summary)}</div>` : ''}
-          ${editorial.tourism_summary ? `<div class="section-label" style="margin-top:20px;">Contesto turistico</div><div class="verified-note">${esc(editorial.tourism_summary)}</div>` : ''}
+          ${sectionHead('Editorial Overview', 'Presentazione della proposta')}
+          <div class="verified-note" style="margin-bottom:20px;">${esc(editorial.full_description || editorial.short_description || '')}</div>
+          ${editorial.location_summary ? `<div class="section-kicker" style="margin-top:24px;">Attrattività della zona</div><div class="verified-note">${esc(editorial.location_summary)}</div>` : ''}
+          ${editorial.tourism_summary ? `<div class="section-kicker" style="margin-top:24px;">Contesto turistico</div><div class="verified-note">${esc(editorial.tourism_summary)}</div>` : ''}
         `));
       }
     }
@@ -531,7 +632,7 @@
         const territoryText = (lang !== 'it' && translated?.discovery_summary) || disc.summary || disc.narrative || 'Dati territoriali non disponibili per questa zona.';
         pages.push(pageWrapper(`
           ${header}
-          <div class="section-label">${t('territory', lang)}</div>
+          ${sectionHead('Location Intelligence', t('territory', lang))}
           <div class="verified-note">${esc(territoryText)}</div>
         `));
       }
@@ -556,13 +657,14 @@
               ${ad.subtext ? `<p>${esc(ad.subtext)}</p>` : ''}
               ${ad.cta_text && ad.cta_url ? `<a class="cta" href="${esc(ad.cta_url)}" target="_blank">${esc(ad.cta_text)}</a>` : ''}
             `, true));
-            await sb.from('folium_ad_impressions').insert({ ad_page_id: ad.id, dossier_id: dossierId });
+            try { await sb.from('folium_ad_impressions').insert({ ad_page_id: ad.id, dossier_id: dossierId }); }
+            catch (e) { console.error('Log impressione pubblicità fallito (non bloccante):', e); }
           }
         }
       }
-      el.innerHTML = finalPages.join('');
+      el.innerHTML = numberPages(finalPages).join('');
     } else {
-      el.innerHTML = pages.join('');
+      el.innerHTML = numberPages(pages).join('');
     }
   }
 
