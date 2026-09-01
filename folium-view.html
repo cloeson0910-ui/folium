@@ -15,10 +15,10 @@
   /* Dimensioni di default: verticale. applyTheme() le sovrascrive in orizzontale
      (max-width:1123px;min-height:794px) quando il cliente ha scelto quel formato
      in fase di creazione — vedi #themeStyle iniettato più sotto. */
-  .page{width:100%;max-width:794px;min-height:1123px;background:#fffdf8;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;font-family:"Avenir Next","Helvetica Neue",Arial,sans-serif;color:#735f36;}
-  .page.pattern{background:#f4ecdf;}
-  .page.pattern::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,.72) 0%,rgba(255,255,255,.30) 42%,rgba(244,236,223,.06) 75%),#f4ecdf;z-index:0;}
-  .page.pattern::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(60deg,transparent 0 86px,rgba(188,149,78,.23) 87px,transparent 90px),repeating-linear-gradient(-60deg,transparent 0 86px,rgba(188,149,78,.22) 87px,transparent 90px),repeating-linear-gradient(0deg,transparent 0 148px,rgba(188,149,78,.13) 149px,transparent 152px);background-size:230px 199px;opacity:.34;z-index:0;}
+  .page{width:100%;max-width:794px;min-height:1123px;background:#fffdf8;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;color:#5c4a20;}
+  /* Nessuna texture decorativa (era quella di Immonova, non di Folium): sfondo
+     pulito, il colore lo decide il cliente tramite il tema scelto (var(--bg-page)). */
+  .page.pattern{background:var(--bg-page, #fffdf8);}
   .page-inner{position:relative;z-index:2;padding:44px 48px;}
 
   /* ---- Copertina: foto piena pagina, overlay da sinistra, titolo grande ---- */
@@ -26,12 +26,12 @@
   .cover .cover-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:space-between;padding:38px 48px;}
   .cover::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(31,22,8,.80),rgba(31,22,8,.50),rgba(31,22,8,.12));z-index:1;}
   .cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
-  .brand{font-size:26px;letter-spacing:.20em;color:#f1d27a;font-weight:300;}
-  .brand-sub{margin-top:6px;font-size:9px;letter-spacing:.22em;color:#d8c48f;text-transform:uppercase;}
+  .brand{font-size:26px;letter-spacing:.20em;color:var(--gold3);font-weight:300;}
+  .brand-sub{margin-top:6px;font-size:9px;letter-spacing:.22em;color:var(--gold3);text-transform:uppercase;}
   .cover-client-logo{max-height:38px;max-width:150px;object-fit:contain;filter:brightness(0) invert(1);opacity:.92;}
-  .cover-kicker{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:#f1d27a;margin-bottom:18px;}
+  .cover-kicker{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold3);margin-bottom:18px;}
   .cover-title{max-width:640px;font-size:38px;line-height:1.12;font-weight:200;letter-spacing:.06em;text-transform:uppercase;color:#fdfbf5;margin:0;}
-  .cover-meta{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#d8c48f;line-height:1.9;}
+  .cover-meta{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold3);line-height:1.9;}
 
   /* ---- Header pagine di contenuto (non copertina) ---- */
   .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
@@ -41,30 +41,30 @@
   /* ---- Footer editoriale (page-folio), identico nome/stile al report reale ---- */
   .page-folio{position:absolute;left:48px;right:48px;bottom:18px;z-index:3;display:flex;justify-content:space-between;align-items:center;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(166,127,52,.6);}
   .page-folio.on-image{color:rgba(241,210,122,.85);}
-  .page-footer-logo{height:14px;width:auto;opacity:.85;margin-left:10px;}
+  .page-footer-logo{height:15px;width:auto;opacity:.85;margin-left:10px;display:inline-flex;align-items:center;}
 
   h1.title{font-weight:200;font-size:24px;letter-spacing:.06em;color:#2b2416;margin:0 0 6px;}
   .subtitle{font-size:12px;color:#8a7a52;margin-bottom:18px;letter-spacing:.03em;}
 
   /* ---- Etichetta di sezione: kicker + titolo + riga oro, identico al report reale ---- */
-  .section-kicker{font-size:10px;letter-spacing:.30em;text-transform:uppercase;color:#a58139;margin-bottom:8px;}
-  .section-title{font-size:22px;font-weight:300;letter-spacing:.12em;text-transform:uppercase;color:#a67f34;margin:0 0 14px;}
-  .lux-rule{height:1px;background:linear-gradient(to right,rgba(166,127,52,.70),transparent);margin:0 0 20px;}
+  .section-kicker{font-size:10px;letter-spacing:.30em;text-transform:uppercase;color:var(--gold4);margin-bottom:8px;}
+  .section-title{font-size:22px;font-weight:300;letter-spacing:.12em;text-transform:uppercase;color:var(--gold4);margin:0 0 14px;}
+  .lux-rule{height:1px;background:linear-gradient(to right,var(--gold2),transparent);margin:0 0 20px;}
 
   /* ---- Gallery foto: PAGINATA 2 per pagina, alta qualità, aspect-ratio fisso ---- */
   .gallery-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px;}
   .gallery-photo-grid.single{grid-template-columns:1fr;max-width:66%;margin-left:auto;margin-right:auto;}
-  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background:#f4ecdf;overflow:hidden;aspect-ratio:3/2;}
-  .gallery-photo-cell img{width:100%;height:100%;object-fit:cover;display:block;}
+  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background:#f4ecdf;overflow:hidden;min-height:280px;display:flex;align-items:center;justify-content:center;}
+  .gallery-photo-cell img{width:100%;height:280px;object-fit:contain;display:block;}
 
   .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
   .metric-card{border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:18px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between;}
-  .metric-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:#a58139;line-height:1.35;}
-  .metric-value{font-size:24px;font-weight:200;color:#a67f34;line-height:1.05;margin-top:8px;}
+  .metric-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold4);line-height:1.35;}
+  .metric-value{font-size:24px;font-weight:200;color:var(--gold4);line-height:1.05;margin-top:8px;}
 
   .data-table{width:100%;font-size:13px;border-collapse:collapse;}
   .data-table td{padding:9px 0;border-bottom:1px solid rgba(166,127,52,.12);}
-  .data-table td:first-child{color:#a58139;width:40%;font-size:10.5px;letter-spacing:.10em;text-transform:uppercase;}
+  .data-table td:first-child{color:var(--gold4);width:40%;font-size:10.5px;letter-spacing:.10em;text-transform:uppercase;}
   .contact-box{background:rgba(255,255,255,.5);border:1px solid rgba(166,127,52,.18);padding:16px 18px;font-size:13px;margin-top:20px;}
   .verified-note{font-size:13.5px;line-height:1.8;white-space:pre-wrap;color:#5c4a20;}
   /* pagina pubblicitaria */
@@ -74,7 +74,7 @@
   .ad-page h2{font-weight:200;font-size:22px;letter-spacing:.04em;color:#2b2416;margin:16px 0 8px;}
   .ad-page p{font-size:13px;color:#5c4f30;max-width:440px;}
   .ad-page .cta{margin-top:14px;padding:10px 24px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-radius:24px;text-decoration:none;font-size:12px;letter-spacing:1px;}
-  @media print { .toolbar{display:none;} .page{box-shadow:none;margin:0;page-break-after:always;} }
+  @media print { .toolbar{display:none;} .page{box-shadow:none;margin:0;page-break-after:always;} #devTierSimulatorView{display:none !important;} }
   .loading{text-align:center;padding:80px 20px;color:#8a7a52;}
   .lead-gate{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));display:flex;align-items:center;justify-content:center;padding:20px;}
   .lead-gate-card{background:#fff;border-radius:16px;padding:32px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
@@ -182,10 +182,17 @@
   // Il numero di pagina reale non è ancora noto qui (le pagine si costruiscono in
   // sequenza): si usa un segnaposto {{PAGENUM}}/{{TOTALPAGES}}, sostituito con i
   // valori veri subito prima di mostrare il dossier finito.
+  const FOLIUM_ICON_SVG = `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" style="height:100%;width:auto;vertical-align:middle;">
+    <circle cx="80" cy="80" r="78" fill="none" stroke="#a77d31" stroke-width="2.5"/>
+    <path d="M50 34 H100 L112 46 V126 H50 Z" fill="none" stroke="#a77d31" stroke-width="3"/>
+    <path d="M100 34 L100 46 H112 Z" fill="#a77d31"/>
+    <path d="M64 58 H92 M64 58 V112 M64 82 H86" fill="none" stroke="#a77d31" stroke-width="4" stroke-linecap="round"/>
+  </svg>`;
+
   function pageWrapper(inner, isAd, isCover){
     if (isCover) return `<div class="page cover">${inner}</div>`;
     const logo = currentShowFoliumBrand
-      ? `<img class="page-footer-logo" src="assets/folium-logo.svg" alt="Folium">`
+      ? `<span class="page-footer-logo">${FOLIUM_ICON_SVG}</span>`
       : '';
     const footer = `<div class="page-folio"><span>${esc(currentFooterText)}</span><span style="display:flex;align-items:center;">{{PAGENUM}} / {{TOTALPAGES}}${logo}</span></div>`;
     return `<div class="page ${isAd ? 'ad-page' : 'pattern'}"><div class="page-inner">${inner}</div>${footer}</div>`;
@@ -231,20 +238,20 @@
   // il motore ad ogni apertura.
   async function ensurePopulationComposition(dossier){
     if (dossier.population_composition?.age_distribution && dossier.population_composition?.income_distribution) {
-      return dossier.population_composition;
+      return { data: dossier.population_composition, error: null };
     }
     try {
       const data = await callImmonovaFunction('immonova-demographics-engine', {
         comune: dossier.property_city, provincia: dossier.property_province
       });
       await logEngineCall('immonova-demographics-engine', dossier, !!data?.age_distribution);
-      if (!data?.age_distribution) return null;
+      if (!data?.age_distribution) return { data: null, error: 'Il motore ha risposto ma senza dati per "' + dossier.property_city + '".' };
       await sb.from('folium_dossiers').update({ population_composition: data }).eq('id', dossier.id);
-      return data;
+      return { data, error: null };
     } catch (e) {
       console.error('Motore demografico non disponibile:', e);
       await logEngineCall('immonova-demographics-engine', dossier, false);
-      return null;
+      return { data: null, error: e.message || String(e) };
     }
   }
 
@@ -579,7 +586,7 @@
     }
 
     // Composizione popolazione (età/reddito) — sempre inclusa, motore leggero/gratuito
-    const popData = await ensurePopulationComposition(dossier);
+    const { data: popData, error: popError } = await ensurePopulationComposition(dossier);
     if (popData) {
       pages.push(pageWrapper(`
         ${header}
@@ -592,10 +599,18 @@
           ${(popData.income_distribution || []).map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.value)}%</td></tr>`).join('')}
         </table>
       `));
+    } else if (isOwnerViewing && popError) {
+      // Visibile SOLO all'account sviluppatore: dice la causa vera invece di sparire in
+      // silenzio, così il test dice esattamente cosa non va (es. comune non riconosciuto).
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Demographics', t('population', lang))}
+        <div class="verified-note" style="color:#a33;">[Solo account test] Dati demografici non disponibili: ${esc(popError)}</div>
+      `));
     }
 
-    // Analisi di mercato AI — sempre inclusa per Gold/Platinum
-    if (dossier.include_ai_valuation) {
+    // Analisi di mercato AI — sempre inclusa per Gold/Platinum (o simulata dall'account test)
+    if (dossier.include_ai_valuation || (isOwnerViewing && tier !== 'light')) {
       const val = await ensureAiValuation(dossier);
       if (val) {
         const narrativeText = (lang !== 'it' && translated?.ai_narrative) || val.narrative || 'Analisi non disponibile per questo immobile.';
@@ -611,8 +626,8 @@
       }
     }
 
-    // Descrizione editoriale — sempre inclusa per Gold/Platinum (a pagamento, mai Light)
-    if (dossier.include_editorial_analysis) {
+    // Descrizione editoriale — sempre inclusa per Gold/Platinum (a pagamento, mai Light — o simulata dall'account test)
+    if (dossier.include_editorial_analysis || (isOwnerViewing && tier !== 'light')) {
       const editorial = await ensureEditorialAnalysis(dossier);
       if (editorial) {
         pages.push(pageWrapper(`
@@ -625,8 +640,8 @@
       }
     }
 
-    // Turismo, trasporti e territorio — sempre incluso per Gold/Platinum (motore pesante)
-    if (dossier.include_discovery) {
+    // Turismo, trasporti e territorio — sempre incluso per Gold/Platinum (motore pesante, o simulato dall'account test)
+    if (dossier.include_discovery || (isOwnerViewing && tier !== 'light')) {
       const disc = await ensureDiscoveryData(dossier);
       if (disc) {
         const territoryText = (lang !== 'it' && translated?.discovery_summary) || disc.summary || disc.narrative || 'Dati territoriali non disponibili per questa zona.';
