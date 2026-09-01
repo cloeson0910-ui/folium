@@ -219,6 +219,8 @@
   const MAX_PROPERTY_PHOTOS = 15;
   const OWNER_EMAIL = "claudio.romano@bluewin.ch"; // account sviluppatore: uso illimitato, mai pubblicità, mai consumo crediti
   let isOwner = false;
+  let editDossierId = null; // valorizzata in init() se si arriva con ?edit=<id>: modalità modifica invece di creazione
+  let alreadyPaidLanguages = []; // lingue già pagate/incluse al caricamento, per far pagare SOLO quelle nuove aggiunte in modifica
   let currentTier = 'light';
   let logoFile = null;
   let propertyFiles = [];
@@ -260,6 +262,40 @@
       initLanguageChips();
       initAmenityChips();
       document.querySelectorAll('input[name="devTier"]').forEach(r => r.addEventListener('change', updatePlanUI));
+
+      // ---- Modalità modifica: arrivati con ?edit=<id>, precarico i dati del
+      // dossier già generato invece di partire da un form vuoto. Il proprietario
+      // può così tornare indietro e correggere prima di ristampare/condividere.
+      const editId = new URLSearchParams(window.location.search).get('edit');
+      if (editId) {
+        const { data: existing, error: editError } = await sb.from('folium_dossiers').select('*').eq('id', editId).single();
+        if (editError || !existing) {
+          showMsg('Dossier da modificare non trovato (o non è tuo).', false);
+        } else {
+          editDossierId = existing.id;
+          document.getElementById('address').value = existing.property_address || '';
+          document.getElementById('city').value = existing.property_city || '';
+          document.getElementById('province').value = existing.property_province || '';
+          document.getElementById('propType').value = existing.property_type || '';
+          document.getElementById('size').value = existing.property_size_sqm || '';
+          document.getElementById('price').value = existing.property_price || '';
+          document.getElementById('verifiedData').value = existing.verified_data?.notes || '';
+          document.getElementById('pageOrientation').value = existing.page_orientation || 'portrait';
+          document.getElementById('fontTheme').value = existing.font_theme || 'poppins';
+          document.getElementById('colorTheme').value = existing.color_theme || 'gold';
+          if (existing.amenities_description) document.getElementById('amenitiesDescription').value = existing.amenities_description;
+          selectedAmenities = existing.amenities || [];
+          selectedLanguages = existing.translated_languages || [];
+          alreadyPaidLanguages = [...selectedLanguages]; // istantanea al caricamento, per capire quali sono NUOVE al salvataggio
+          // Rimostro i chip già selezionati (i chip sono già stati costruiti sopra, vuoti)
+          selectedAmenities.forEach(code => document.getElementById(`amenity-${code}`)?.classList.add('on'));
+          selectedLanguages.forEach(code => document.getElementById(`chip-${code}`)?.classList.add('on'));
+          const btn = document.getElementById('btnSubmit');
+          if (btn) btn.textContent = 'Salva modifiche';
+          const banner = document.getElementById('planBanner');
+          if (banner) banner.insertAdjacentHTML('afterend', `<div style="background:#eef4ff;border:1px solid #c9d9f5;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#3a5a9c;">Stai modificando un dossier già generato. Le foto già caricate restano; qualsiasi nuova foto scelta qui sotto verrà aggiunta.</div>`);
+        }
+      }
     } catch (err) {
       document.getElementById('planBanner').textContent = 'Errore di caricamento: ' + (err.message || err);
       document.getElementById('planBanner').style.background = '#fbe4e4';
@@ -710,9 +746,9 @@
   document.getElementById('dossierForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentClient) { showMsg('Profilo cliente non trovato: esci e rifai il login (l\'account potrebbe essere stato creato prima di un fix precedente).', false); return; }
-    if (propertyFiles.length === 0) { showMsg('Carica almeno una foto dell\'immobile.', false); return; }
+    if (!editDossierId && propertyFiles.length === 0) { showMsg('Carica almeno una foto dell\'immobile.', false); return; }
     const btn = document.getElementById('btnSubmit');
-    btn.disabled = true; btn.textContent = 'Caricamento in corso…';
+    btn.disabled = true; btn.textContent = editDossierId ? 'Salvataggio in corso…' : 'Caricamento in corso…';
     try {
       let logoUrl = currentClient.logo_url;
       if (logoFile) {
@@ -727,10 +763,7 @@
       // senza passare da Stripe. Light: restano un add-on a pagamento (gestito dopo l'insert).
       const freeLanguages = (currentTier !== 'light') ? selectedLanguages : [];
 
-      const { data: dossier, error: dossierError } = await sb.from('folium_dossiers').insert({
-        client_id: currentUser.id,
-        tenant_id: currentClient.tenant_id,
-        status: 'draft',
+      const dossierFields = {
         property_address: document.getElementById('address').value.trim(),
         property_city: document.getElementById('city').value.trim(),
         property_province: document.getElementById('province').value.trim() || null,
@@ -738,25 +771,55 @@
         property_size_sqm: document.getElementById('size').value || null,
         property_price: document.getElementById('price').value || null,
         verified_data: { notes: document.getElementById('verifiedData').value.trim() },
-        had_ads: willHaveAds,
-        tier_at_generation: currentTier,
-        include_ai_valuation: fullFeatures,
-        include_discovery: fullFeatures,
-        include_editorial_analysis: fullFeatures,
         page_orientation: document.getElementById('pageOrientation').value,
         font_theme: document.getElementById('fontTheme').value,
         color_theme: document.getElementById('colorTheme').value,
-        translated_languages: freeLanguages,
         amenities: currentTier !== 'light' ? selectedAmenities : [],
         amenities_description: currentTier === 'light' ? (document.getElementById('amenitiesDescription').value.trim() || null) : null,
-        watermark_position: currentTier !== 'light' ? document.getElementById('watermarkPosition').value : 'bottom-right'
-      }).select().single();
-      if (dossierError) throw dossierError;
+      };
+
+      let dossier;
+      if (editDossierId) {
+        // Modalità modifica: aggiorno la riga esistente, non tocco piano/pubblicità/
+        // watermark/crediti (quelli restano quelli della generazione originale).
+        // Le lingue: se Gold/Platinum sono gratis, le scrivo subito qui; se Light
+        // restano da scrivere SOLO dopo il pagamento (lo fa il webhook Stripe più sotto).
+        if (currentTier !== 'light') dossierFields.translated_languages = selectedLanguages;
+        const { data: updated, error: updateError } = await sb.from('folium_dossiers')
+          .update(dossierFields).eq('id', editDossierId).select().single();
+        if (updateError) throw updateError;
+        dossier = updated;
+      } else {
+        const { data: created, error: dossierError } = await sb.from('folium_dossiers').insert({
+          ...dossierFields,
+          client_id: currentUser.id,
+          tenant_id: currentClient.tenant_id,
+          status: 'draft',
+          had_ads: willHaveAds,
+          tier_at_generation: currentTier,
+          include_ai_valuation: fullFeatures,
+          include_discovery: fullFeatures,
+          include_editorial_analysis: fullFeatures,
+          translated_languages: freeLanguages,
+          watermark_position: currentTier !== 'light' ? document.getElementById('watermarkPosition').value : 'bottom-right'
+        }).select().single();
+        if (dossierError) throw dossierError;
+        dossier = created;
+      }
 
       btn.textContent = `Caricamento foto (0/${propertyFiles.length + destinationFiles.length})…`;
       let uploaded = 0;
       const totalPhotos = propertyFiles.length + destinationFiles.length;
       const watermarkPosition = currentTier !== 'light' ? document.getElementById('watermarkPosition').value : 'bottom-right';
+
+      // In modifica: le nuove foto si AGGIUNGONO in coda a quelle già presenti,
+      // non le sostituiscono — calcolo da dove continuare la numerazione.
+      let propertyOffset = 0, destinationOffset = 0;
+      if (editDossierId && totalPhotos > 0) {
+        const { data: existingPhotos } = await sb.from('folium_dossier_photos').select('photo_kind').eq('dossier_id', editDossierId);
+        propertyOffset = (existingPhotos || []).filter(p => p.photo_kind === 'property').length;
+        destinationOffset = (existingPhotos || []).filter(p => p.photo_kind === 'destination').length;
+      }
 
       for (let i = 0; i < propertyFiles.length; i++) {
         let file = propertyFiles[i];
@@ -766,7 +829,7 @@
         btn.textContent = `Caricamento foto (${uploaded+1}/${totalPhotos})…`;
         const url = await uploadFile('folium-photos', file, dossier.id);
         await sb.from('folium_dossier_photos').insert({
-          dossier_id: dossier.id, photo_url: url, sort_order: i, photo_kind: 'property'
+          dossier_id: dossier.id, photo_url: url, sort_order: propertyOffset + i, photo_kind: 'property'
         });
         uploaded++;
         btn.textContent = `Caricamento foto (${uploaded}/${totalPhotos})…`;
@@ -779,14 +842,15 @@
         btn.textContent = `Caricamento foto (${uploaded+1}/${totalPhotos})…`;
         const url = await uploadFile('folium-photos', file, dossier.id);
         await sb.from('folium_dossier_photos').insert({
-          dossier_id: dossier.id, photo_url: url, sort_order: i, photo_kind: 'destination'
+          dossier_id: dossier.id, photo_url: url, sort_order: destinationOffset + i, photo_kind: 'destination'
         });
         uploaded++;
         btn.textContent = `Caricamento foto (${uploaded}/${totalPhotos})…`;
       }
 
-      // Se ha crediti a pagamento, ne consuma uno (l'account sviluppatore non consuma mai crediti)
-      if (!isOwner && currentTier !== 'light' && currentClient.credits_remaining > 0) {
+      // Se ha crediti a pagamento, ne consuma uno SOLO alla creazione (mai in modifica,
+      // né per l'account sviluppatore)
+      if (!editDossierId && !isOwner && currentTier !== 'light' && currentClient.credits_remaining > 0) {
         await sb.from('folium_clients').update({
           credits_remaining: currentClient.credits_remaining - 1
         }).eq('id', currentUser.id);
@@ -795,18 +859,25 @@
       await sb.from('folium_dossiers').update({ status: 'completed' }).eq('id', dossier.id);
       await sb.from('folium_usage_log').insert({
         client_id: currentUser.id, tenant_id: currentClient.tenant_id,
-        action: 'dossier_created', dossier_id: dossier.id
+        action: editDossierId ? 'dossier_updated' : 'dossier_created', dossier_id: dossier.id
       });
 
-      if (currentTier === 'light' && selectedLanguages.length > 0) {
+      // Checkout traduzioni: alla creazione per tutte le lingue scelte; in modifica
+      // SOLO per le lingue nuove non ancora pagate (mai gratis, nemmeno aggiungendole dopo).
+      const newLanguagesToPay = editDossierId
+        ? selectedLanguages.filter(l => !alreadyPaidLanguages.includes(l))
+        : selectedLanguages;
+
+      if (currentTier === 'light' && newLanguagesToPay.length > 0) {
         // Traduzioni: add-on a pagamento indipendente dal piano, checkout dedicato
         // prima di mostrare il dossier finale.
         btn.textContent = 'Avvio pagamento traduzioni…';
         const { data: checkoutData, error: checkoutError } = await sb.functions.invoke('folium-translation-checkout', {
-          body: { dossier_id: dossier.id, languages: selectedLanguages }
+          body: { dossier_id: dossier.id, languages: newLanguagesToPay }
         });
         if (checkoutError || !checkoutData?.url) {
-          // Il dossier esiste comunque senza traduzioni: non blocchiamo l'utente.
+          // Il dossier esiste comunque senza le nuove traduzioni: non blocchiamo l'utente,
+          // ma le lingue nuove NON vengono aggiunte (restano da pagare al prossimo tentativo).
           console.error('Checkout traduzioni non avviato:', checkoutError);
           window.location.href = `folium-view.html?id=${dossier.id}`;
           return;
@@ -820,7 +891,7 @@
       const parts = [err.message, err.details, err.hint, err.code].filter(Boolean).join(' | ');
       showMsg('Errore: ' + (parts || err), false);
       console.error('Errore completo generazione dossier:', err);
-      btn.disabled = false; btn.textContent = 'Genera il mio dossier';
+      btn.disabled = false; btn.textContent = editDossierId ? 'Salva modifiche' : 'Genera il mio dossier';
     }
   });
 

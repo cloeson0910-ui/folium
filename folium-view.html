@@ -15,7 +15,7 @@
   /* Dimensioni di default: verticale. applyTheme() le sovrascrive in orizzontale
      (max-width:1123px;min-height:794px) quando il cliente ha scelto quel formato
      in fase di creazione — vedi #themeStyle iniettato più sotto. */
-  .page{width:100%;max-width:794px;min-height:1123px;background:#fffdf8;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;color:#5c4a20;}
+  .page{width:100%;max-width:794px;min-height:1123px;max-height:1123px;background:#fffdf8;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;color:#5c4a20;}
   /* Nessuna texture decorativa (era quella di Immonova, non di Folium): sfondo
      pulito, il colore lo decide il cliente tramite il tema scelto (var(--bg-page)). */
   .page.pattern{background:var(--bg-page, #fffdf8);}
@@ -28,7 +28,7 @@
   .cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
   .brand{font-size:26px;letter-spacing:.20em;color:var(--gold3);font-weight:300;}
   .brand-sub{margin-top:6px;font-size:9px;letter-spacing:.22em;color:var(--gold3);text-transform:uppercase;}
-  .cover-client-logo{max-height:38px;max-width:150px;object-fit:contain;filter:brightness(0) invert(1);opacity:.92;}
+  .cover-client-logo{max-height:34px;max-width:140px;object-fit:contain;background:rgba(255,255,255,.94);padding:7px 12px;border-radius:3px;}
   .cover-kicker{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold3);margin-bottom:18px;}
   .cover-title{max-width:640px;font-size:38px;line-height:1.12;font-weight:200;letter-spacing:.06em;text-transform:uppercase;color:#fdfbf5;margin:0;}
   .cover-meta{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold3);line-height:1.9;}
@@ -74,7 +74,7 @@
   .ad-page h2{font-weight:200;font-size:22px;letter-spacing:.04em;color:#2b2416;margin:16px 0 8px;}
   .ad-page p{font-size:13px;color:#5c4f30;max-width:440px;}
   .ad-page .cta{margin-top:14px;padding:10px 24px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-radius:24px;text-decoration:none;font-size:12px;letter-spacing:1px;}
-  @media print { .toolbar{display:none;} .page{box-shadow:none;margin:0;page-break-after:always;} #devTierSimulatorView{display:none !important;} }
+  @media print { .toolbar{display:none;} .page{box-shadow:none;margin:0;page-break-after:always;page-break-inside:avoid;} #devTierSimulatorView{display:none !important;} }
   .loading{text-align:center;padding:80px 20px;color:#8a7a52;}
   .lead-gate{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));display:flex;align-items:center;justify-content:center;padding:20px;}
   .lead-gate-card{background:#fff;border-radius:16px;padding:32px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
@@ -100,6 +100,7 @@
 
 <div class="toolbar">
   <div>FOLIUM</div>
+  <button id="editBtn" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="goToEdit()">Modifica dossier</button>
   <button id="printBtn" onclick="window.print()" style="display:none;">Stampa / Salva PDF</button>
 </div>
 
@@ -133,7 +134,7 @@
   // quindi si riusa l'infrastruttura Immonova via HTTP invece di duplicarla.
   // Solo lettura/consultazione — Immonova non viene mai toccato/modificato da qui.
   const IMMONOVA_URL = "https://bpzzmitmbavcmcasswbu.supabase.co";
-  const IMMONOVA_ANON_KEY = "INSERISCI_ANON_KEY_IMMONOVA";
+  const IMMONOVA_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwenptaXRtYmF2Y21jYXNzd2J1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDk1ODQsImV4cCI6MjA5NzM4NTU4NH0.SkPicFpfYe69rI0JmASqm-jif-Ov3gQ0Mu20UbrYawY";
   const OWNER_EMAIL = "claudio.romano@bluewin.ch"; // account sviluppatore: vede sempre i contenuti Platinum
 
   async function callImmonovaFunction(name, body){
@@ -375,7 +376,7 @@
     const font = FONT_THEMES[dossier.font_theme] || FONT_THEMES.poppins;
     const landscape = dossier.page_orientation === 'landscape';
     const vars = Object.entries(palette).map(([k,v]) => `--${k}:${v};`).join('');
-    const pageSize = landscape ? 'width:100%;max-width:1123px;min-height:794px;' : 'width:100%;max-width:794px;min-height:1123px;';
+    const pageSize = landscape ? 'width:100%;max-width:1123px;min-height:794px;max-height:794px;' : 'width:100%;max-width:794px;min-height:1123px;max-height:1123px;';
     document.getElementById('themeStyle').textContent = `
       :root{${vars}}
       body{font-family:${font};}
@@ -686,6 +687,10 @@
   // ---- Lead gate: chi non è il proprietario del dossier (né l'account
   // sviluppatore) deve lasciare nome+email prima di vedere/scaricare il
   // dossier. Il proprietario passa dritto: ha già i suoi dati su Folium.
+  function goToEdit(){
+    window.location.href = `folium-create.html?edit=${encodeURIComponent(dossierId)}`;
+  }
+
   async function checkAccessAndRender(){
     const { data: dossier } = await sb.from('folium_dossiers').select('id, client_id, is_shared').eq('id', dossierId).single();
     if (!dossier) { document.getElementById('content').textContent = 'Dossier non trovato.'; return; }
@@ -696,6 +701,9 @@
 
     if (isOwnerAccount || isDossierOwner) {
       document.getElementById('printBtn').style.display = '';
+      // "Modifica" solo per il vero proprietario del dossier — l'account sviluppatore
+      // che sta solo TESTANDO il dossier di qualcun altro non deve poterlo modificare.
+      if (isDossierOwner) document.getElementById('editBtn').style.display = '';
       render('it');
       return;
     }
