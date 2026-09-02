@@ -799,10 +799,18 @@
     btn.disabled = true; btn.textContent = editDossierId ? 'Salvataggio in corso…' : 'Caricamento in corso…';
     try {
       let logoUrl = currentClient.logo_url;
-      if (logoFile) {
-        logoUrl = await uploadFile('folium-logos', logoFile, currentUser.id);
-        await sb.from('folium_clients').update({ logo_url: logoUrl }).eq('id', currentUser.id);
-      }
+      if (logoFile) logoUrl = await uploadFile('folium-logos', logoFile, currentUser.id);
+      // BUG REALE trovato: nome/email/telefono venivano letti dal form ma MAI salvati su
+      // folium_clients (solo il logo veniva aggiornato, e solo se ne caricavi uno nuovo) —
+      // per questo il telefono restava vuoto anche dopo averlo scritto. Ora si salvano sempre.
+      const clientUpdate = {
+        logo_url: logoUrl,
+        company_name: document.getElementById('displayName').value.trim(),
+        contact_email: document.getElementById('contactEmail').value.trim(),
+        contact_phone: document.getElementById('contactPhone').value.trim(),
+      };
+      await sb.from('folium_clients').update(clientUpdate).eq('id', currentUser.id);
+      currentClient = { ...currentClient, ...clientUpdate };
 
       const willHaveAds = currentTier !== 'platinum'; // Light e Gold hanno pubblicità, solo Platinum no
       const fullFeatures = currentTier !== 'light'; // Discovery sempre incluso per Gold/Platinum (motore costoso, ~5,40€)

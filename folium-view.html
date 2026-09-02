@@ -508,16 +508,17 @@
       .lte('subscription_start', today).gte('subscription_end', today); // solo abbonamenti in corso, mai scaduti
     if (!ads || ads.length === 0) return null;
 
-    const notShown = a => !excludeIds.includes(a.id);
-    // Priorità: stesso slot richiesto → qualunque altro slot attivo (mai lasciare uno
-    // spazio vuoto solo perché quello slot specifico non ha inserzionisti quel mese).
-    const inSlot = ads.filter(a => a.position_slot === preferredSlot && notShown(a));
-    const anyActive = ads.filter(notShown);
-    const list = inSlot.length ? inSlot : (anyActive.length ? anyActive : ads);
+    // CORRETTO su richiesta esplicita: un inserzionista paga per uno slot preciso, deve
+    // comparire SOLO in quello — mai in uno slot diverso, e mai ripetuto una seconda volta
+    // nello stesso dossier solo perché gli altri erano già stati usati. Se per questo slot
+    // non c'è (più) nessun inserzionista disponibile, quella posizione resta senza pubblicità
+    // invece di mostrarne una sbagliata o duplicata.
+    const inSlot = ads.filter(a => a.position_slot === preferredSlot && !excludeIds.includes(a.id));
+    if (!inSlot.length) return null;
 
-    // selezione pesata semplice
+    // selezione pesata semplice, solo tra gli inserzionisti di QUESTO slot
     const weighted = [];
-    list.forEach(a => { for (let i = 0; i < (a.weight || 1); i++) weighted.push(a); });
+    inSlot.forEach(a => { for (let i = 0; i < (a.weight || 1); i++) weighted.push(a); });
     return weighted[Math.floor(Math.random() * weighted.length)];
   }
 
