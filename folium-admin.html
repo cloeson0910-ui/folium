@@ -381,6 +381,16 @@
   const AD_PERIOD_MONTHS = { quarterly: 3, semestral: 6, annual: 12 };
   const AD_PERIOD_DISCOUNT = { quarterly: 0, semestral: 0.10, annual: 0.20 };
 
+  // Data (YYYY-MM-DD) in fuso ORARIO LOCALE, non UTC. Bug corretto 2026-09-02:
+  // Date.toISOString() converte sempre in UTC, e con l'Italia in anticipo su UTC (UTC+1/+2)
+  // questo può far scivolare la data al giorno prima rispetto a quella vera percepita
+  // dall'utente — causava campagne che partono "oggi" segnate come "in attesa" per errore.
+  // Usare SEMPRE questa funzione al posto di toISOString().slice(0,10) per salvare o
+  // confrontare date locali (subscription_start/end, scadenze codici promo, ecc.).
+  function toLocalDateStr(d){
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
   function slotTier(slot){
     slot = Number(slot);
     if (slot === 1) return 'premium';
@@ -502,7 +512,7 @@
       const end = new Date(start);
       end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
       payload.subscription_start = editingOriginalStart;
-      payload.subscription_end = end.toISOString().slice(0, 10);
+      payload.subscription_end = toLocalDateStr(end);
       const { error } = await sb.from('folium_ad_pages').update(payload).eq('id', editingAdPageId);
       if (error) { alert('Errore salvataggio modifiche: ' + error.message); return; }
     } else {
@@ -520,8 +530,8 @@
       const end = new Date(start);
       end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
       payload.tenant_id = TENANT_ID;
-      payload.subscription_start = start.toISOString().slice(0, 10);
-      payload.subscription_end = end.toISOString().slice(0, 10);
+      payload.subscription_start = toLocalDateStr(start);
+      payload.subscription_end = toLocalDateStr(end);
       const { error } = await sb.from('folium_ad_pages').insert(payload);
       if (error) { alert('Errore creazione pagina pubblicitaria: ' + error.message); return; }
     }
@@ -623,7 +633,7 @@
     const tierLabel = { premium: 'Premium', high: 'Alta visibilità', standard: 'Standard' };
     const periodLabel = { quarterly: 'Trimestrale', semestral: 'Semestrale', annual: 'Annuale' };
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().slice(0, 10);
+    const todayStr = toLocalDateStr(today);
 
     // Riepilogo: incassato totale, campagne davvero attive oggi, in attesa di partire.
     const totalRevenue = (adPages || []).reduce((sum, p) => sum + (p.price_paid_cents || 0), 0) / 100;
@@ -747,7 +757,7 @@
     const box = document.getElementById('promoCodesList');
     if (!codes || codes.length === 0) { box.innerHTML = '<div class="empty">Nessun codice promo ancora</div>'; return; }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateStr(new Date());
     box.innerHTML = codes.map(c => {
       const expired = c.expires_at && c.expires_at < today;
       const usedUp = c.max_uses != null && c.uses_count >= c.max_uses;
