@@ -185,13 +185,13 @@
   const IMMONOVA_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwenptaXRtYmF2Y21jYXNzd2J1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDk1ODQsImV4cCI6MjA5NzM4NTU4NH0.SkPicFpfYe69rI0JmASqm-jif-Ov3gQ0Mu20UbrYawY";
   const OWNER_EMAIL = "claudio.romano@bluewin.ch"; // account sviluppatore: vede sempre i contenuti Platinum
 
-  // Mappa statica gratuita (piano Light): il dominio usato in precedenza
-  // (staticmap.openstreetmap.de) NON ESISTE (DNS_PROBE_FINISHED_NXDOMAIN, verificato
-  // 2026-09-02) — errore mio, mai testato prima di consegnarlo. Sostituito con MapTiler
-  // Static Maps API (piano gratuito, nessuna carta richiesta), che supporta CORS: è
-  // indispensabile perché html2canvas (cattura per il PDF) rifiuta di leggere immagini
-  // caricate da server senza header CORS, anche se nel browser dal vivo si vedono bene.
-  const MAPTILER_KEY = "yCPTwk7UMKmZGcNFzRLc";
+  // Mappa statica gratuita (piano Light): due tentativi precedenti falliti (dominio
+  // staticmap.openstreetmap.de inesistente, poi MapTiler Static Maps che risulta
+  // disponibile SOLO sui piani a pagamento anche col piano free attivo). Sostituito con
+  // Geoapify Static Maps API (piano gratuito reale, 3000 richieste/giorno, nessuna carta),
+  // testato dall'utente con richiesta diretta prima di essere cablato nel codice — CONFERMATO
+  // funzionante 2026-09-02. Resta da confermare solo la cattura CORS dentro il PDF (html2canvas).
+  const GEOAPIFY_KEY = "8ddfaf5a70914383939b99fa369a8dd5";
 
   async function callImmonovaFunction(name, body){
     const resp = await fetch(`${IMMONOVA_URL}/functions/v1/${name}`, {
@@ -812,14 +812,14 @@
       const mapQueryStr = [dossier.property_address, dossier.property_city, dossier.property_province, 'Italia'].filter(Boolean).join(', ');
       let mapHTML;
       if (tier === 'light' || !hasCoords) {
-        // Sempre gratuito: immagine statica via MapTiler (piano gratuito, chiave pubblica
-        // client-side, CORS abilitato — necessario perché html2canvas possa leggerla in
-        // fase di export PDF, non solo mostrarla nel browser). NON più un <iframe>:
-        // html2canvas non riesce a catturare il contenuto di un iframe cross-origin
-        // (limite di sicurezza del browser, non aggirabile), quindi risultava sempre
-        // vuoto nel PDF esportato anche quando si vedeva bene nel browser dal vivo.
+        // Sempre gratuito: immagine statica via Geoapify (piano gratuito reale, chiave
+        // pubblica client-side) — testata dall'utente con richiesta diretta prima di essere
+        // integrata, per evitare un terzo tentativo a vuoto. crossorigin="anonymous"
+        // mantenuto: necessario perché html2canvas (già con useCORS:true) possa leggere
+        // l'immagine anche in fase di export PDF, non solo mostrarla nel browser dal vivo —
+        // da riconfermare con un PDF reale, non ancora verificato per questo servizio.
         mapHTML = hasCoords
-          ? `<img class="map-frame" crossorigin="anonymous" src="https://api.maptiler.com/maps/streets-v2/static/${dossier.property_lng},${dossier.property_lat},15/1000x650.png?key=${MAPTILER_KEY}&markers=${dossier.property_lng},${dossier.property_lat},red" onerror="this.outerHTML='&lt;div class=&quot;map-frame&quot; style=&quot;display:flex;align-items:center;justify-content:center;color:#8a7a52;font-size:12px;&quot;&gt;Mappa non disponibile al momento.&lt;/div&gt;'">`
+          ? `<img class="map-frame" crossorigin="anonymous" src="https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=1000&height=650&center=lonlat:${dossier.property_lng},${dossier.property_lat}&zoom=15&marker=lonlat:${dossier.property_lng},${dossier.property_lat};color:%23e74c3c;size:large&apiKey=${GEOAPIFY_KEY}" onerror="this.outerHTML='&lt;div class=&quot;map-frame&quot; style=&quot;display:flex;align-items:center;justify-content:center;color:#8a7a52;font-size:12px;&quot;&gt;Mappa non disponibile al momento.&lt;/div&gt;'">`
           : `<div class="map-frame" style="display:flex;align-items:center;justify-content:center;color:#8a7a52;font-size:12px;">Coordinate non disponibili per questo indirizzo.</div>`;
       } else {
         mapHTML = `<img class="map-frame" id="locationMapImg" data-lat="${esc(String(dossier.property_lat))}" data-lng="${esc(String(dossier.property_lng))}">`;
