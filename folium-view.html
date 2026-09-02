@@ -57,10 +57,8 @@
   .lux-rule{height:1px;background:linear-gradient(to right,var(--gold2),transparent);margin:0 0 20px;}
 
   /* ---- Gallery foto: PAGINATA 2 per pagina, alta qualità, aspect-ratio fisso ---- */
-  .gallery-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px;}
-  .gallery-photo-grid.single{grid-template-columns:1fr;max-width:66%;margin-left:auto;margin-right:auto;}
-  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background:#f4ecdf;overflow:hidden;min-height:280px;display:flex;align-items:center;justify-content:center;}
-  .gallery-photo-cell img{width:100%;height:280px;object-fit:contain;display:block;}
+  .gallery-photo-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:6px;}
+  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background-color:#f4ecdf;background-position:center;background-repeat:no-repeat;background-size:contain;overflow:hidden;height:560px;}
 
   .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
   .metric-card{border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:28px 22px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;}
@@ -745,14 +743,16 @@
 
     // Pagine foto immobile — PAGINATE 2 per pagina (mai tutte insieme), logo cliente
     // già bruciato via watermark nel file al momento dell'upload (Light: cliente+Folium;
-    // Gold/Platinum: solo cliente), qui solo il layout ad alta qualità.
+    // Gold/Platinum: solo cliente), qui SOLO 1 foto per pagina, grande e MAI deformata
+    // (background-image + background-size:contain, non <img object-fit> — html2canvas non
+    // rispetta object-fit in modo affidabile e stirava le foto durante l'esportazione PDF).
     if (propertyPhotos.length) {
-      chunk(propertyPhotos, 2).forEach((pair, idx) => {
+      chunk(propertyPhotos, 1).forEach((pair, idx) => {
         pages.push(pageWrapper(`
           ${header}
           ${idx === 0 ? sectionHead('Media Gallery', t('photos', lang)) : sectionHead('Media Gallery', `${t('photos', lang)} (${idx + 1})`)}
-          <div class="gallery-photo-grid ${pair.length === 1 ? 'single' : ''}">
-            ${pair.map(p => `<div class="gallery-photo-cell"><img src="${esc(p.photo_url)}"></div>`).join('')}
+          <div class="gallery-photo-grid">
+            ${pair.map(p => `<div class="gallery-photo-cell" style="background-image:url('${esc(p.photo_url)}');"></div>`).join('')}
           </div>
         `));
       });
@@ -796,14 +796,14 @@
       <div class="verified-note">${esc(verifiedText)}</div>
     `));
 
-    // Pagine foto destinazione (facoltative) — stessa paginazione 2-per-pagina
+    // Pagine foto destinazione (facoltative) — stessa regola: 1 foto per pagina, mai deformata
     if (destPhotos.length) {
-      chunk(destPhotos, 2).forEach((pair, idx) => {
+      chunk(destPhotos, 1).forEach((pair, idx) => {
         pages.push(pageWrapper(`
           ${header}
           ${idx === 0 ? sectionHead('Location Gallery', t('destination', lang)) : sectionHead('Location Gallery', `${t('destination', lang)} (${idx + 1})`)}
-          <div class="gallery-photo-grid ${pair.length === 1 ? 'single' : ''}">
-            ${pair.map(p => `<div class="gallery-photo-cell"><img src="${esc(p.photo_url)}"></div>`).join('')}
+          <div class="gallery-photo-grid">
+            ${pair.map(p => `<div class="gallery-photo-cell" style="background-image:url('${esc(p.photo_url)}');"></div>`).join('')}
           </div>
         `));
       });
@@ -986,7 +986,7 @@
   function waitForImagesToLoad(root, timeoutMs){
     timeoutMs = timeoutMs || 8000;
     const imgs = Array.prototype.slice.call((root || document).querySelectorAll('img'));
-    return Promise.all(imgs.map(img => {
+    const imgPromises = imgs.map(img => {
       if (img.complete && img.naturalWidth > 0) return Promise.resolve();
       return new Promise(resolve => {
         let done = false;
@@ -995,7 +995,25 @@
         img.addEventListener('error', finish, { once: true });
         setTimeout(finish, timeoutMs);
       });
-    }));
+    });
+    // Le foto della galleria sono ora background-image CSS (non <img>, per evitare il bug
+    // di html2canvas con object-fit) — vanno precaricate a parte, altrimenti il canvas
+    // potrebbe essere catturato prima che il browser abbia scaricato l'immagine di sfondo.
+    const bgEls = Array.prototype.slice.call((root || document).querySelectorAll('.gallery-photo-cell'));
+    const bgPromises = bgEls.map(el => {
+      const m = (el.style.backgroundImage || '').match(/url\(['"]?(.*?)['"]?\)/);
+      if (!m || !m[1]) return Promise.resolve();
+      return new Promise(resolve => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        const preloadImg = new Image();
+        preloadImg.addEventListener('load', finish, { once: true });
+        preloadImg.addEventListener('error', finish, { once: true });
+        preloadImg.src = m[1];
+        setTimeout(finish, timeoutMs);
+      });
+    });
+    return Promise.all([...imgPromises, ...bgPromises]);
   }
   async function generateDossierPdfBlob(){
     await waitForImagesToLoad(document.getElementById('content'), 8000);
