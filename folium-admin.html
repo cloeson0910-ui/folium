@@ -263,18 +263,29 @@
 
   async function loadClients(){
     const { data: clients } = await sb.from('folium_clients').select('*').eq('tenant_id', TENANT_ID).order('created_at', { ascending: false });
-    const counts = {};
-    const { data: dossiers } = await sb.from('folium_dossiers').select('client_id').eq('tenant_id', TENANT_ID);
-    (dossiers || []).forEach(d => counts[d.client_id] = (counts[d.client_id] || 0) + 1);
+    const counts = {}; // totale dossier di sempre
+    const recentCounts = {}; // dossier creati negli ultimi 7 giorni — per il limite Light e i follow-up
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const { data: dossiers } = await sb.from('folium_dossiers').select('client_id, created_at').eq('tenant_id', TENANT_ID);
+    (dossiers || []).forEach(d => {
+      counts[d.client_id] = (counts[d.client_id] || 0) + 1;
+      if (d.created_at && new Date(d.created_at) >= weekAgo) recentCounts[d.client_id] = (recentCounts[d.client_id] || 0) + 1;
+    });
 
     const tbody = document.querySelector('#clientsTable tbody');
-    tbody.innerHTML = (clients || []).map(c => `
+    tbody.innerHTML = (clients || []).map(c => {
+      const weekly = recentCounts[c.id] || 0;
+      const planStatus = c.plan === 'light'
+        ? `${weekly}/2 questa settimana${weekly >= 2 ? ' <b style="color:#c0392b;">— limite raggiunto</b>' : ''}`
+        : (c.credits_remaining != null ? `${c.credits_remaining} crediti residui` : '—');
+      return `
       <tr>
         <td>${c.company_name || c.full_name || '—'}</td>
         <td>${c.contact_email || ''}<br>${c.contact_phone || ''}</td>
         <td><span class="pill ${c.plan === 'light' ? 'free' : 'paid'}">${c.plan === 'light' ? 'Light' : (c.plan === 'gold' ? 'Gold' : 'Platinum')}</span></td>
-        <td>${counts[c.id] || 0}</td>
-      </tr>`).join('') || '<tr><td colspan="4" class="empty">Nessun cliente registrato</td></tr>';
+        <td>${counts[c.id] || 0} totali<br><span style="font-size:11px;color:#8a7a52;">${planStatus}</span></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="4" class="empty">Nessun cliente registrato</td></tr>';
   }
 
   async function createAdvertiser(){

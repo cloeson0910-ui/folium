@@ -687,7 +687,10 @@
 
   function computeWatermarkRect(canvasWidth, canvasHeight, logoAspectRatio, position){
     const isCenter = position === 'center';
-    const sizeRatio = isCenter ? 0.5 : 0.30;
+    // BUG REALE trovato: 0.30 = logo grande il 30% della larghezza della foto, enorme e
+    // "ridicolo" specialmente sulla copertina a piena pagina. Ridotto a una dimensione
+    // da watermark vero (proporzioni tipiche 10-14% della larghezza).
+    const sizeRatio = isCenter ? 0.22 : 0.13;
     const wmWidth = canvasWidth * sizeRatio;
     const wmHeight = wmWidth * logoAspectRatio;
     const margin = canvasWidth * 0.035;
@@ -780,6 +783,18 @@
     e.preventDefault();
     if (!currentClient) { showMsg('Profilo cliente non trovato: esci e rifai il login (l\'account potrebbe essere stato creato prima di un fix precedente).', false); return; }
     if (!editDossierId && propertyFiles.length === 0) { showMsg('Carica almeno una foto dell\'immobile.', false); return; }
+    // Limite piano Light: 2 dossier NUOVI a settimana (mai sull'account sviluppatore, che ha
+    // sempre uso illimitato). Non si applica in modifica di un dossier già esistente.
+    if (!editDossierId && !isOwner && currentTier === 'light') {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { count, error: countError } = await sb.from('folium_dossiers')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', currentUser.id).gte('created_at', weekAgo);
+      if (!countError && count >= 2) {
+        showMsg('Hai raggiunto il limite di 2 dossier gratuiti questa settimana. Passa a un piano Gold o Platinum per generarne senza limiti, oppure riprova tra qualche giorno.', false);
+        return;
+      }
+    }
     const btn = document.getElementById('btnSubmit');
     btn.disabled = true; btn.textContent = editDossierId ? 'Salvataggio in corso…' : 'Caricamento in corso…';
     try {

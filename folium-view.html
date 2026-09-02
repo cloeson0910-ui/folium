@@ -83,7 +83,7 @@
   .verified-note{font-size:14.5px;line-height:1.9;white-space:pre-wrap;color:#5c4a20;border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:26px 28px;min-height:70px;}
   /* ---- Posizione e mappa ---- */
   .location-layout{display:grid;grid-template-columns:.85fr 1.3fr;gap:24px;margin-top:8px;}
-  .addr-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(166,127,52,.12);padding:9px 0;font-size:12.5px;color:#5c4a20;}
+  .addr-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(166,127,52,.12);padding:9px 0;font-size:12.5px;color:var(--gold4);}
   .addr-row strong{color:var(--gold4);min-width:100px;text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;}
   .map-frame{width:100%;height:340px;border:1px solid rgba(166,127,52,.2);display:block;object-fit:cover;}
   /* pagina pubblicitaria */
@@ -211,12 +211,14 @@
     if (!box) return;
     box.style.display = 'flex';
     const labels = { light: 'Light', gold: 'Gold', platinum: 'Platinum' };
-    // Il pulsante di consenso ora compare SEMPRE, non solo su Gold/Platinum: da quando
-    // la narrativa editoriale (a pagamento, ~0,09€) è inclusa anche su Light, serve
-    // poterla sbloccare anche testando in quella modalità — prima restava irraggiungibile.
-    const paidNote = ownerAllowPaidCalls
-      ? `<span style="font-size:11px;color:#2f7d3a;margin-left:10px;">✓ Motori a pagamento attivi per questo test</span>`
-      : `<button onclick="allowPaidCallsAndRerender()" style="margin-left:10px;font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid #c0392b;background:#fff;color:#c0392b;cursor:pointer;">Genera sezioni a pagamento (costa reale)</button>`;
+    // Il pulsante di consenso ora riguarda SOLO il Discovery Engine (Gold/Platinum, ancora
+    // davvero facoltativo/costoso) — narrativa e profilo territoriale sono inclusi in OGNI
+    // piano per decisione esplicita, quindi sempre attivi anche in Light, senza consenso.
+    const paidNote = activeTier !== 'light'
+      ? (ownerAllowPaidCalls
+          ? `<span style="font-size:11px;color:#2f7d3a;margin-left:10px;">✓ Discovery Engine attivo per questo test</span>`
+          : `<button onclick="allowPaidCallsAndRerender()" style="margin-left:10px;font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid #c0392b;background:#fff;color:#c0392b;cursor:pointer;">Genera Discovery Engine (costa reale, ~5,40€)</button>`)
+      : '';
     box.innerHTML = `
       <span style="font-size:11px;letter-spacing:.5px;color:#3a5a9c;text-transform:uppercase;margin-right:6px;">Test come:</span>
       ${['light','gold','platinum'].map(t => `<div class="dev-tier-pill ${t === activeTier ? 'active' : ''}" onclick="switchDevTier('${t}')">${labels[t]}</div>`).join('')}
@@ -630,11 +632,12 @@
     }
     else if (client?.plan !== 'light' && client?.credits_remaining > 0) tier = client.plan;
     dossier._isPlatinum = (tier !== 'light') && (!isOwnerViewing || ownerAllowPaidCalls); // sblocca i motori PAGATI riservati a Gold/Platinum (Discovery): cliente reale Gold/Platinum, o account test con consenso esplicito
-    // Narrativa editoriale (analyze-opportunity, ~0,09€/chiamata): ora inclusa anche
-    // su Light — motore economico, decisione esplicita per rendere il dossier gratuito
-    // presentabile (e quindi le pagine pubblicitarie effettivamente viste). Resta
-    // comunque dietro il consenso esplicito per l'account sviluppatore in test.
-    dossier._editorialAllowed = !isOwnerViewing || ownerAllowPaidCalls;
+    // Narrativa editoriale + profilo territoriale: DECISIONE ESPLICITA, motori inclusi in
+    // OGNI piano (Light compreso) — quindi devono essere SEMPRE attivi, anche testando con
+    // l'account sviluppatore, senza dover premere nessun pulsante di consenso. Il consenso
+    // esplicito resta SOLO per il Discovery Engine (dossier._isPlatinum), l'unico ancora
+    // davvero riservato/facoltativo per Gold/Platinum.
+    dossier._editorialAllowed = true;
     const showAds = (tier !== 'platinum'); // Light e Gold hanno pubblicità, solo Platinum no
     const showFoliumBrand = (tier !== 'platinum'); // Platinum: nessun logo/marchio Folium sul dossier
     currentShowFoliumBrand = showFoliumBrand; // letta da pageWrapper() per il logo in basso a destra su ogni pagina
@@ -658,12 +661,9 @@
     pages.push(pageWrapper(`
       ${coverPhoto ? `<img class="cover-bg" src="${esc(coverPhoto)}">` : `<div class="cover-bg" style="background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));"></div>`}
       <div class="cover-inner">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <div class="brand">FOLIUM</div>
-            <div class="brand-sub">Dossier Immobiliare</div>
-          </div>
-          ${client?.logo_url ? `<img class="cover-client-logo" src="${esc(client.logo_url)}" onerror="this.style.display='none'">` : ''}
+        <div>
+          <div class="brand">FOLIUM</div>
+          <div class="brand-sub">Dossier Immobiliare</div>
         </div>
         <div>
           <div class="cover-kicker">Dossier Riservato</div>
@@ -894,6 +894,19 @@
         `));
       }
     }
+
+    // Pagina finale — riepilogo agenzia/agente: indirizzo, nome, contatti. Sempre inclusa,
+    // ogni piano, è informazione del cliente stesso (nessun motore, nessun costo).
+    pages.push(pageWrapper(`
+      ${header}
+      ${sectionHead('Agency Contact', 'Riepilogo agenzia')}
+      <div class="metric-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="metric-card"><div class="metric-label">Agenzia / Agente</div><div class="metric-value" style="font-size:16px;">${esc(client?.company_name || client?.full_name || '—')}</div></div>
+        <div class="metric-card"><div class="metric-label">Email</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_email || '—')}</div></div>
+        <div class="metric-card"><div class="metric-label">Telefono</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_phone || '—')}</div></div>
+        <div class="metric-card"><div class="metric-label">Indirizzo immobile di riferimento</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_address || '—')}</div></div>
+      </div>
+    `));
 
     // Inserimento pagine pubblicitarie tra una sezione e l'altra (Light e Gold)
     if (showAds) {
