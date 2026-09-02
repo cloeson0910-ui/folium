@@ -40,7 +40,14 @@
 
   /* ---- Header pagine di contenuto (non copertina) ---- */
   .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-  .client-logo{max-height:36px;max-width:140px;object-fit:contain;}
+  /* Logo cliente nell'header di ogni pagina: box a dimensione FISSA (non dipende dalle
+     dimensioni naturali del file caricato), background-image + background-size:contain
+     invece di <img object-fit> — stesso motivo delle foto gallery: html2canvas non
+     rispetta object-fit in modo affidabile e lo stirava durante l'esportazione PDF.
+     "contain" ingrandisce automaticamente i loghi piccoli fino a riempire il box (mai
+     tagliati) e gestisce da solo sia loghi quadrati che rettangolari, centrando sempre
+     il risultato — nessun rilevamento manuale della forma necessario. */
+  .client-logo{width:150px;height:60px;background-position:center;background-repeat:no-repeat;background-size:contain;}
   .brand-mark{font-size:10px;letter-spacing:.20em;color:var(--gold4);text-transform:uppercase;}
 
   /* ---- Footer editoriale (page-folio), identico nome/stile al report reale ---- */
@@ -678,7 +685,7 @@
 
     const header = `
       <div class="page-header">
-        ${client?.logo_url ? `<img class="client-logo" src="${esc(client.logo_url)}" onerror="this.style.display='none'">` : `<div></div>`}
+        ${client?.logo_url ? `<div class="client-logo" style="background-image:url('${esc(client.logo_url)}');"></div>` : `<div></div>`}
         ${showFoliumBrand ? `<div class="brand-mark" style="display:flex;align-items:center;gap:8px;"><span style="height:22px;">${FOLIUM_ICON_SVG}</span>Folium Dossier</div>` : `<div></div>`}
       </div>`;
 
@@ -706,8 +713,38 @@
       </div>
     `, false, true));
 
+    // Annessi/caratteristiche — integrati nella pagina "Sintesi dell'immobile" su
+    // richiesta esplicita, non più una sezione a parte. Pittogrammi per Gold/Platinum,
+    // box di testo libero per Light (stesso contenuto di prima, solo posizione diversa).
+    const AMENITY_ICONS = { pool:'🏊', sea_view:'🌊', garden:'🌳', garage:'🚗', terrace:'🏛️', annex:'🏡', fireplace:'🔥', air_conditioning:'❄️', elevator:'🛗', gym:'🏋️', wine_cellar:'🍷', security:'🔒', solar_panels:'☀️', sea_access:'⚓' };
+    const AMENITY_LABELS_IT = { pool:'Piscina', sea_view:'Vista mare', garden:'Giardino', garage:'Garage', terrace:'Terrazza', annex:'Annesso/Dependance', fireplace:'Camino', air_conditioning:'Aria condizionata', elevator:'Ascensore', gym:'Palestra', wine_cellar:'Cantina vini', security:'Sistema di sicurezza', solar_panels:'Pannelli solari', sea_access:'Accesso privato al mare' };
+    let annexesHTML = '';
+    if (tier !== 'light' && (dossier.amenities || []).length) {
+      annexesHTML = `
+        <div class="section-kicker" style="margin-top:26px;">Asset Characteristics</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px;">
+          ${dossier.amenities.map(code => `
+            <div style="display:flex;align-items:center;gap:12px;font-size:14px;">
+              <span style="font-size:22px;">${AMENITY_ICONS[code] || '•'}</span>
+              <span>${esc(AMENITY_LABELS_IT[code] || code)}</span>
+            </div>
+          `).join('')}
+        </div>`;
+    } else if (tier === 'light' && dossier.amenities_description) {
+      // Il cliente Light scrive un testo libero separato da virgole: ogni pezzo
+      // diventa un box a sé, coerente con lo stile a pittogrammi di Gold/Platinum
+      // invece di un unico paragrafo indistinto.
+      const items = dossier.amenities_description.split(',').map(s => s.trim()).filter(Boolean);
+      annexesHTML = `
+        <div class="section-kicker" style="margin-top:26px;">Asset Characteristics</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px;">
+          ${items.map(item => `<div class="verified-note" style="padding:16px 18px;font-size:13.5px;">${esc(item)}</div>`).join('')}
+        </div>`;
+    }
+
     // Pagina 2 — presentazione: dati sintetici in metric-card + contatti, stile
-    // editoriale (kicker + titolo + riga oro), come la pagina di riferimento.
+    // editoriale (kicker + titolo + riga oro), come la pagina di riferimento. Annessi
+    // integrati subito sotto (vedi annexesHTML sopra), non più una sezione a parte.
     pages.push(pageWrapper(`
       ${header}
       ${sectionHead('Editorial Overview', "Sintesi dell'immobile")}
@@ -720,6 +757,7 @@
         <b>${esc(client?.company_name || client?.full_name)}</b><br>
         ${esc(client?.contact_email)} · ${esc(client?.contact_phone)}
       </div>
+      ${annexesHTML}
     `, false, false, "Sintesi dell'immobile"));
 
     // Posizione e mappa — indirizzo sempre mostrato (dato gratuito, nessuna chiamata
@@ -758,6 +796,48 @@
           ${mapHTML}
         </div>
       `, false, false, 'Posizione e localizzazione'));
+    }
+
+    // Dati generali del territorio + demografia — RAGGRUPPATI subito dopo "Posizione e
+    // localizzazione" (stesso capitolo nel sommario, nessuna voce separata: su richiesta
+    // esplicita "posizione e localizzazione CON dati del territorio e popolazione della zona").
+    const { data: territory, error: territoryError } = await ensureTerritoryFacts(dossier);
+    if (territory) {
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Territory Data', 'Dati del territorio')}
+        <div class="verified-note" style="margin-bottom:20px;">${esc(buildTerritoryNarrative(dossier.property_city, dossier.property_province, territory))}</div>
+        <div class="metric-grid">
+          ${territory.population ? `<div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${Number(territory.population).toLocaleString('it-IT')}</div></div>` : ''}
+          ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
+          ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
+        </div>
+      `));
+    } else if (isOwnerViewing && territoryError) {
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Territory Data', 'Dati del territorio')}
+        <div class="verified-note" style="color:#a33;">[Solo account test] Dati territoriali generali non disponibili: ${esc(territoryError)}</div>
+      `));
+    }
+
+    const { data: popData, error: popError } = await ensurePopulationComposition(dossier);
+    if (popData) {
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Demographics', t('population', lang))}
+        ${barChartHTML(popData.age_distribution?.percentages || {})}
+        <div class="section-kicker" style="margin-top:30px;">${t('income', lang)}</div>
+        ${barChartHTML(popData.income_distribution?.percentages || {})}
+      `));
+    } else if (isOwnerViewing && popError) {
+      // Visibile SOLO all'account sviluppatore: dice la causa vera invece di sparire in
+      // silenzio, così il test dice esattamente cosa non va (es. comune non riconosciuto).
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Demographics', t('population', lang))}
+        <div class="verified-note" style="color:#a33;">[Solo account test] Dati demografici non disponibili: ${esc(popError)}</div>
+      `));
     }
 
     // ---- CAPITOLO "TERRITORIO & MERCATO" (ordine sommario, stesso principio del
@@ -821,48 +901,6 @@
       }
     }
 
-    // Dati generali del territorio (popolazione/superficie/altitudine + vocazione territoriale)
-    // — motore Immonova reale (immonova-location-profile), A PAGAMENTO, incluso su ogni piano.
-    const { data: territory, error: territoryError } = await ensureTerritoryFacts(dossier);
-    if (territory) {
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Territory Data', 'Dati del territorio')}
-        <div class="verified-note" style="margin-bottom:20px;">${esc(buildTerritoryNarrative(dossier.property_city, dossier.property_province, territory))}</div>
-        <div class="metric-grid">
-          ${territory.population ? `<div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${Number(territory.population).toLocaleString('it-IT')}</div></div>` : ''}
-          ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
-          ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
-        </div>
-      `, false, false, 'Dati del territorio'));
-    } else if (isOwnerViewing && territoryError) {
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Territory Data', 'Dati del territorio')}
-        <div class="verified-note" style="color:#a33;">[Solo account test] Dati territoriali generali non disponibili: ${esc(territoryError)}</div>
-      `));
-    }
-
-    // Composizione popolazione (età/reddito) — sempre inclusa, motore leggero/gratuito
-    const { data: popData, error: popError } = await ensurePopulationComposition(dossier);
-    if (popData) {
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Demographics', t('population', lang))}
-        ${barChartHTML(popData.age_distribution?.percentages || {})}
-        <div class="section-kicker" style="margin-top:30px;">${t('income', lang)}</div>
-        ${barChartHTML(popData.income_distribution?.percentages || {})}
-      `, false, false, t('population', lang)));
-    } else if (isOwnerViewing && popError) {
-      // Visibile SOLO all'account sviluppatore: dice la causa vera invece di sparire in
-      // silenzio, così il test dice esattamente cosa non va (es. comune non riconosciuto).
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Demographics', t('population', lang))}
-        <div class="verified-note" style="color:#a33;">[Solo account test] Dati demografici non disponibili: ${esc(popError)}</div>
-      `));
-    }
-
     // ---- CAPITOLO "IMMOBILE" (foto/caratteristiche/dati verificati) — sempre PER ULTIMO,
     // dopo il capitolo territorio&mercato, stesso principio del sommario di riferimento ----
 
@@ -883,35 +921,8 @@
       });
     }
 
-    // Caratteristiche e annessi — pittogrammi per Gold/Platinum, testo libero per Light
-    const AMENITY_ICONS = { pool:'🏊', sea_view:'🌊', garden:'🌳', garage:'🚗', terrace:'🏛️', annex:'🏡', fireplace:'🔥', air_conditioning:'❄️', elevator:'🛗', gym:'🏋️', wine_cellar:'🍷', security:'🔒', solar_panels:'☀️', sea_access:'⚓' };
-    const AMENITY_LABELS_IT = { pool:'Piscina', sea_view:'Vista mare', garden:'Giardino', garage:'Garage', terrace:'Terrazza', annex:'Annesso/Dependance', fireplace:'Camino', air_conditioning:'Aria condizionata', elevator:'Ascensore', gym:'Palestra', wine_cellar:'Cantina vini', security:'Sistema di sicurezza', solar_panels:'Pannelli solari', sea_access:'Accesso privato al mare' };
-    if (tier !== 'light' && (dossier.amenities || []).length) {
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Asset Characteristics', 'Caratteristiche e annessi')}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px;">
-          ${dossier.amenities.map(code => `
-            <div style="display:flex;align-items:center;gap:12px;font-size:14px;">
-              <span style="font-size:22px;">${AMENITY_ICONS[code] || '•'}</span>
-              <span>${esc(AMENITY_LABELS_IT[code] || code)}</span>
-            </div>
-          `).join('')}
-        </div>
-      `, false, false, 'Caratteristiche e annessi'));
-    } else if (tier === 'light' && dossier.amenities_description) {
-      // Il cliente Light scrive un testo libero separato da virgole: ogni pezzo
-      // diventa un box a sé, coerente con lo stile a pittogrammi di Gold/Platinum
-      // invece di un unico paragrafo indistinto.
-      const items = dossier.amenities_description.split(',').map(s => s.trim()).filter(Boolean);
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Asset Characteristics', 'Caratteristiche e annessi')}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px;">
-          ${items.map(item => `<div class="verified-note" style="padding:16px 18px;font-size:13.5px;">${esc(item)}</div>`).join('')}
-        </div>
-      `, false, false, 'Caratteristiche e annessi'));
-    }
+    // Caratteristiche e annessi: RIMOSSA come sezione a sé — integrata sopra dentro
+    // "Sintesi dell'immobile" (vedi annexesHTML), su richiesta esplicita.
 
     // Pagina dati verificati
     const verifiedText = (lang !== 'it' && translated?.verified_notes) || dossier.verified_data?.notes || 'Nessun dato aggiuntivo inserito.';
@@ -1044,7 +1055,7 @@
     // Le foto della galleria sono ora background-image CSS (non <img>, per evitare il bug
     // di html2canvas con object-fit) — vanno precaricate a parte, altrimenti il canvas
     // potrebbe essere catturato prima che il browser abbia scaricato l'immagine di sfondo.
-    const bgEls = Array.prototype.slice.call((root || document).querySelectorAll('.gallery-photo-cell'));
+    const bgEls = Array.prototype.slice.call((root || document).querySelectorAll('.gallery-photo-cell, .client-logo'));
     const bgPromises = bgEls.map(el => {
       const m = (el.style.backgroundImage || '').match(/url\(['"]?(.*?)['"]?\)/);
       if (!m || !m[1]) return Promise.resolve();
