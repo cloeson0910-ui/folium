@@ -43,7 +43,8 @@
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="plan" id="adminLink" style="display:none;cursor:pointer;" onclick="location.href='folium-admin.html'">Dashboard admin</div>
     <div class="plan" id="planBadge">…</div>
-    <div class="logout" onclick="logout()">Esci</div>
+    <div class="logout" id="loginLink" style="display:none;" onclick="location.href='folium-register.html'">Hai un account Gold/Platinum? Accedi</div>
+    <div class="logout" id="logoutBtn" onclick="logout()">Esci</div>
   </div>
 </header>
 
@@ -236,24 +237,42 @@
 
   async function init(){
     try {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user) { window.location.href = 'folium-register.html'; return; }
+      let { data: { user } } = await sb.auth.getUser();
+
+      if (!user) {
+        // Piano Light: NESSUNA registrazione/login richiesto. Si apre in background una
+        // sessione anonima Supabase (nessuna email/password chiesta all'utente, nessuna
+        // schermata) — serve solo per avere un id valido a cui agganciare
+        // folium_clients/folium_dossiers, esattamente come per un account vero, senza
+        // dover toccare le regole RLS esistenti (auth.uid() funziona anche per un utente
+        // anonimo). RICHIEDE che "Anonymous sign-ins" sia abilitato nel progetto Supabase
+        // (Authentication → Providers) — se non lo è, questa chiamata fallisce con un
+        // errore chiaro invece di bloccarsi in silenzio.
+        const { data: anonData, error: anonError } = await sb.auth.signInAnonymously();
+        if (anonError || !anonData?.user) {
+          showMsg('Impossibile avviare la sessione: ' + (anonError?.message || 'errore sconosciuto') + '. Riprova tra poco o contatta l\'assistenza.', false);
+          return;
+        }
+        user = anonData.user;
+      }
       currentUser = user;
 
       let { data: client, error } = await sb.from('folium_clients').select('*').eq('id', user.id).single();
 
       if (error || !client) {
-        // Profilo mancante (es. registrazione interrotta prima del salvataggio): lo creo
-        // al volo qui, così l'account si "autoripara" invece di restare bloccato.
+        // Profilo mancante (prima visita, sia anonima sia di un account vero appena
+        // creato): lo creo al volo qui, così l'account si "autoripara" invece di restare
+        // bloccato. Per un utente anonimo full_name/contact_email restano vuoti finché non
+        // compila il form — non c'è uno user.email da cui prenderli.
         const { data: created, error: createError } = await sb.from('folium_clients').upsert({
           id: user.id,
           tenant_id: TENANT_ID,
-          full_name: user.email,
-          contact_email: user.email,
+          full_name: user.email || '',
+          contact_email: user.email || '',
           plan: 'light'
         }, { onConflict: 'id' }).select().single();
         if (createError || !created) {
-          showMsg('Impossibile creare/recuperare il profilo cliente: ' + (createError?.message || 'errore sconosciuto') + '. Esci e rifai il login, o contatta l\'assistenza.', false);
+          showMsg('Impossibile creare/recuperare il profilo cliente: ' + (createError?.message || 'errore sconosciuto') + '. Ricarica la pagina, o contatta l\'assistenza.', false);
           return;
         }
         client = created;
@@ -263,6 +282,12 @@
       // Pulsante verso la dashboard admin: visibile SOLO all'account sviluppatore,
       // nessun altro cliente Folium deve poterla raggiungere o anche solo vederla.
       if (isOwner) document.getElementById('adminLink').style.display = '';
+      // "Esci" ha senso solo per un account vero (Gold/Platinum loggato) — un utente
+      // anonimo non ha nulla da cui "uscire", nascondere il pulsante evita confusione.
+      if (user.is_anonymous) {
+        document.getElementById('logoutBtn').style.display = 'none';
+        document.getElementById('loginLink').style.display = '';
+      }
       document.getElementById('contactEmail').value = client.contact_email || user.email || '';
       document.getElementById('contactPhone').value = client.contact_phone || '';
       document.getElementById('displayName').value = client.company_name || client.full_name || '';
@@ -377,6 +402,9 @@
       banner.innerHTML = `<b>Account sviluppatore — modalità test:</b> stai simulando un cliente <b>${labels[tier]}</b>, nessun addebito reale. Cambia piano qui sopra e rigenera per testare gli altri due.`;
     } else if (tier === 'light') {
       banner.innerHTML = '<b>Piano Light (gratuito):</b> dati essenziali + popolazione della zona, con pagine pubblicitarie tra le sezioni. <a href="folium-checkout.html">Passa a Gold o Platinum</a> per sbloccare analisi di mercato AI e territorio.';
+      if (currentUser?.is_anonymous) {
+        banner.innerHTML += '<br><br><b>Nessun account creato:</b> salva bene il link del tuo dossier dopo averlo generato — è l\'unico modo per ritrovarlo, non esiste un login per il piano gratuito.';
+      }
     } else if (tier === 'gold') {
       banner.innerHTML = '<b>Piano Gold attivo:</b> dossier completo con tutte le funzioni, pagine pubblicitarie incluse.';
     } else {
