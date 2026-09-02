@@ -386,7 +386,7 @@
     const rows = [
       ['Popolazione della zona', true],
       ['Posizione e mappa', true],
-      ['Descrizione editoriale AI', tier !== 'light'],
+      ['Descrizione editoriale AI', true],
       ['Turismo, trasporti e territorio', tier !== 'light'],
       ['Caratteristiche con pittogramma', tier !== 'light'],
       ['Pagine pubblicitarie', tier !== 'platinum'],
@@ -789,7 +789,7 @@
       }
 
       const willHaveAds = currentTier !== 'platinum'; // Light e Gold hanno pubblicità, solo Platinum no
-      const fullFeatures = currentTier !== 'light'; // Discovery + AI valuation sempre inclusi per Gold/Platinum
+      const fullFeatures = currentTier !== 'light'; // Discovery sempre incluso per Gold/Platinum (motore costoso, ~5,40€)
 
       // Gold/Platinum: le traduzioni sono incluse gratis, si salvano subito sul dossier
       // senza passare da Stripe. Light: restano un add-on a pagamento (gestito dopo l'insert).
@@ -844,7 +844,7 @@
           had_ads: willHaveAds,
           tier_at_generation: currentTier,
           include_discovery: fullFeatures,
-          include_editorial_analysis: fullFeatures,
+          include_editorial_analysis: true, // narrativa AI ora inclusa su TUTTI i piani (motore economico, ~0,09€/dossier — decisione esplicita per rendere presentabile anche il piano gratuito)
           translated_languages: freeLanguages,
           watermark_position: currentTier !== 'light' ? document.getElementById('watermarkPosition').value : 'bottom-right'
         }).select().single();

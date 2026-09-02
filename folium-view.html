@@ -46,7 +46,7 @@
   /* ---- Footer editoriale (page-folio), identico nome/stile al report reale ---- */
   .page-folio{position:absolute;left:48px;right:48px;bottom:18px;z-index:3;display:flex;justify-content:space-between;align-items:center;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(166,127,52,.6);}
   .page-folio.on-image{color:rgba(241,210,122,.85);}
-  .page-footer-logo{height:26px;width:auto;opacity:.95;margin-left:10px;display:inline-flex;align-items:center;}
+  .page-footer-logo{height:42px;width:auto;opacity:1;margin-left:10px;display:inline-flex;align-items:center;}
 
   h1.title{font-weight:200;font-size:24px;letter-spacing:.06em;color:#2b2416;margin:0 0 6px;}
   .subtitle{font-size:12px;color:#8a7a52;margin-bottom:18px;letter-spacing:.03em;}
@@ -63,17 +63,24 @@
   .gallery-photo-cell img{width:100%;height:280px;object-fit:contain;display:block;}
 
   .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
-  .metric-card{border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:18px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between;}
+  .metric-card{border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:28px 22px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;}
   .metric-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold4);line-height:1.35;}
-  .metric-value{font-size:24px;font-weight:200;color:var(--gold4);line-height:1.05;margin-top:8px;}
+  .metric-value{font-size:30px;font-weight:200;color:var(--gold4);line-height:1.05;margin-top:12px;}
 
   .data-table{width:100%;font-size:13px;border-collapse:collapse;}
   .data-table td{padding:9px 0;border-bottom:1px solid rgba(166,127,52,.12);}
   .data-table td:first-child{color:var(--gold4);width:40%;font-size:10.5px;letter-spacing:.10em;text-transform:uppercase;}
+  /* Grafico a barre orizzontali per demografia/redditi — coerente con lo stile
+     Immonova di riferimento, niente librerie, solo div con width in %. */
+  .bar-chart-row{display:grid;grid-template-columns:110px 1fr 50px;align-items:center;gap:12px;margin-bottom:12px;}
+  .bar-chart-row .bar-label{font-size:11px;letter-spacing:.05em;color:var(--gold4);text-transform:uppercase;}
+  .bar-chart-track{height:16px;background:rgba(166,127,52,.10);border-radius:2px;overflow:hidden;}
+  .bar-chart-fill{height:100%;background:linear-gradient(90deg,var(--gold1),var(--gold2));border-radius:2px;}
+  .bar-chart-row .bar-pct{font-size:12.5px;color:#5c4a20;text-align:right;}
   .contact-box{background:rgba(255,255,255,.5);border:1px solid rgba(166,127,52,.18);padding:16px 18px;font-size:13px;margin-top:20px;}
   /* Box per i dati inseriti manualmente (note/annessi/analisi): stesso stile a
      riquadro delle altre card dati, non più testo nudo senza contenitore. */
-  .verified-note{font-size:13.5px;line-height:1.8;white-space:pre-wrap;color:#5c4a20;border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:18px 20px;}
+  .verified-note{font-size:14.5px;line-height:1.9;white-space:pre-wrap;color:#5c4a20;border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:26px 28px;min-height:70px;}
   /* ---- Posizione e mappa ---- */
   .location-layout{display:grid;grid-template-columns:.85fr 1.3fr;gap:24px;margin-top:8px;}
   .addr-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(166,127,52,.12);padding:9px 0;font-size:12.5px;color:#5c4a20;}
@@ -86,6 +93,13 @@
   .ad-page h2{font-weight:200;font-size:22px;letter-spacing:.04em;color:#2b2416;margin:16px 0 8px;}
   .ad-page p{font-size:13px;color:#5c4f30;max-width:440px;}
   .ad-page .cta{margin-top:14px;padding:10px 24px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-radius:24px;text-decoration:none;font-size:12px;letter-spacing:1px;}
+  /* Forza margini di stampa a ZERO via codice: prima dipendevamo dal fatto che
+     l'utente selezionasse "Margini: Nessuno" nel dialogo di stampa del browser —
+     se restava sui margini predefiniti, l'ultimo pezzo di ogni .page (alto
+     esattamente quanto una pagina A4) veniva tagliato fuori e spinto sulla
+     pagina successiva. Con @page {margin:0} il browser non aggiunge margini
+     di suo, la pagina intera (1123px=A4) entra sempre su un solo foglio. */
+  @page { size: A4; margin: 0; }
   @media print {
     .toolbar{display:none;}
     .page{box-shadow:none;margin:0;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;}
@@ -241,6 +255,21 @@
     return `<div class="section-kicker">${esc(kicker)}</div><div class="section-title">${esc(title)}</div><div class="lux-rule"></div>`;
   }
 
+  // Grafico a barre orizzontali da un oggetto {etichetta: percentuale}, usato per
+  // demografia/redditi al posto della tabella nuda — barra proporzionale al max.
+  function barChartHTML(dataObj){
+    const entries = Object.entries(dataObj || {});
+    if (!entries.length) return '<div class="verified-note">Dati non disponibili.</div>';
+    const max = Math.max(...entries.map(([, v]) => Number(v) || 0), 1);
+    return entries.map(([label, value]) => `
+        <div class="bar-chart-row">
+          <div class="bar-label">${esc(label)}</div>
+          <div class="bar-chart-track"><div class="bar-chart-fill" style="width:${Math.max(2, (Number(value) / max) * 100)}%;"></div></div>
+          <div class="bar-pct">${esc(value)}%</div>
+        </div>
+      `).join('');
+  }
+
   // Spezza un array in gruppi da "size" elementi — usato per la gallery foto,
   // che va SEMPRE paginata a 2 foto per pagina (mai tutte insieme in una griglia).
   function chunk(arr, size){
@@ -301,6 +330,71 @@
     } catch (e) { console.error('Log chiamata motore fallito:', e); }
   }
 
+  // Dati generali del comune (popolazione totale, superficie, altitudine) — chiamata
+  // DIRETTA e pubblica a Cruscotto Italia (AgID), lo stesso endpoint gratuito usato
+  // dentro immonova-demographics-engine, ma qui invocata da Folium stessa: nessuna
+  // chiave, nessun costo, disponibile su OGNI piano incluso Light ("solo servizi
+  // gratuiti"). Non passa da Immonova, quindi non consuma nessuna delle sue chiamate.
+  const CRUSCOTTO_MCP_URL = "https://cruscotto-italia-mcp.agid.workers.dev/mcp";
+  async function callCruscottoTool(toolName, args){
+    try {
+      const resp = await fetch(CRUSCOTTO_MCP_URL, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: { name: toolName, arguments: args } })
+      });
+      if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
+      const json = await resp.json();
+      if (json.error) return { ok: false, error: json.error.message || JSON.stringify(json.error) };
+      const rawText = json.result?.content?.[0]?.text;
+      if (!rawText) return { ok: false, error: 'Risposta vuota' };
+      let parsed; try { parsed = JSON.parse(rawText); } catch { parsed = rawText; }
+      return { ok: true, data: parsed };
+    } catch (e) { return { ok: false, error: e.message || String(e) }; }
+  }
+  async function ensureTerritoryFacts(dossier){
+    if (dossier.territory_facts) return { data: dossier.territory_facts, error: null };
+    if (!dossier.property_city) return { data: null, error: null };
+    try {
+      const search = await callCruscottoTool('search_comune', { query: dossier.property_city });
+      if (!search.ok) return { data: null, error: search.error };
+      const candidates = Array.isArray(search.data) ? search.data : (search.data?.results || search.data?.comuni || []);
+      if (!candidates.length) return { data: null, error: 'Comune non trovato su Cruscotto Italia.' };
+      let match = candidates[0];
+      if (candidates.length > 1 && dossier.property_province) {
+        const byProv = candidates.find(c => String(c.provincia || c.province || c.sigla_provincia || '').toLowerCase().includes(String(dossier.property_province).toLowerCase()));
+        if (byProv) match = byProv;
+      }
+      const istatCode = match.istat_code || match.codice_istat || match.code;
+      const dash = await callCruscottoTool('comune_dashboard', { istat_code: istatCode });
+      if (!dash.ok) return { data: null, error: dash.error };
+      const d = dash.data || {};
+      const facts = {
+        population: d.demografia?.popolazione_totale ?? match.popolazione ?? null,
+        area_kmq: d.comune?.superficie_kmq ?? match.superficie_kmq ?? match.area_kmq ?? null,
+        altitude_m: d.comune?.altitudine_m ?? match.altitudine ?? match.altitudine_m ?? null,
+        density: null
+      };
+      if (facts.population && facts.area_kmq) facts.density = Math.round(facts.population / facts.area_kmq);
+      if (!facts.population && !facts.area_kmq && !facts.altitude_m) return { data: null, error: 'Cruscotto Italia non ha restituito dati generali per questo comune.' };
+      await sb.from('folium_dossiers').update({ territory_facts: facts }).eq('id', dossier.id);
+      return { data: facts, error: null };
+    } catch (e) {
+      return { data: null, error: e.message || String(e) };
+    }
+  }
+  // Narrativa breve costruita a partire dai numeri reali sopra — non generata da AI
+  // (nessun costo), solo un template con i valori inseriti: risponde alla richiesta
+  // di "un minimo di narrativa" anche sul piano gratuito Light.
+  function buildTerritoryNarrative(city, province, facts){
+    const parts = [];
+    parts.push(`${city}${province ? ' (' + province + ')' : ''} si trova in Puglia.`);
+    if (facts.population) parts.push(`Conta una popolazione di circa ${Number(facts.population).toLocaleString('it-IT')} abitanti.`);
+    if (facts.area_kmq) parts.push(`Si estende su una superficie di circa ${Number(facts.area_kmq).toLocaleString('it-IT')} km².`);
+    if (facts.density) parts.push(`La densità abitativa è di circa ${facts.density.toLocaleString('it-IT')} abitanti per km².`);
+    if (facts.altitude_m != null) parts.push(`Si trova a un'altitudine di circa ${facts.altitude_m} metri sul livello del mare.`);
+    return parts.join(' ');
+  }
+
   // Riusa immonova-demographics-engine chiamandolo DIRETTAMENTE sul progetto Immonova
   // (vedi callImmonovaFunction sopra). Stessa lezione di report-view.html Immonova:
   // verificare che il risultato contenga davvero age_distribution/income_distribution
@@ -335,13 +429,14 @@
   // clienti, serve internamente per ricerche comparative sulle valutazioni immobiliari —
   // uso interno di Immonova, estraneo al prodotto Folium. Nessuna chiamata, nessuna sezione.
 
-  // Riusa analyze-opportunity chiamandolo DIRETTAMENTE sul progetto Immonova. È A PAGAMENTO
-  // (Claude Sonnet 4.5 + web_search, nessuna cache lato Immonova) — per questo riservato a
-  // Gold/Platinum come le altre sezioni a costo, mai a Light. Cache locale sul dossier per
-  // non richiamarlo ad ogni apertura della pagina.
+  // Riusa analyze-opportunity chiamandolo DIRETTAMENTE sul progetto Immonova. A PAGAMENTO
+  // ma economico (~0,09€/chiamata: Claude Sonnet 4.5 + fino a 4 web search, verificato dal
+  // codice sorgente) — DECISIONE ESPLICITA: incluso anche su Light per rendere presentabile
+  // il dossier gratuito (e quindi le pagine pubblicitarie effettivamente viste dai lead).
+  // Cache locale sul dossier per non richiamarlo ad ogni apertura della pagina.
   async function ensureEditorialAnalysis(dossier){
     if (dossier.editorial_analysis_result) return { data: dossier.editorial_analysis_result, error: null };
-    if (!dossier._isPlatinum) return { data: null, error: null }; // sezione riservata a Gold/Platinum, non un errore
+    if (!dossier._editorialAllowed) return { data: null, error: null }; // solo il consenso esplicito dell'account test manca, non un errore
     try {
       const data = await callImmonovaFunction('analyze-opportunity', {
         title: dossier.property_address,
@@ -539,7 +634,12 @@
       currentSimulatedTier = tier;
     }
     else if (client?.plan !== 'light' && client?.credits_remaining > 0) tier = client.plan;
-    dossier._isPlatinum = (tier !== 'light') && (!isOwnerViewing || ownerAllowPaidCalls); // sblocca chiamata motori PAGATI solo se: cliente reale Gold/Platinum, oppure account test con consenso esplicito appena dato
+    dossier._isPlatinum = (tier !== 'light') && (!isOwnerViewing || ownerAllowPaidCalls); // sblocca i motori PAGATI riservati a Gold/Platinum (Discovery): cliente reale Gold/Platinum, o account test con consenso esplicito
+    // Narrativa editoriale (analyze-opportunity, ~0,09€/chiamata): ora inclusa anche
+    // su Light — motore economico, decisione esplicita per rendere il dossier gratuito
+    // presentabile (e quindi le pagine pubblicitarie effettivamente viste). Resta
+    // comunque dietro il consenso esplicito per l'account sviluppatore in test.
+    dossier._editorialAllowed = !isOwnerViewing || ownerAllowPaidCalls;
     const showAds = (tier !== 'platinum'); // Light e Gold hanno pubblicità, solo Platinum no
     const showFoliumBrand = (tier !== 'platinum'); // Platinum: nessun logo/marchio Folium sul dossier
     currentShowFoliumBrand = showFoliumBrand; // letta da pageWrapper() per il logo in basso a destra su ogni pagina
@@ -551,7 +651,7 @@
     const header = `
       <div class="page-header">
         ${client?.logo_url ? `<img class="client-logo" src="${esc(client.logo_url)}">` : `<div></div>`}
-        ${showFoliumBrand ? `<div class="brand-mark">Folium Dossier</div>` : `<div></div>`}
+        ${showFoliumBrand ? `<div class="brand-mark" style="display:flex;align-items:center;gap:8px;"><span style="height:22px;">${FOLIUM_ICON_SVG}</span>Folium Dossier</div>` : `<div></div>`}
       </div>`;
 
     const pages = [];
@@ -701,13 +801,9 @@
       pages.push(pageWrapper(`
         ${header}
         ${sectionHead('Demographics', t('population', lang))}
-        <table class="data-table">
-          ${Object.entries(popData.age_distribution?.percentages || {}).map(([label, value]) => `<tr><td>${esc(label)}</td><td>${esc(value)}%</td></tr>`).join('')}
-        </table>
+        ${barChartHTML(popData.age_distribution?.percentages || {})}
         <div class="section-kicker" style="margin-top:30px;">${t('income', lang)}</div>
-        <table class="data-table">
-          ${Object.entries(popData.income_distribution?.percentages || {}).map(([label, value]) => `<tr><td>${esc(label)}</td><td>${esc(value)}%</td></tr>`).join('')}
-        </table>
+        ${barChartHTML(popData.income_distribution?.percentages || {})}
       `));
     } else if (isOwnerViewing && popError) {
       // Visibile SOLO all'account sviluppatore: dice la causa vera invece di sparire in
@@ -719,13 +815,37 @@
       `));
     }
 
+    // Dati generali del territorio (popolazione/superficie/altitudine) + narrativa
+    // costruita sui numeri — SEMPRE gratis, su OGNI piano incluso Light.
+    const { data: territory, error: territoryError } = await ensureTerritoryFacts(dossier);
+    if (territory) {
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Territory Data', 'Dati del territorio')}
+        <div class="verified-note" style="margin-bottom:20px;">${esc(buildTerritoryNarrative(dossier.property_city, dossier.property_province, territory))}</div>
+        <div class="metric-grid">
+          <div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${territory.population ? Number(territory.population).toLocaleString('it-IT') : '—'}</div></div>
+          <div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${territory.area_kmq ? Number(territory.area_kmq).toLocaleString('it-IT') + ' km²' : '—'}</div></div>
+          <div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m != null ? territory.altitude_m + ' m' : '—'}</div></div>
+        </div>
+      `));
+    } else if (isOwnerViewing && territoryError) {
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Territory Data', 'Dati del territorio')}
+        <div class="verified-note" style="color:#a33;">[Solo account test] Dati territoriali generali non disponibili: ${esc(territoryError)}</div>
+      `));
+    }
+
     // "Analisi di mercato AI" RIMOSSA da Folium (vedi nota su ensureAiValuation più sopra):
     // quel motore serve alle tue ricerche comparative interne, non ai dossier dei clienti.
 
-    // Descrizione editoriale — sempre inclusa per Gold/Platinum (a pagamento, mai Light — o simulata dall'account test)
+    // Descrizione editoriale — INCLUSA SU TUTTI I PIANI (Light incluso, decisione esplicita:
+    // motore economico ~0,09€, rende presentabile anche il dossier gratuito). Per l'account
+    // sviluppatore in test, comunque dietro consenso esplicito (vedi dossier._editorialAllowed).
     // Ogni parte (descrizione, zona, turismo) ha la propria pagina dedicata, paginata
     // se il testo non entra in una pagina sola — mai più tagliata in silenzio.
-    if (dossier.include_editorial_analysis || (isOwnerViewing && tier !== 'light')) {
+    if (dossier.include_editorial_analysis || isOwnerViewing) {
       const { data: editorial, error: editorialError } = await ensureEditorialAnalysis(dossier);
       if (editorial) {
         const MAX_CHARS = 2600;
