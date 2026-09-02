@@ -47,11 +47,10 @@
      "contain" ingrandisce automaticamente i loghi piccoli fino a riempire il box (mai
      tagliati) e gestisce da solo sia loghi quadrati che rettangolari, centrando sempre
      il risultato — nessun rilevamento manuale della forma necessario. */
-  /* Box FISSO (non visibile, solo per l'occhio del logo dentro): il logo si ingrandisce
-     fino a toccare almeno 2 bordi del rettangolo (background-size:cover, non contain) —
-     riempie sempre lo spazio, anche a costo di tagliare leggermente l'altro lato se le
-     proporzioni non coincidono esattamente con quelle del box. */
-  .client-logo{width:230px;height:110px;background-position:center;background-repeat:no-repeat;background-size:cover;}
+  /* Box FISSO 230×110: il logo si ingrandisce fino a toccare almeno 2 bordi opposti del
+     rettangolo (background-size:contain) SENZA MAI tagliare — è la proprietà giusta:
+     "cover" avrebbe riempito tutti e 4 i bordi ma tagliando l'eccedenza, non richiesto. */
+  .client-logo{width:230px;height:110px;background-position:center;background-repeat:no-repeat;background-size:contain;}
   .brand-mark{font-size:10px;letter-spacing:.20em;color:var(--gold4);text-transform:uppercase;}
 
   /* ---- Footer editoriale (page-folio), identico nome/stile al report reale ---- */
@@ -279,8 +278,9 @@
   // Costruisce la pagina Sommario (stessa struttura del riferimento Immonova: kicker
   // "Contents", titolo "Sommario", elenco titolo+numero pagina) con i numeri REALI,
   // calcolati dopo aver assemblato l'ordine finale delle pagine incluse le pubblicità.
-  function buildTocPage(entries){
+  function buildTocPage(entries, header){
     return pageWrapper(`
+      ${header}
       ${sectionHead('Contents', 'Sommario')}
       <div class="toc-list">
         ${entries.map(e => `<div class="toc-row"><span>${esc(e.label)}</span><strong>${e.page}</strong></div>`).join('')}
@@ -1001,7 +1001,7 @@
         const m = html.match(/data-chapter="([^"]*)"/);
         if (m) tocEntries.push({ label: m[1].replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>'), page: idx + 2 });
       });
-      const withToc = [finalPages[0], buildTocPage(tocEntries), ...finalPages.slice(1)];
+      const withToc = [finalPages[0], buildTocPage(tocEntries, header), ...finalPages.slice(1)];
       const sponsorFooterText = sponsorNames.length ? `  ·  Con il supporto di: ${sponsorNames.join(', ')}` : '';
       el.innerHTML = numberPages(withToc).map(html => html.replaceAll('{{SPONSORS}}', esc(sponsorFooterText))).join('');
     } else {
@@ -1010,7 +1010,7 @@
         const m = html.match(/data-chapter="([^"]*)"/);
         if (m) tocEntries.push({ label: m[1].replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>'), page: idx + 2 });
       });
-      const withToc = [pages[0], buildTocPage(tocEntries), ...pages.slice(1)];
+      const withToc = [pages[0], buildTocPage(tocEntries, header), ...pages.slice(1)];
       el.innerHTML = numberPages(withToc).map(html => html.replaceAll('{{SPONSORS}}', '')).join('');
     }
     loadLocationMapImage(); // no-op se non c'è un <img id="locationMapImg"> (Light o senza coordinate)
