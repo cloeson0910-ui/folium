@@ -832,10 +832,11 @@
         ${sectionHead('Territory Data', 'Dati del territorio')}
         <div class="verified-note" style="margin-bottom:20px;">${esc(buildTerritoryNarrative(dossier.property_city, dossier.property_province, territory))}</div>
         <div class="metric-grid">
-          <div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${territory.population ? Number(territory.population).toLocaleString('it-IT') : '—'}</div></div>
-          <div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${territory.area_kmq ? Number(territory.area_kmq).toLocaleString('it-IT') + ' km²' : '—'}</div></div>
-          <div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m != null ? territory.altitude_m + ' m' : '—'}</div></div>
+          ${territory.population ? `<div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${Number(territory.population).toLocaleString('it-IT')}</div></div>` : ''}
+          ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
+          ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
         </div>
+        ${isOwnerViewing && (!territory.area_kmq || territory.altitude_m == null) ? `<div class="verified-note" style="color:#a33;margin-top:16px;">[Solo account test] Superficie e/o altitudine non trovate nella risposta di Cruscotto Italia — i nomi dei campi usati nel codice per questi due dati sono un'ipotesi non ancora verificata contro una risposta reale. Serve un esempio concreto della risposta di comune_dashboard per correggerli.</div>` : ''}
       `));
     } else if (isOwnerViewing && territoryError) {
       pages.push(pageWrapper(`
@@ -956,7 +957,13 @@
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token || SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
         body: JSON.stringify({ dossier_id: dossierId })
       });
-      const result = await resp.json();
+      // Se la function non è ancora deployata, Supabase risponde con un errore HTML/testo,
+      // non JSON — .json() falliva silenziosamente e mostrava "Errore sconosciuto" a prescindere
+      // dalla vera causa. Ora leggiamo il testo grezzo e proviamo il parsing solo dopo.
+      const rawText = await resp.text();
+      let result;
+      try { result = JSON.parse(rawText); }
+      catch { throw new Error(`La function non ha risposto in JSON (HTTP ${resp.status}). Probabile causa: folium-generate-pdf non è ancora stata deployata su Supabase, o BROWSERLESS_API_KEY non è configurata. Risposta grezza: ${rawText.slice(0, 200)}`); }
       if (!result.success) throw new Error(result.message || 'Errore sconosciuto durante la generazione del PDF.');
       window.open(result.pdf_url, '_blank');
     } catch (e) {

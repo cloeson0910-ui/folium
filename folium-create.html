@@ -831,6 +831,12 @@
         // Le lingue: se Gold/Platinum sono gratis, le scrivo subito qui; se Light
         // restano da scrivere SOLO dopo il pagamento (lo fa il webhook Stripe più sotto).
         if (currentTier !== 'light') dossierFields.translated_languages = selectedLanguages;
+        // BUG REALE trovato: in modifica non venivano mai riscritti questi due flag,
+        // restavano bloccati al valore della primissima creazione del dossier — un
+        // dossier creato prima di oggi restava per sempre senza narrativa anche
+        // rimodificandolo. Ora si aggiornano ad ogni salvataggio, coerenti col piano attuale.
+        dossierFields.include_editorial_analysis = true; // narrativa: inclusa su ogni piano
+        dossierFields.include_discovery = fullFeatures; // Discovery Engine: resta solo Gold/Platinum (costoso)
         const { data: updated, error: updateError } = await sb.from('folium_dossiers')
           .update(dossierFields).eq('id', editDossierId).select().single();
         if (updateError) throw updateError;
