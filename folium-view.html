@@ -81,6 +81,9 @@
   .verified-note{font-size:14.5px;line-height:1.9;white-space:pre-wrap;color:#5c4a20;border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:26px 28px;min-height:70px;}
   /* ---- Posizione e mappa ---- */
   .location-layout{display:grid;grid-template-columns:.85fr 1.3fr;gap:24px;margin-top:8px;}
+  .toc-list{margin-top:10px}
+  .toc-row{display:flex;justify-content:space-between;gap:18px;border-bottom:1px solid rgba(166,127,52,.14);padding:14px 0;font-size:15px;color:#735f36;letter-spacing:.03em}
+  .toc-row strong{color:var(--gold4);font-weight:600}
   .addr-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(166,127,52,.12);padding:9px 0;font-size:12.5px;color:var(--gold4);}
   .addr-row strong{color:var(--gold4);min-width:100px;text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;}
   .map-frame{width:100%;height:340px;border:1px solid rgba(166,127,52,.2);display:block;object-fit:cover;}
@@ -245,7 +248,7 @@
     <path d="M64 58 H92 M64 58 V112 M64 82 H86" fill="none" stroke="#a77d31" stroke-width="4" stroke-linecap="round"/>
   </svg>`;
 
-  function pageWrapper(inner, isAd, isCover){
+  function pageWrapper(inner, isAd, isCover, chapterLabel){
     if (isCover) return `<div class="page cover">${inner}</div>`;
     const logo = currentShowFoliumBrand
       ? `<span class="page-footer-logo">${FOLIUM_ICON_SVG}</span>`
@@ -255,7 +258,23 @@
     // il nome dell'inserzionista resta visibile anche se il cliente stampa/tiene solo alcune
     // pagine e scarta quelle pubblicitarie. Vuoto (rimosso) se non ci sono sponsor.
     const footer = `<div class="page-folio"><span>${esc(currentFooterText)}{{SPONSORS}}</span><span style="display:flex;align-items:center;">{{PAGENUM}} / {{TOTALPAGES}}${logo}</span></div>`;
-    return `<div class="page ${isAd ? 'ad-page' : 'pattern'}"><div class="page-inner">${inner}</div>${footer}</div>`;
+    // chapterLabel: solo sulla PRIMA pagina di ogni sezione (mai sulle continuazioni
+    // "(2/3)" o sulle foto successive alla prima) — usato per costruire il sommario con
+    // i numeri di pagina reali, calcolati dopo l'inserimento delle pubblicità.
+    const chapterAttr = chapterLabel ? ` data-chapter="${esc(chapterLabel)}"` : '';
+    return `<div class="page ${isAd ? 'ad-page' : 'pattern'}"${chapterAttr}><div class="page-inner">${inner}</div>${footer}</div>`;
+  }
+
+  // Costruisce la pagina Sommario (stessa struttura del riferimento Immonova: kicker
+  // "Contents", titolo "Sommario", elenco titolo+numero pagina) con i numeri REALI,
+  // calcolati dopo aver assemblato l'ordine finale delle pagine incluse le pubblicità.
+  function buildTocPage(entries){
+    return pageWrapper(`
+      ${sectionHead('Contents', 'Sommario')}
+      <div class="toc-list">
+        ${entries.map(e => `<div class="toc-row"><span>${esc(e.label)}</span><strong>${e.page}</strong></div>`).join('')}
+      </div>
+    `);
   }
 
   // Etichetta di sezione in 3 pezzi (kicker piccolo + titolo grande + riga oro),
@@ -701,7 +720,7 @@
         <b>${esc(client?.company_name || client?.full_name)}</b><br>
         ${esc(client?.contact_email)} · ${esc(client?.contact_phone)}
       </div>
-    `));
+    `, false, false, "Sintesi dell'immobile"));
 
     // Posizione e mappa — indirizzo sempre mostrato (dato gratuito, nessuna chiamata
     // esterna). La mappa invece: Light usa SOLO OpenStreetMap (iframe embed gratuito,
@@ -738,7 +757,7 @@
           </div>
           ${mapHTML}
         </div>
-      `));
+      `, false, false, 'Posizione e localizzazione'));
     }
 
     // ---- CAPITOLO "TERRITORIO & MERCATO" (ordine sommario, stesso principio del
@@ -764,7 +783,7 @@
               ${header}
               ${sectionHead(kicker, parts.length > 1 ? `${title} (${idx + 1}/${parts.length})` : title)}
               <div class="verified-note">${esc(part)}</div>
-            `));
+            `, false, false, idx === 0 ? title : null));
           });
         };
         addTextPages('Editorial Overview', 'Presentazione della proposta', editorial.full_description || editorial.short_description || '');
@@ -790,7 +809,7 @@
             ${header}
             ${sectionHead('Location Intelligence', territoryParts.length > 1 ? `${t('territory', lang)} (${idx + 1}/${territoryParts.length})` : t('territory', lang))}
             <div class="verified-note">${esc(part)}</div>
-          `));
+          `, false, false, idx === 0 ? t('territory', lang) : null));
         });
       } else if (isOwnerViewing) {
         // Visibile SOLO all'account sviluppatore: dice perché manca invece di sparire.
@@ -815,7 +834,7 @@
           ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
           ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
         </div>
-      `));
+      `, false, false, 'Dati del territorio'));
     } else if (isOwnerViewing && territoryError) {
       pages.push(pageWrapper(`
         ${header}
@@ -833,7 +852,7 @@
         ${barChartHTML(popData.age_distribution?.percentages || {})}
         <div class="section-kicker" style="margin-top:30px;">${t('income', lang)}</div>
         ${barChartHTML(popData.income_distribution?.percentages || {})}
-      `));
+      `, false, false, t('population', lang)));
     } else if (isOwnerViewing && popError) {
       // Visibile SOLO all'account sviluppatore: dice la causa vera invece di sparire in
       // silenzio, così il test dice esattamente cosa non va (es. comune non riconosciuto).
@@ -860,7 +879,7 @@
           <div class="gallery-photo-grid">
             ${pair.map(p => `<div class="gallery-photo-cell" style="background-image:url('${esc(p.photo_url)}');"></div>`).join('')}
           </div>
-        `));
+        `, false, false, idx === 0 ? t('photos', lang) : null));
       });
     }
 
@@ -879,7 +898,7 @@
             </div>
           `).join('')}
         </div>
-      `));
+      `, false, false, 'Caratteristiche e annessi'));
     } else if (tier === 'light' && dossier.amenities_description) {
       // Il cliente Light scrive un testo libero separato da virgole: ogni pezzo
       // diventa un box a sé, coerente con lo stile a pittogrammi di Gold/Platinum
@@ -891,7 +910,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px;">
           ${items.map(item => `<div class="verified-note" style="padding:16px 18px;font-size:13.5px;">${esc(item)}</div>`).join('')}
         </div>
-      `));
+      `, false, false, 'Caratteristiche e annessi'));
     }
 
     // Pagina dati verificati
@@ -900,7 +919,7 @@
       ${header}
       ${sectionHead('Verified Data', t('verified', lang))}
       <div class="verified-note">${esc(verifiedText)}</div>
-    `));
+    `, false, false, t('verified', lang)));
 
     // Pagine foto destinazione (facoltative) — stessa regola: 1 foto per pagina, mai deformata
     if (destPhotos.length) {
@@ -911,7 +930,7 @@
           <div class="gallery-photo-grid">
             ${pair.map(p => `<div class="gallery-photo-cell" style="background-image:url('${esc(p.photo_url)}');"></div>`).join('')}
           </div>
-        `));
+        `, false, false, idx === 0 ? t('destination', lang) : null));
       });
     }
 
@@ -926,7 +945,7 @@
         <div class="metric-card"><div class="metric-label">Telefono</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_phone || '—')}</div></div>
         <div class="metric-card"><div class="metric-label">Indirizzo immobile di riferimento</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_address || '—')}</div></div>
       </div>
-    `));
+    `, false, false, 'Riepilogo agenzia'));
 
 
     // Inserimento pagine pubblicitarie tra una sezione e l'altra (Light e Gold)
@@ -956,10 +975,28 @@
           }
         }
       }
+      // Sommario (stessa struttura del riferimento Immonova): SEMPRE inserito subito dopo
+      // la copertina, PRIMA di ogni pubblicità — mai attraverso il ciclo di inserimento ads
+      // sopra, così è garantito che non ci sia mai un annuncio tra copertina e sommario.
+      // I numeri sono quelli VERI, calcolati ora che l'ordine finale (con le pubblicità
+      // intercalate) è già definitivo — indice k nell'array (0-based, cover=indice 0) →
+      // pagina finale k+2 una volta inserito il sommario in posizione 2.
+      const tocEntries = [];
+      finalPages.forEach((html, idx) => {
+        const m = html.match(/data-chapter="([^"]*)"/);
+        if (m) tocEntries.push({ label: m[1].replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>'), page: idx + 2 });
+      });
+      const withToc = [finalPages[0], buildTocPage(tocEntries), ...finalPages.slice(1)];
       const sponsorFooterText = sponsorNames.length ? `  ·  Con il supporto di: ${sponsorNames.join(', ')}` : '';
-      el.innerHTML = numberPages(finalPages).map(html => html.replaceAll('{{SPONSORS}}', esc(sponsorFooterText))).join('');
+      el.innerHTML = numberPages(withToc).map(html => html.replaceAll('{{SPONSORS}}', esc(sponsorFooterText))).join('');
     } else {
-      el.innerHTML = numberPages(pages).map(html => html.replaceAll('{{SPONSORS}}', '')).join('');
+      const tocEntries = [];
+      pages.forEach((html, idx) => {
+        const m = html.match(/data-chapter="([^"]*)"/);
+        if (m) tocEntries.push({ label: m[1].replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>'), page: idx + 2 });
+      });
+      const withToc = [pages[0], buildTocPage(tocEntries), ...pages.slice(1)];
+      el.innerHTML = numberPages(withToc).map(html => html.replaceAll('{{SPONSORS}}', '')).join('');
     }
     loadLocationMapImage(); // no-op se non c'è un <img id="locationMapImg"> (Light o senza coordinate)
   }
