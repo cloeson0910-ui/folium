@@ -134,7 +134,7 @@
   <div style="display:flex;gap:10px;">
     <button id="adminBtnView" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="location.href='folium-admin.html'">Dashboard admin</button>
     <button id="editBtn" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="goToEdit()">Modifica dossier</button>
-    <button id="pdfBtn" onclick="generateServerPdf()" style="display:none;">Genera PDF</button>
+    <button id="pdfBtn" onclick="generateServerPdf()" style="display:none;">Scarica PDF</button>
     <button id="printBtn" onclick="window.print()" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);">Stampa dal browser</button>
   </div>
 </div>
@@ -159,6 +159,8 @@
 <div id="content" class="loading">Caricamento dossier…</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_ToGgNAX4tIn6O7gb6hMa4A_kRi1yztz";
@@ -197,6 +199,7 @@
   let currentShowFoliumBrand = false;
   let currentFooterText = 'FOLIUM'; // impostato in render() con l'indirizzo dell'immobile
   let currentSimulatedTier = 'light'; // DEFAULT SICURO: mai Platinum di default, altrimenti ogni apertura/refresh della pagina da parte tua richiama motori a pagamento senza che tu l'abbia scelto — causa reale della spesa imprevista. Vanno selezionati esplicitamente.
+  let currentPageOrientation = 'portrait'; // aggiornato in render(), usato dalla generazione PDF client-side
   // Anche scegliendo Gold/Platinum per test, i motori A PAGAMENTO (Discovery,
   // AI valuation, analyze-opportunity) NON partono più in automatico ad ogni
   // render/refresh: serve un consenso esplicito con questo pulsante, che resta
@@ -332,62 +335,51 @@
     } catch (e) { console.error('Log chiamata motore fallito:', e); }
   }
 
-  // Dati generali del comune (popolazione totale, superficie, altitudine) — chiamata
-  // DIRETTA e pubblica a Cruscotto Italia (AgID), lo stesso endpoint gratuito usato
-  // dentro immonova-demographics-engine, ma qui invocata da Folium stessa: nessuna
-  // chiave, nessun costo, disponibile su OGNI piano incluso Light ("solo servizi
-  // gratuiti"). Non passa da Immonova, quindi non consuma nessuna delle sue chiamate.
-  const CRUSCOTTO_MCP_URL = "https://cruscotto-italia-mcp.agid.workers.dev/mcp";
-  async function callCruscottoTool(toolName, args){
-    try {
-      const resp = await fetch(CRUSCOTTO_MCP_URL, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: { name: toolName, arguments: args } })
-      });
-      if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}` };
-      const json = await resp.json();
-      if (json.error) return { ok: false, error: json.error.message || JSON.stringify(json.error) };
-      const rawText = json.result?.content?.[0]?.text;
-      if (!rawText) return { ok: false, error: 'Risposta vuota' };
-      let parsed; try { parsed = JSON.parse(rawText); } catch { parsed = rawText; }
-      return { ok: true, data: parsed };
-    } catch (e) { return { ok: false, error: e.message || String(e) }; }
-  }
+  // Dati generali del comune (popolazione/superficie/altitudine/vocazione territoriale) —
+  // motore Immonova REALE (immonova-location-profile), chiamato COSÌ COM'È, nessuna modifica
+  // al motore stesso. A PAGAMENTO (GeoNames gratis per popolazione/altitudine, ma la ricerca
+  // OpenAI per la superficie parte comunque) — decisione esplicita: incluso anche su Light,
+  // stesso principio della narrativa editoriale. Per l'account sviluppatore in test resta
+  // dietro il consenso esplicito (dossier._editorialAllowed, stesso già usato per la narrativa).
   async function ensureTerritoryFacts(dossier){
     if (dossier.territory_facts) return { data: dossier.territory_facts, error: null };
     if (!dossier.property_city) return { data: null, error: null };
+    if (!dossier._editorialAllowed) return { data: null, error: null }; // solo consenso mancante per l'account test, non un errore
     try {
-      const search = await callCruscottoTool('search_comune', { query: dossier.property_city });
-      if (!search.ok) return { data: null, error: search.error };
-      const candidates = Array.isArray(search.data) ? search.data : (search.data?.results || search.data?.comuni || []);
-      if (!candidates.length) return { data: null, error: 'Comune non trovato su Cruscotto Italia.' };
-      let match = candidates[0];
-      if (candidates.length > 1 && dossier.property_province) {
-        const byProv = candidates.find(c => String(c.provincia || c.province || c.sigla_provincia || '').toLowerCase().includes(String(dossier.property_province).toLowerCase()));
-        if (byProv) match = byProv;
-      }
-      const istatCode = match.istat_code || match.codice_istat || match.code;
-      const dash = await callCruscottoTool('comune_dashboard', { istat_code: istatCode });
-      if (!dash.ok) return { data: null, error: dash.error };
-      const d = dash.data || {};
+      const data = await callImmonovaFunction('immonova-location-profile', {
+        municipality: dossier.property_city,
+        province: dossier.property_province,
+        region: dossier.property_region,
+        country: 'Italia',
+        address: dossier.property_address,
+        postal_code: dossier.property_postal_code,
+        latitude: dossier.property_lat,
+        longitude: dossier.property_lng
+      });
+      await logEngineCall('immonova-location-profile', dossier, !!data?.profile);
+      if (!data?.profile) return { data: null, error: data?.error || 'Il motore ha risposto senza un profilo territoriale valido.' };
+      const p = data.profile;
       const facts = {
-        population: d.demografia?.popolazione_totale ?? match.popolazione ?? null,
-        area_kmq: d.comune?.superficie_kmq ?? match.superficie_kmq ?? match.area_kmq ?? null,
-        altitude_m: d.comune?.altitudine_m ?? match.altitudine ?? match.altitudine_m ?? null,
-        density: null
+        population: p.population ?? null,
+        area_kmq: p.surface_kmq ?? null,
+        altitude_m: p.altitude_m ?? null,
+        density: p.density_per_kmq ?? null,
+        territorial_vocation: p.territorial_vocation || null,
+        narrative_ai: p.narrative || null // narrativa vera del motore, se disponibile — usata al posto del template se presente
       };
-      if (facts.population && facts.area_kmq) facts.density = Math.round(facts.population / facts.area_kmq);
-      if (!facts.population && !facts.area_kmq && !facts.altitude_m) return { data: null, error: 'Cruscotto Italia non ha restituito dati generali per questo comune.' };
+      if (!facts.population && !facts.area_kmq && !facts.altitude_m) return { data: null, error: 'immonova-location-profile non ha restituito nessun dato per questo comune.' };
       await sb.from('folium_dossiers').update({ territory_facts: facts }).eq('id', dossier.id);
       return { data: facts, error: null };
     } catch (e) {
+      console.error('Motore profilo territoriale non disponibile:', e);
+      await logEngineCall('immonova-location-profile', dossier, false);
       return { data: null, error: e.message || String(e) };
     }
   }
-  // Narrativa breve costruita a partire dai numeri reali sopra — non generata da AI
-  // (nessun costo), solo un template con i valori inseriti: risponde alla richiesta
-  // di "un minimo di narrativa" anche sul piano gratuito Light.
+  // Narrativa breve costruita a partire dai numeri reali sopra — usata come RISERVA quando
+  // il motore non fornisce una sua narrativa (facts.narrative_ai), altrimenti si usa quella.
   function buildTerritoryNarrative(city, province, facts){
+    if (facts.narrative_ai) return facts.narrative_ai;
     const parts = [];
     parts.push(`${city}${province ? ' (' + province + ')' : ''} si trova in Puglia.`);
     if (facts.population) parts.push(`Conta una popolazione di circa ${Number(facts.population).toLocaleString('it-IT')} abitanti.`);
@@ -617,6 +609,7 @@
     const { data: photos } = await sb.from('folium_dossier_photos').select('*').eq('dossier_id', dossierId).order('sort_order');
 
     applyTheme(dossier);
+    currentPageOrientation = dossier.page_orientation === 'landscape' ? 'landscape' : 'portrait'; // letto qui per la generazione PDF client-side (jsPDF), stesso valore usato da applyTheme
     renderLanguageSwitcher(dossier, lang);
     const translated = await ensureDynamicTranslation(dossier, lang);
 
@@ -823,8 +816,8 @@
       `));
     }
 
-    // Dati generali del territorio (popolazione/superficie/altitudine) + narrativa
-    // costruita sui numeri — SEMPRE gratis, su OGNI piano incluso Light.
+    // Dati generali del territorio (popolazione/superficie/altitudine + vocazione territoriale)
+    // — motore Immonova reale (immonova-location-profile), A PAGAMENTO, incluso su ogni piano.
     const { data: territory, error: territoryError } = await ensureTerritoryFacts(dossier);
     if (territory) {
       pages.push(pageWrapper(`
@@ -836,7 +829,6 @@
           ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
           ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
         </div>
-        ${isOwnerViewing && (!territory.area_kmq || territory.altitude_m == null) ? `<div class="verified-note" style="color:#a33;margin-top:16px;">[Solo account test] Superficie e/o altitudine non trovate nella risposta di Cruscotto Italia — i nomi dei campi usati nel codice per questi due dati sono un'ipotesi non ancora verificata contro una risposta reale. Serve un esempio concreto della risposta di comune_dashboard per correggerli.</div>` : ''}
       `));
     } else if (isOwnerViewing && territoryError) {
       pages.push(pageWrapper(`
@@ -945,27 +937,63 @@
   // del browser: una sola chiamata, output identico su ogni dispositivo — pensata per
   // essere usata anche da un agente/assistente che lavora in autonomia, non solo da un
   // umano davanti al dialogo di stampa.
+  // Genera il PDF DIRETTAMENTE NEL BROWSER, stessa identica tecnica già in produzione su
+  // Immonova (report-view.html → generateDossierPdfBlob): html2canvas cattura ogni pagina
+  // come immagine, jsPDF le assembla in un vero PDF con dimensioni fisse in mm. Aggira
+  // COMPLETAMENTE il motore di stampa del browser (nessuna dipendenza da margini/scala/
+  // impostazioni di Chrome o Safari — infatti su Immonova è identico su entrambi). Nessun
+  // servizio esterno da configurare, nessun costo, funziona subito.
+  async function renderDossierPageToCanvas(pageEl){
+    try {
+      return await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    } catch (err) {
+      // bug noto di html2canvas 1.4.1 (Range.setEnd) — stesso fallback già in uso su Immonova
+      const isRangeBug = err && /setEnd|Range/i.test(String(err.message || err));
+      if (!isRangeBug) throw err;
+      return await html2canvas(pageEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff', foreignObjectRendering: true });
+    }
+  }
+  function waitForImagesToLoad(root, timeoutMs){
+    timeoutMs = timeoutMs || 8000;
+    const imgs = Array.prototype.slice.call((root || document).querySelectorAll('img'));
+    return Promise.all(imgs.map(img => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      return new Promise(resolve => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        img.addEventListener('load', finish, { once: true });
+        img.addEventListener('error', finish, { once: true });
+        setTimeout(finish, timeoutMs);
+      });
+    }));
+  }
+  async function generateDossierPdfBlob(){
+    await waitForImagesToLoad(document.getElementById('content'), 8000);
+    const pages = Array.prototype.slice.call(document.querySelectorAll('#content .page'));
+    if (!pages.length) throw new Error('Nessuna pagina del dossier trovata da esportare.');
+    const landscape = currentPageOrientation === 'landscape';
+    const [w, h] = landscape ? [297, 210] : [210, 297]; // mm, coerente con l'orientamento scelto dal cliente
+    const pdf = new window.jspdf.jsPDF({ orientation: landscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await renderDossierPageToCanvas(pages[i]);
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, w, h);
+    }
+    return pdf.output('blob');
+  }
+
   async function generateServerPdf(){
     const btn = document.getElementById('pdfBtn');
     const original = btn.textContent;
     btn.disabled = true; btn.textContent = 'Generazione PDF in corso…';
     try {
-      const { data: sessionData } = await sb.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/folium-generate-pdf`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token || SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
-        body: JSON.stringify({ dossier_id: dossierId })
-      });
-      // Se la function non è ancora deployata, Supabase risponde con un errore HTML/testo,
-      // non JSON — .json() falliva silenziosamente e mostrava "Errore sconosciuto" a prescindere
-      // dalla vera causa. Ora leggiamo il testo grezzo e proviamo il parsing solo dopo.
-      const rawText = await resp.text();
-      let result;
-      try { result = JSON.parse(rawText); }
-      catch { throw new Error(`La function non ha risposto in JSON (HTTP ${resp.status}). Probabile causa: folium-generate-pdf non è ancora stata deployata su Supabase, o BROWSERLESS_API_KEY non è configurata. Risposta grezza: ${rawText.slice(0, 200)}`); }
-      if (!result.success) throw new Error(result.message || 'Errore sconosciuto durante la generazione del PDF.');
-      window.open(result.pdf_url, '_blank');
+      const blob = await generateDossierPdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `Folium - ${currentFooterText.replace('FOLIUM · ', '') || 'dossier'}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (e) {
       alert('Generazione PDF non riuscita: ' + (e.message || e) + '\n\nPuoi comunque usare "Stampa dal browser" nel frattempo.');
     } finally {
