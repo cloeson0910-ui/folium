@@ -525,12 +525,33 @@
     try {
       const url = `${IMMONOVA_URL}/functions/v1/static-map-proxy?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&zoom=15&size=1200x700&scale=2`;
       const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${IMMONOVA_ANON_KEY}`, 'apikey': IMMONOVA_ANON_KEY } });
-      if (!resp.ok) { console.warn('Mappa posizione non caricata:', resp.status, await resp.text()); return; }
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.warn('Mappa posizione non caricata:', resp.status, errText);
+        showMapError(img, `HTTP ${resp.status}: ${errText.slice(0, 200)}`);
+        return;
+      }
       const blob = await resp.blob();
       img.src = URL.createObjectURL(blob);
     } catch (e) {
       console.warn('Mappa posizione: errore fetch', e);
+      showMapError(img, e.message || String(e));
     }
+  }
+  // Stesso pattern di errore visibile usato per demografia/discovery/territorio/editoriale:
+  // prima un fallimento qui spariva in silenzio (solo console.warn), lasciando un riquadro
+  // vuoto senza nessuna spiegazione — visibile SOLO all'account sviluppatore.
+  function showMapError(img, message){
+    if (!isOwnerViewing) return;
+    const box = img.parentElement;
+    if (!box) return;
+    img.style.display = 'none';
+    const note = document.createElement('div');
+    note.className = 'verified-note';
+    note.style.color = '#a33';
+    note.style.gridColumn = '2';
+    note.textContent = `[Solo account test] Mappa non caricata: ${message}`;
+    box.appendChild(note);
   }
 
   async function pickAdPage(tenantId, preferredSlot, excludeIds){
@@ -1013,7 +1034,7 @@
       const withToc = [pages[0], buildTocPage(tocEntries, header), ...pages.slice(1)];
       el.innerHTML = numberPages(withToc).map(html => html.replaceAll('{{SPONSORS}}', '')).join('');
     }
-    loadLocationMapImage(); // no-op se non c'è un <img id="locationMapImg"> (Light o senza coordinate)
+    await loadLocationMapImage(); // await reale: se non aspetta, il PDF può essere catturato prima che la mappa arrivi, box vuoto anche a fetch riuscito
   }
 
   // Il box del logo cliente ora si ADATTA alla forma reale del logo (quadrato o
