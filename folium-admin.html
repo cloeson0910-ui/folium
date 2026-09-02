@@ -112,14 +112,7 @@
       </div>
 
       <label class="field-label">Posizione</label>
-      <select id="adPosition">
-        <option value="1">Slot 1 — Premium (subito dopo copertina)</option>
-        <option value="2">Slot 2 — Alta visibilità</option>
-        <option value="3">Slot 3 — Alta visibilità</option>
-        <option value="4">Slot 4 — Standard</option>
-        <option value="5">Slot 5 — Standard</option>
-        <option value="6">Slot 6 — Standard</option>
-      </select>
+      <select id="adPosition"></select>
 
       <label class="field-label">Formato</label>
       <select id="adFormat">
@@ -133,6 +126,10 @@
         <option value="semestral">Semestrale (6 mesi) — sconto 10%</option>
         <option value="annual">Annuale (12 mesi) — sconto 20%</option>
       </select>
+
+      <label class="field-label">Data di inizio</label>
+      <input type="date" id="adStartDate">
+      <div id="startDateHint" style="font-size:11px;color:#8a7a52;margin:-6px 0 10px;"></div>
 
       <div class="ad-price-box" id="adPriceBox">Prezzo: —</div>
 
@@ -422,6 +419,79 @@
     return map;
   }
 
+  // Disponibilità calcolata per ogni slot (1-6): prima data utile per una pagina intera e
+  // per una mezza pagina. Popolata da loadAdPositionOptions(), letta da suggestStartDate().
+  let slotAvailability = {};
+  let startDateManuallySet = false; // true appena l'admin tocca il campo data a mano
+
+  function addDaysStr(dateStr, n){
+    const d = new Date(dateStr + 'T00:00:00'); // parse in locale, mai in UTC (stesso bug già corretto altrove)
+    d.setDate(d.getDate() + n);
+    return toLocalDateStr(d);
+  }
+
+  function suggestStartDate(){
+    const slot = Number(document.getElementById('adPosition').value);
+    const format = document.getElementById('adFormat').value;
+    const avail = slotAvailability[slot];
+    if (!avail) return;
+    document.getElementById('adStartDate').value = format === 'full' ? avail.nextFullAvailable : avail.nextHalfAvailable;
+    const hint = document.getElementById('startDateHint');
+    const label = format === 'full' ? avail.nextFullAvailable : avail.nextHalfAvailable;
+    hint.textContent = `Prima data disponibile per questo slot/formato: ${label} (modificabile).`;
+  }
+
+  // Popola il menu "Posizione" con lo stato reale di occupazione di ogni slot — deve essere
+  // visibile PRIMA di scegliere, non scoperto dopo un tentativo di salvataggio fallito.
+  // Ricaricato ogni volta che si apre il pannello (loadAdPages la richiama), così riflette
+  // sempre lo stato attuale, comprese le prenotazioni appena create da un'altra scheda.
+  async function loadAdPositionOptions(){
+    const sel = document.getElementById('adPosition');
+    const currentValue = sel.value; // preserva la scelta se il menu viene ricaricato mentre si sta compilando il form
+    const today = toLocalDateStr(new Date());
+    const { data: rows } = await sb.from('folium_ad_pages')
+      .select('position_slot, ad_format, subscription_end')
+      .eq('tenant_id', TENANT_ID).eq('active', true).gte('subscription_end', today);
+
+    const bySlot = {};
+    (rows || []).forEach(r => (bySlot[r.position_slot] = bySlot[r.position_slot] || []).push(r));
+    const tierLabel = { premium: 'Premium', high: 'Alta visibilità', standard: 'Standard' };
+
+    slotAvailability = {};
+    sel.innerHTML = '';
+    for (let slot = 1; slot <= 6; slot++) {
+      const occ = bySlot[slot] || [];
+      const full = occ.find(r => r.ad_format === 'full');
+      let statusLabel, nextFullAvailable, nextHalfAvailable;
+      if (full) {
+        nextFullAvailable = addDaysStr(full.subscription_end, 1);
+        nextHalfAvailable = addDaysStr(full.subscription_end, 1); // pagina intera occupa tutto lo slot, nessuna metà libera
+        statusLabel = `occupato fino al ${full.subscription_end}`;
+      } else if (occ.length >= 2) {
+        const maxEnd = occ.reduce((m, r) => (r.subscription_end > m ? r.subscription_end : m), occ[0].subscription_end);
+        const minEnd = occ.reduce((m, r) => (r.subscription_end < m ? r.subscription_end : m), occ[0].subscription_end);
+        nextFullAvailable = addDaysStr(maxEnd, 1); // intera libera solo quando ENTRAMBE le metà liberano
+        nextHalfAvailable = addDaysStr(minEnd, 1); // una metà libera appena la prima delle due libera
+        statusLabel = `entrambe le metà occupate fino al ${maxEnd}`;
+      } else if (occ.length === 1) {
+        nextFullAvailable = addDaysStr(occ[0].subscription_end, 1);
+        nextHalfAvailable = today; // l'altra metà è libera subito
+        statusLabel = `1 metà libera ora (l'altra occupata fino al ${occ[0].subscription_end})`;
+      } else {
+        nextFullAvailable = today;
+        nextHalfAvailable = today;
+        statusLabel = 'completamente libero';
+      }
+      slotAvailability[slot] = { nextFullAvailable, nextHalfAvailable };
+      const opt = document.createElement('option');
+      opt.value = slot;
+      opt.textContent = `Slot ${slot} · ${tierLabel[slotTier(slot)]} — ${statusLabel}`;
+      sel.appendChild(opt);
+    }
+    if (currentValue) sel.value = currentValue;
+    if (!startDateManuallySet) suggestStartDate();
+  }
+
   function slotTier(slot){
     slot = Number(slot);
     if (slot === 1) return 'premium';
@@ -454,9 +524,7 @@
   // "Modifica" (editAdPage): AGGIORNA la riga esistente, mantiene la data di inizio originale
   // (ricalcola solo la fine se cambia il periodo) — non sposta mai la campagna nel tempo.
   let renewalImageUrl = null;
-  let renewalStartBase = null;
   let editingAdPageId = null;
-  let editingOriginalStart = null;
 
   function setFormBanner(mode){
     const banner = document.getElementById('renewalBanner');
@@ -468,7 +536,7 @@
       btn.textContent = 'Conferma rinnovo';
     } else if (mode === 'edit') {
       banner.classList.remove('hidden');
-      text.textContent = 'Modifica in corso — la data di inizio originale resta invariata, cambia solo se scegli un periodo diverso.';
+      text.textContent = 'Modifica in corso — puoi cambiare anche la data di inizio.';
       btn.textContent = 'Salva modifiche';
     } else {
       banner.classList.add('hidden');
@@ -478,11 +546,11 @@
 
   function cancelFormMode(){
     renewalImageUrl = null;
-    renewalStartBase = null;
     editingAdPageId = null;
-    editingOriginalStart = null;
     adImageFile = null;
     document.getElementById('adImagePreview').innerHTML = '';
+    startDateManuallySet = false;
+    suggestStartDate();
     setFormBanner('none');
   }
 
@@ -497,9 +565,10 @@
       box.appendChild(img);
     }
   });
-  document.getElementById('adPosition').addEventListener('change', updateAdPriceBox);
-  document.getElementById('adFormat').addEventListener('change', updateAdPriceBox);
+  document.getElementById('adPosition').addEventListener('change', () => { if (!startDateManuallySet) suggestStartDate(); updateAdPriceBox(); });
+  document.getElementById('adFormat').addEventListener('change', () => { if (!startDateManuallySet) suggestStartDate(); updateAdPriceBox(); });
   document.getElementById('adBillingPeriod').addEventListener('change', updateAdPriceBox);
+  document.getElementById('adStartDate').addEventListener('input', () => { startDateManuallySet = true; });
 
   async function createAdPage(){
     const advertiserId = document.getElementById('adAdvertiser').value;
@@ -511,30 +580,15 @@
     const period = document.getElementById('adBillingPeriod').value;
     const price = computeAdPrice(slot, format, period);
 
-    // Date calcolate SUBITO, prima di caricare qualunque immagine: servono per il controllo
-    // di conflitto sotto, e non ha senso far caricare un file all'utente per poi bloccarlo.
-    let startStr, endStr;
-    if (editingAdPageId) {
-      const start = new Date(editingOriginalStart);
-      const end = new Date(start);
-      end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
-      startStr = editingOriginalStart;
-      endStr = toLocalDateStr(end);
-    } else {
-      const today = new Date();
-      let start = today;
-      if (renewalStartBase) {
-        const prevEnd = new Date(renewalStartBase);
-        if (prevEnd > today) {
-          start = new Date(prevEnd);
-          start.setDate(start.getDate() + 1);
-        }
-      }
-      const end = new Date(start);
-      end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
-      startStr = toLocalDateStr(start);
-      endStr = toLocalDateStr(end);
-    }
+    // La data di inizio è SEMPRE quella scelta nel campo (precompilata con la prima data
+    // libera per lo slot/formato scelto, ma modificabile) — vale per creazione, rinnovo E
+    // modifica: l'utente deve poter scegliere e bloccare qualsiasi data libera, non solo oggi.
+    const startStr = document.getElementById('adStartDate').value;
+    if (!startStr) { alert('Seleziona la data di inizio.'); return; }
+    const start = new Date(startStr + 'T00:00:00');
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
+    const endStr = toLocalDateStr(end);
 
     // Controllo conflitto slot/date: BLOCCA sempre, con nomi e date precisi, prima di
     // scrivere qualunque cosa — uno slot "intera pagina" è esclusivo, uno "mezza pagina"
@@ -545,7 +599,7 @@
     const conflicts = findSlotConflicts(existingRows || [], slot, format, startStr, endStr, editingAdPageId);
     if (conflicts.length) {
       const details = conflicts.map(c => `"${c.folium_advertisers?.name || '—'}" (dal ${c.subscription_start} al ${c.subscription_end})`).join('; ');
-      alert(`Impossibile salvare: lo slot ${slot} è già occupato in questo periodo da ${details}. Cambia slot, periodo, oppure disattiva/elimina prima l'inserzione esistente.`);
+      alert(`Impossibile salvare: lo slot ${slot} in queste date è già occupato da ${details}. Scegli un'altra data (guarda il suggerimento sotto il campo data) o un altro slot.`);
       return;
     }
 
@@ -609,9 +663,15 @@
 
     adImageFile = null;
     renewalImageUrl = p.image_url;
-    renewalStartBase = p.subscription_end;
     editingAdPageId = null;
-    editingOriginalStart = null;
+    startDateManuallySet = true;
+    // Suggerisce la data logica di rinnovo: il giorno dopo la fine della vecchia campagna
+    // se non è ancora scaduta (nessun salto/sovrapposizione), altrimenti oggi — ma resta
+    // un campo normale, modificabile come qualunque altra data.
+    const today = toLocalDateStr(new Date());
+    const suggestedStart = p.subscription_end >= today ? addDaysStr(p.subscription_end, 1) : today;
+    document.getElementById('adStartDate').value = suggestedStart;
+    document.getElementById('startDateHint').textContent = `Suggerita in continuità con la campagna precedente (fine: ${p.subscription_end}) — modificabile.`;
     const box = document.getElementById('adImagePreview');
     box.innerHTML = '';
     if (p.image_url) {
@@ -640,9 +700,10 @@
 
     adImageFile = null;
     renewalImageUrl = p.image_url;
-    renewalStartBase = null;
     editingAdPageId = p.id;
-    editingOriginalStart = p.subscription_start;
+    startDateManuallySet = true;
+    document.getElementById('adStartDate').value = p.subscription_start;
+    document.getElementById('startDateHint').textContent = `Data di inizio originale: ${p.subscription_start} — modificabile.`;
     const box = document.getElementById('adImagePreview');
     box.innerHTML = '';
     if (p.image_url) {
@@ -673,6 +734,8 @@
   }
 
   async function loadAdPages(){
+    await loadAdPositionOptions();
+    updateAdPriceBox();
     // Ordinata per scadenza più vicina — così le campagne da rinnovare o da rivendere
     // a un altro inserzionista sono sempre in cima, senza doverle cercare.
     const { data: adPages } = await sb.from('folium_ad_pages')
