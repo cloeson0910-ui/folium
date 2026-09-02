@@ -92,6 +92,9 @@
 
     <div class="section-title">Nuova pagina pubblicitaria</div>
     <div class="card">
+      <div id="renewalBanner" class="hidden" style="background:#fdf6e8;border:1px solid #eee0bd;border-radius:8px;padding:8px 10px;font-size:12px;color:#6b5314;margin-bottom:10px;">
+        Rinnovo precompilato — puoi caricare una nuova immagine oppure lasciare quella riusata. <a href="#" onclick="cancelRenewal();return false;" style="color:#c0392b;">Annulla rinnovo</a>
+      </div>
       <label class="field-label">Inserzionista</label>
       <select id="adAdvertiser"></select>
 
@@ -134,7 +137,7 @@
 
       <button class="btn-sm" onclick="createAdPage()">Attiva pagina pubblicitaria</button>
     </div>
-    <div class="section-title">Pagine pubblicitarie attive</div>
+    <div class="section-title">Scadenze campagne</div>
     <div id="adPagesList"></div>
   </div>
 
@@ -372,12 +375,18 @@
   }
 
   let adImageFile = null;
+  // Stato rinnovo: valorizzati da renewAdPage(), letti/azzerati da createAdPage().
+  // Permettono di riusare l'immagine esistente senza dover ricaricare un file, e di far
+  // partire la nuova campagna senza salto se quella vecchia non è ancora scaduta.
+  let renewalImageUrl = null;
+  let renewalStartBase = null;
 
   document.getElementById('adImageInput').addEventListener('change', (e) => {
     adImageFile = e.target.files[0] || null;
     const box = document.getElementById('adImagePreview');
     box.innerHTML = '';
     if (adImageFile) {
+      renewalImageUrl = null; // una nuova immagine caricata sostituisce quella riusata dal rinnovo
       const img = document.createElement('img');
       img.src = URL.createObjectURL(adImageFile);
       box.appendChild(img);
@@ -390,27 +399,43 @@
   async function createAdPage(){
     const advertiserId = document.getElementById('adAdvertiser').value;
     if (!advertiserId) { alert('Seleziona un inserzionista.'); return; }
-    if (!adImageFile) { alert('Carica l\'immagine della pagina pubblicitaria.'); return; }
+    if (!adImageFile && !renewalImageUrl) { alert('Carica l\'immagine della pagina pubblicitaria.'); return; }
 
     const slot = Number(document.getElementById('adPosition').value);
     const format = document.getElementById('adFormat').value;
     const period = document.getElementById('adBillingPeriod').value;
     const price = computeAdPrice(slot, format, period);
 
-    const ext = adImageFile.name.split('.').pop();
-    const path = `${TENANT_ID}/${advertiserId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-    const { error: uploadError } = await sb.storage.from('folium-ads').upload(path, adImageFile, { upsert: false });
-    if (uploadError) { alert('Errore caricamento immagine: ' + uploadError.message); return; }
-    const { data: urlData } = sb.storage.from('folium-ads').getPublicUrl(path);
+    let finalImageUrl;
+    if (adImageFile) {
+      const ext = adImageFile.name.split('.').pop();
+      const path = `${TENANT_ID}/${advertiserId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+      const { error: uploadError } = await sb.storage.from('folium-ads').upload(path, adImageFile, { upsert: false });
+      if (uploadError) { alert('Errore caricamento immagine: ' + uploadError.message); return; }
+      const { data: urlData } = sb.storage.from('folium-ads').getPublicUrl(path);
+      finalImageUrl = urlData.publicUrl;
+    } else {
+      finalImageUrl = renewalImageUrl; // rinnovo senza nuova immagine: riusa quella della campagna precedente
+    }
 
-    const start = new Date();
+    // Data di inizio: se è un rinnovo e la campagna precedente non è ancora scaduta,
+    // si parte dal giorno dopo la sua fine (nessun salto/sovrapposizione); altrimenti da oggi.
+    const today = new Date();
+    let start = today;
+    if (renewalStartBase) {
+      const prevEnd = new Date(renewalStartBase);
+      if (prevEnd > today) {
+        start = new Date(prevEnd);
+        start.setDate(start.getDate() + 1);
+      }
+    }
     const end = new Date(start);
     end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
 
     const { error } = await sb.from('folium_ad_pages').insert({
       advertiser_id: advertiserId,
       tenant_id: TENANT_ID,
-      image_url: urlData.publicUrl,
+      image_url: finalImageUrl,
       headline: document.getElementById('adHeadline').value.trim() || null,
       subtext: document.getElementById('adSubtext').value.trim() || null,
       cta_text: document.getElementById('adCtaText').value.trim() || null,
@@ -425,6 +450,9 @@
     if (error) { alert('Errore creazione pagina pubblicitaria: ' + error.message); return; }
 
     adImageFile = null;
+    renewalImageUrl = null;
+    renewalStartBase = null;
+    document.getElementById('renewalBanner').classList.add('hidden');
     document.getElementById('adImagePreview').innerHTML = '';
     document.getElementById('adHeadline').value = '';
     document.getElementById('adSubtext').value = '';
@@ -433,32 +461,102 @@
     loadAdPages();
   }
 
+  async function renewAdPage(id){
+    const { data: p } = await sb.from('folium_ad_pages').select('*').eq('id', id).maybeSingle();
+    if (!p) { alert('Pagina pubblicitaria non trovata.'); return; }
+
+    document.getElementById('adAdvertiser').value = p.advertiser_id;
+    document.getElementById('adPosition').value = p.position_slot;
+    document.getElementById('adFormat').value = p.ad_format;
+    document.getElementById('adBillingPeriod').value = p.billing_period;
+    document.getElementById('adHeadline').value = p.headline || '';
+    document.getElementById('adSubtext').value = p.subtext || '';
+    document.getElementById('adCtaText').value = p.cta_text || '';
+    document.getElementById('adCtaUrl').value = p.cta_url || '';
+    updateAdPriceBox();
+
+    adImageFile = null;
+    renewalImageUrl = p.image_url;
+    renewalStartBase = p.subscription_end;
+    const box = document.getElementById('adImagePreview');
+    box.innerHTML = '';
+    if (p.image_url) {
+      const img = document.createElement('img');
+      img.src = p.image_url;
+      box.appendChild(img);
+    }
+
+    document.getElementById('renewalBanner').classList.remove('hidden');
+    document.getElementById('adAdvertiser').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cancelRenewal(){
+    renewalImageUrl = null;
+    renewalStartBase = null;
+    adImageFile = null;
+    document.getElementById('adImagePreview').innerHTML = '';
+    document.getElementById('renewalBanner').classList.add('hidden');
+  }
+
+  async function deleteAdPage(id){
+    if (!confirm('Eliminare definitivamente questa pagina pubblicitaria? Non è reversibile.')) return;
+    const { data: p } = await sb.from('folium_ad_pages').select('image_url').eq('id', id).maybeSingle();
+    const { error } = await sb.from('folium_ad_pages').delete().eq('id', id);
+    if (error) { alert('Errore eliminazione: ' + error.message); return; }
+    // Rimozione best-effort dell'immagine dallo storage: se fallisce, la riga è comunque
+    // già eliminata, non blocca l'utente.
+    if (p?.image_url) {
+      try {
+        const marker = '/folium-ads/';
+        const idx = p.image_url.indexOf(marker);
+        if (idx !== -1) await sb.storage.from('folium-ads').remove([p.image_url.slice(idx + marker.length)]);
+      } catch (e) { /* non bloccante */ }
+    }
+    loadAdPages();
+  }
+
   async function loadAdPages(){
+    // Ordinata per scadenza più vicina — così le campagne da rinnovare o da rivendere
+    // a un altro inserzionista sono sempre in cima, senza doverle cercare.
     const { data: adPages } = await sb.from('folium_ad_pages')
       .select('*, folium_advertisers(name)')
-      .eq('tenant_id', TENANT_ID).order('position_slot', { ascending: true });
+      .eq('tenant_id', TENANT_ID).order('subscription_end', { ascending: true });
     const box = document.getElementById('adPagesList');
     if (!adPages || adPages.length === 0) { box.innerHTML = '<div class="empty">Nessuna pagina pubblicitaria ancora</div>'; return; }
 
-    const today = new Date().toISOString().slice(0, 10);
     const tierLabel = { premium: 'Premium', high: 'Alta visibilità', standard: 'Standard' };
     const periodLabel = { quarterly: 'Trimestrale', semestral: 'Semestrale', annual: 'Annuale' };
+    const today = new Date(); today.setHours(0, 0, 0, 0);
 
-    box.innerHTML = adPages.map(p => {
-      const expired = p.subscription_end < today;
-      return `
-      <div class="card">
-        <h4>${p.folium_advertisers?.name || '—'}</h4>
-        <div class="ad-card-meta">
-          <span class="ad-slot-tag">Slot ${p.position_slot} · ${tierLabel[slotTier(p.position_slot)]}</span>
-          <span class="ad-slot-tag">${p.ad_format === 'full' ? 'Pagina intera' : 'Mezza pagina'}</span>
-          <span class="ad-slot-tag">${periodLabel[p.billing_period]}</span>
-          <span class="ad-slot-tag">${(p.price_paid_cents/100).toFixed(2)}€ pagati</span>
-        </div>
-        <div class="meta" style="margin-top:6px;">Attiva dal ${p.subscription_start} al ${p.subscription_end} ${expired ? '<b style="color:#c0392b;">— SCADUTA</b>' : ''}</div>
-        <button class="btn-sm ${p.active ? 'danger' : ''}" onclick="toggleAdPage('${p.id}', ${p.active})">${p.active ? 'Disattiva' : 'Riattiva'}</button>
-      </div>`;
-    }).join('');
+    box.innerHTML = `<div style="overflow-x:auto;"><table>
+      <thead><tr><th>Inserzionista</th><th>Slot</th><th>Formato</th><th>Periodo</th><th>Scade il</th><th>Stato</th><th>Azioni</th></tr></thead>
+      <tbody>
+        ${adPages.map(p => {
+          const end = new Date(p.subscription_end); end.setHours(0, 0, 0, 0);
+          const daysLeft = Math.round((end - today) / 86400000);
+          let statusHTML, rowStyle = '';
+          if (daysLeft < 0) { statusHTML = `<b style="color:#c0392b;">Scaduta da ${Math.abs(daysLeft)}g</b>`; rowStyle = 'background:#fdf1ef;'; }
+          else if (daysLeft <= 14) { statusHTML = `<b style="color:#b5750a;">Scade tra ${daysLeft}g</b>`; rowStyle = 'background:#fdf6e8;'; }
+          else { statusHTML = `${daysLeft}g rimanenti`; }
+          if (!p.active) statusHTML += ' <span style="color:#aaa;">(disattivata)</span>';
+          return `<tr style="${rowStyle}">
+            <td>${p.folium_advertisers?.name || '—'}</td>
+            <td>${p.position_slot} · ${tierLabel[slotTier(p.position_slot)]}</td>
+            <td>${p.ad_format === 'full' ? 'Intera' : 'Metà'}</td>
+            <td>${periodLabel[p.billing_period]}</td>
+            <td>${p.subscription_end}</td>
+            <td>${statusHTML}</td>
+            <td>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;">
+                <button class="btn-sm" style="padding:5px 9px;font-size:11px;" onclick="renewAdPage('${p.id}')">Rinnova</button>
+                <button class="btn-sm" style="padding:5px 9px;font-size:11px;" onclick="toggleAdPage('${p.id}', ${p.active})">${p.active ? 'Disattiva' : 'Riattiva'}</button>
+                <button class="btn-sm danger" style="padding:5px 9px;font-size:11px;" onclick="deleteAdPage('${p.id}')">Elimina</button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>`;
   }
 
   async function toggleAdPage(id, active){
