@@ -47,7 +47,11 @@
      "contain" ingrandisce automaticamente i loghi piccoli fino a riempire il box (mai
      tagliati) e gestisce da solo sia loghi quadrati che rettangolari, centrando sempre
      il risultato — nessun rilevamento manuale della forma necessario. */
-  .client-logo{width:230px;height:110px;background-position:left center;background-repeat:no-repeat;background-size:contain;}
+  /* Box FISSO (non visibile, solo per l'occhio del logo dentro): il logo si ingrandisce
+     fino a toccare almeno 2 bordi del rettangolo (background-size:cover, non contain) —
+     riempie sempre lo spazio, anche a costo di tagliare leggermente l'altro lato se le
+     proporzioni non coincidono esattamente con quelle del box. */
+  .client-logo{width:230px;height:110px;background-position:center;background-repeat:no-repeat;background-size:cover;}
   .brand-mark{font-size:10px;letter-spacing:.20em;color:var(--gold4);text-transform:uppercase;}
 
   /* ---- Footer editoriale (page-folio), identico nome/stile al report reale ---- */
@@ -1012,6 +1016,14 @@
     loadLocationMapImage(); // no-op se non c'è un <img id="locationMapImg"> (Light o senza coordinate)
   }
 
+  // Il box del logo cliente ora si ADATTA alla forma reale del logo (quadrato o
+  // rettangolare) invece del contrario: prima il box aveva una dimensione fissa e il
+  // logo ci "galleggiava" dentro piccolo con bordo vuoto intorno se le proporzioni non
+  // coincidevano. Ora misuriamo il logo una volta (Image() nascosta), calcoliamo le
+  // dimensioni che riempiono al meglio un riquadro massimo (230×110) mantenendo le
+  // proporzioni originali (mai deformato, mai tagliato), e applichiamo quella misura
+  // esatta a TUTTE le istanze del logo nel dossier (una per pagina) — il rettangolo
+  // ora combacia sempre col logo, niente più bordo vuoto.
   // ---- Lead gate: chi non è il proprietario del dossier (né l'account
   // sviluppatore) deve lasciare nome+email prima di vedere/scaricare il
   // dossier. Il proprietario passa dritto: ha già i suoi dati su Folium.
