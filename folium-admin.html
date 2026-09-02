@@ -391,6 +391,37 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
+  // Rileva conflitti di prenotazione sullo stesso slot: uno slot "intera pagina" è
+  // esclusivo (nessun'altra inserzione, intera o mezza, può sovrapporsi nello stesso
+  // periodo); uno slot "mezza pagina" può ospitare al massimo 2 inserzioni sovrapposte
+  // contemporaneamente (le due metà) — una terza è comunque un conflitto, dato che non
+  // esiste un tracciamento di QUALE metà (sinistra/destra) occupa ciascuna inserzione.
+  // Le pagine disattivate non contano come occupanti dello slot.
+  function findSlotConflicts(rows, slot, format, startStr, endStr, excludeId){
+    const overlapping = rows.filter(r =>
+      r.id !== excludeId &&
+      r.active &&
+      Number(r.position_slot) === Number(slot) &&
+      r.subscription_start <= endStr && r.subscription_end >= startStr
+    );
+    if (overlapping.length === 0) return [];
+    if (format === 'full' || overlapping.some(r => r.ad_format === 'full')) return overlapping;
+    // da qui in poi: sia la nuova inserzione sia tutte quelle sovrapposte sono "mezza pagina"
+    return overlapping.length >= 2 ? overlapping : [];
+  }
+
+  // Marca ogni riga già in conflitto nella tabella scadenze (es. due inserzioni intere
+  // sullo stesso slot già create prima che questo controllo esistesse) — restituisce
+  // Map id -> lista di righe con cui confligge, per un messaggio con nomi e date precisi.
+  function computeExistingConflicts(rows){
+    const map = new Map();
+    rows.filter(r => r.active).forEach(r => {
+      const conflicts = findSlotConflicts(rows, r.position_slot, r.ad_format, r.subscription_start, r.subscription_end, r.id);
+      if (conflicts.length) map.set(r.id, conflicts);
+    });
+    return map;
+  }
+
   function slotTier(slot){
     slot = Number(slot);
     if (slot === 1) return 'premium';
@@ -480,6 +511,44 @@
     const period = document.getElementById('adBillingPeriod').value;
     const price = computeAdPrice(slot, format, period);
 
+    // Date calcolate SUBITO, prima di caricare qualunque immagine: servono per il controllo
+    // di conflitto sotto, e non ha senso far caricare un file all'utente per poi bloccarlo.
+    let startStr, endStr;
+    if (editingAdPageId) {
+      const start = new Date(editingOriginalStart);
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
+      startStr = editingOriginalStart;
+      endStr = toLocalDateStr(end);
+    } else {
+      const today = new Date();
+      let start = today;
+      if (renewalStartBase) {
+        const prevEnd = new Date(renewalStartBase);
+        if (prevEnd > today) {
+          start = new Date(prevEnd);
+          start.setDate(start.getDate() + 1);
+        }
+      }
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
+      startStr = toLocalDateStr(start);
+      endStr = toLocalDateStr(end);
+    }
+
+    // Controllo conflitto slot/date: BLOCCA sempre, con nomi e date precisi, prima di
+    // scrivere qualunque cosa — uno slot "intera pagina" è esclusivo, uno "mezza pagina"
+    // ospita al massimo 2 inserzioni sovrapposte.
+    const { data: existingRows } = await sb.from('folium_ad_pages')
+      .select('id, position_slot, ad_format, subscription_start, subscription_end, active, folium_advertisers(name)')
+      .eq('tenant_id', TENANT_ID);
+    const conflicts = findSlotConflicts(existingRows || [], slot, format, startStr, endStr, editingAdPageId);
+    if (conflicts.length) {
+      const details = conflicts.map(c => `"${c.folium_advertisers?.name || '—'}" (dal ${c.subscription_start} al ${c.subscription_end})`).join('; ');
+      alert(`Impossibile salvare: lo slot ${slot} è già occupato in questo periodo da ${details}. Cambia slot, periodo, oppure disattiva/elimina prima l'inserzione esistente.`);
+      return;
+    }
+
     let finalImageUrl;
     if (adImageFile) {
       const ext = adImageFile.name.split('.').pop();
@@ -502,36 +571,16 @@
       position_slot: slot,
       ad_format: format,
       billing_period: period,
-      price_paid_cents: Math.round(price.net * 100)
+      price_paid_cents: Math.round(price.net * 100),
+      subscription_start: startStr,
+      subscription_end: endStr
     };
 
     if (editingAdPageId) {
-      // Modifica: la data di inizio originale non si tocca mai, si ricalcola solo la fine
-      // in base al periodo scelto ora — non è un rinnovo, non sposta la campagna nel tempo.
-      const start = new Date(editingOriginalStart);
-      const end = new Date(start);
-      end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
-      payload.subscription_start = editingOriginalStart;
-      payload.subscription_end = toLocalDateStr(end);
       const { error } = await sb.from('folium_ad_pages').update(payload).eq('id', editingAdPageId);
       if (error) { alert('Errore salvataggio modifiche: ' + error.message); return; }
     } else {
-      // Creazione normale o rinnovo: data di inizio da oggi, salvo continuità di un rinnovo
-      // in corso su una campagna precedente non ancora scaduta (nessun salto/sovrapposizione).
-      const today = new Date();
-      let start = today;
-      if (renewalStartBase) {
-        const prevEnd = new Date(renewalStartBase);
-        if (prevEnd > today) {
-          start = new Date(prevEnd);
-          start.setDate(start.getDate() + 1);
-        }
-      }
-      const end = new Date(start);
-      end.setMonth(end.getMonth() + AD_PERIOD_MONTHS[period]);
       payload.tenant_id = TENANT_ID;
-      payload.subscription_start = toLocalDateStr(start);
-      payload.subscription_end = toLocalDateStr(end);
       const { error } = await sb.from('folium_ad_pages').insert(payload);
       if (error) { alert('Errore creazione pagina pubblicitaria: ' + error.message); return; }
     }
@@ -646,7 +695,12 @@
     const box = document.getElementById('adPagesList');
     if (!adPages || adPages.length === 0) { box.innerHTML = '<div class="empty">Nessuna pagina pubblicitaria ancora</div>'; return; }
 
-    box.innerHTML = `<div style="overflow-x:auto;"><table>
+    const conflictMap = computeExistingConflicts(adPages);
+    const conflictBanner = conflictMap.size
+      ? `<div style="background:#fde2df;border:1px solid #e8b3ac;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8a2a1f;margin-bottom:10px;"><b>⚠ ${conflictMap.size} inserzione/i in conflitto di slot/data</b> — più inserzionisti prenotati sullo stesso slot nello stesso periodo. Righe evidenziate sotto. Risolvi cambiando slot/periodo o disattivando/eliminando una delle due.</div>`
+      : '';
+
+    box.innerHTML = conflictBanner + `<div style="overflow-x:auto;"><table>
       <thead><tr><th>Inserzionista</th><th>Slot</th><th>Formato</th><th>Periodo</th><th>Scade il</th><th>Stato</th><th>Azioni</th></tr></thead>
       <tbody>
         ${adPages.map(p => {
@@ -659,6 +713,12 @@
           else if (daysLeft <= 14) { statusHTML = `<b style="color:#b5750a;">Scade tra ${daysLeft}g</b>`; rowStyle = 'background:#fdf6e8;'; }
           else { statusHTML = `${daysLeft}g rimanenti`; }
           if (!p.active) statusHTML += ' <span style="color:#aaa;">(disattivata)</span>';
+          const conflictsWith = conflictMap.get(p.id);
+          if (conflictsWith) {
+            const names = conflictsWith.map(c => c.folium_advertisers?.name || '—').join(', ');
+            statusHTML = `<div style="color:#8a2a1f;font-weight:bold;">⚠ CONFLITTO con ${names}</div>` + statusHTML;
+            rowStyle = 'background:#fde2df;';
+          }
           return `<tr style="${rowStyle}">
             <td>${p.folium_advertisers?.name || '—'}</td>
             <td>${p.position_slot} · ${tierLabel[slotTier(p.position_slot)]}</td>
