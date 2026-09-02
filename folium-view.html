@@ -252,7 +252,11 @@
     const logo = currentShowFoliumBrand
       ? `<span class="page-footer-logo">${FOLIUM_ICON_SVG}</span>`
       : '';
-    const footer = `<div class="page-folio"><span>${esc(currentFooterText)}</span><span style="display:flex;align-items:center;">{{PAGENUM}} / {{TOTALPAGES}}${logo}</span></div>`;
+    // {{SPONSORS}}: sostituito a fine render() con "Con il supporto di: Nome1, Nome2" se il
+    // dossier ha pubblicità attiva — presente su OGNI pagina (non solo quella dell'ad), così
+    // il nome dell'inserzionista resta visibile anche se il cliente stampa/tiene solo alcune
+    // pagine e scarta quelle pubblicitarie. Vuoto (rimosso) se non ci sono sponsor.
+    const footer = `<div class="page-folio"><span>${esc(currentFooterText)}{{SPONSORS}}</span><span style="display:flex;align-items:center;">{{PAGENUM}} / {{TOTALPAGES}}${logo}</span></div>`;
     return `<div class="page ${isAd ? 'ad-page' : 'pattern'}"><div class="page-inner">${inner}</div>${footer}</div>`;
   }
 
@@ -504,7 +508,7 @@
   async function pickAdPage(tenantId, preferredSlot, excludeIds){
     const today = new Date().toISOString().slice(0, 10);
     const { data: ads } = await sb.from('folium_ad_pages')
-      .select('*').eq('tenant_id', tenantId).eq('active', true)
+      .select('*, folium_advertisers(name)').eq('tenant_id', tenantId).eq('active', true)
       .lte('subscription_start', today).gte('subscription_end', today); // solo abbonamenti in corso, mai scaduti
     if (!ads || ads.length === 0) return null;
 
@@ -640,6 +644,14 @@
     // davvero riservato/facoltativo per Gold/Platinum.
     dossier._editorialAllowed = true;
     const showAds = (tier !== 'platinum'); // Light e Gold hanno pubblicità, solo Platinum no
+    // Se il dossier ha pubblicità, il pulsante "Stampa dal browser" resta nascosto: quel
+    // dialogo permette di scegliere un intervallo di pagine e saltare quelle pubblicitarie
+    // con un click. "Scarica PDF" produce invece un unico file già assemblato — non elimina
+    // del tutto la possibilità (nessun sito può farlo su un PDF già scaricato), ma toglie la
+    // scorciatoia più immediata. Il pulsante va nascosto solo se era stato reso visibile
+    // (proprietario/admin/lead sbloccato) — se non doveva comparire affatto, resta invisibile.
+    const printBtnEl = document.getElementById('printBtn');
+    if (printBtnEl && printBtnEl.style.display !== 'none') printBtnEl.style.display = showAds ? 'none' : '';
     const showFoliumBrand = (tier !== 'platinum'); // Platinum: nessun logo/marchio Folium sul dossier
     currentShowFoliumBrand = showFoliumBrand; // letta da pageWrapper() per il logo in basso a destra su ogni pagina
     currentFooterText = `FOLIUM · ${(dossier.property_address || '').toUpperCase()}`;
@@ -912,6 +924,7 @@
     // Inserimento pagine pubblicitarie tra una sezione e l'altra (Light e Gold)
     if (showAds) {
       const usedAdIds = [];
+      const sponsorNames = []; // raccolti qui, stampati poi nel footer di OGNI pagina
       const finalPages = [];
       let slotNumber = 0;
       for (let i = 0; i < pages.length; i++) {
@@ -921,6 +934,8 @@
           const ad = await pickAdPage(dossier.tenant_id, slotNumber, usedAdIds);
           if (ad) {
             usedAdIds.push(ad.id);
+            const advertiserName = ad.folium_advertisers?.name;
+            if (advertiserName && !sponsorNames.includes(advertiserName)) sponsorNames.push(advertiserName);
             finalPages.push(pageWrapper(`
               <div class="tag">${t('dedicated', lang)}</div>
               <img class="ad-img" src="${esc(ad.image_url)}">
@@ -933,9 +948,10 @@
           }
         }
       }
-      el.innerHTML = numberPages(finalPages).join('');
+      const sponsorFooterText = sponsorNames.length ? `  ·  Con il supporto di: ${sponsorNames.join(', ')}` : '';
+      el.innerHTML = numberPages(finalPages).map(html => html.replaceAll('{{SPONSORS}}', esc(sponsorFooterText))).join('');
     } else {
-      el.innerHTML = numberPages(pages).join('');
+      el.innerHTML = numberPages(pages).map(html => html.replaceAll('{{SPONSORS}}', '')).join('');
     }
     loadLocationMapImage(); // no-op se non c'è un <img id="locationMapImg"> (Light o senza coordinate)
   }
