@@ -210,6 +210,11 @@
   let currentShowFoliumBrand = false;
   let currentFooterText = 'FOLIUM'; // impostato in render() con l'indirizzo dell'immobile
   let currentSimulatedTier = 'light'; // DEFAULT SICURO: mai Platinum di default, altrimenti ogni apertura/refresh della pagina da parte tua richiama motori a pagamento senza che tu l'abbia scelto — causa reale della spesa imprevista. Vanno selezionati esplicitamente.
+  // BUG REALE corretto: showMapError() (definita fuori da render()) usava la costante locale
+  // isOwnerViewing dichiarata DENTRO render() — fuori scope, quindi ReferenceError silenzioso
+  // ogni volta che provava a mostrare l'errore mappa (probabilmente interrompeva il resto del
+  // rendering senza dirlo). Ora è una variabile di modulo, aggiornata a inizio render().
+  let currentIsOwnerViewing = false;
   let currentPageOrientation = 'portrait'; // aggiornato in render(), usato dalla generazione PDF client-side
   // Anche scegliendo Gold/Platinum per test, i motori A PAGAMENTO (Discovery,
   // AI valuation, analyze-opportunity) NON partono più in automatico ad ogni
@@ -542,7 +547,7 @@
   // prima un fallimento qui spariva in silenzio (solo console.warn), lasciando un riquadro
   // vuoto senza nessuna spiegazione — visibile SOLO all'account sviluppatore.
   function showMapError(img, message){
-    if (!isOwnerViewing) return;
+    if (!currentIsOwnerViewing) return;
     const box = img.parentElement;
     if (!box) return;
     img.style.display = 'none';
@@ -678,6 +683,7 @@
     // discovery_result, salvate quando il dossier fu creato in piano pieno).
     const { data: { user: viewerUser } } = await sb.auth.getUser();
     const isOwnerViewing = (viewerUser?.email || '').toLowerCase() === OWNER_EMAIL;
+    currentIsOwnerViewing = isOwnerViewing;
     let tier = 'light';
     if (isOwnerViewing) {
       renderDevTierSimulator(forcedTier || currentSimulatedTier);
@@ -1034,7 +1040,7 @@
       const withToc = [pages[0], buildTocPage(tocEntries, header), ...pages.slice(1)];
       el.innerHTML = numberPages(withToc).map(html => html.replaceAll('{{SPONSORS}}', '')).join('');
     }
-    await loadLocationMapImage(); // await reale: se non aspetta, il PDF può essere catturato prima che la mappa arrivi, box vuoto anche a fetch riuscito
+    try { await loadLocationMapImage(); } catch (e) { console.error('Errore imprevisto nel caricamento mappa (non bloccante):', e); } // mai deve fermare il resto del dossier
   }
 
   // Il box del logo cliente ora si ADATTA alla forma reale del logo (quadrato o
