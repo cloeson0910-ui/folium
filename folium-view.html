@@ -58,7 +58,7 @@
 
   /* ---- Gallery foto: PAGINATA 2 per pagina, alta qualità, aspect-ratio fisso ---- */
   .gallery-photo-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:6px;}
-  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background-color:#f4ecdf;background-position:center;background-repeat:no-repeat;background-size:contain;overflow:hidden;height:560px;}
+  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background-color:#fff;background-position:center;background-repeat:no-repeat;background-size:contain;overflow:hidden;height:560px;}
 
   .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
   .metric-card{border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:28px 22px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;}
@@ -741,6 +741,112 @@
       `));
     }
 
+    // ---- CAPITOLO "TERRITORIO & MERCATO" (ordine sommario, stesso principio del
+    // riferimento Immonova: narrativa editoriale prima, poi tutti i dati di supporto
+    // territorio/demografia insieme, PRIMA delle foto dell'immobile) ----
+
+    // "Analisi di mercato AI" RIMOSSA da Folium (vedi nota su ensureAiValuation più sopra):
+    // quel motore serve alle tue ricerche comparative interne, non ai dossier dei clienti.
+
+    // Descrizione editoriale — INCLUSA SU TUTTI I PIANI (Light incluso, decisione esplicita:
+    // motore economico ~0,09€, rende presentabile anche il dossier gratuito). Per l'account
+    // sviluppatore in test, comunque dietro consenso esplicito (vedi dossier._editorialAllowed).
+    // Ogni parte (descrizione, zona, turismo) ha la propria pagina dedicata, paginata
+    // se il testo non entra in una pagina sola — mai più tagliata in silenzio.
+    if (dossier.include_editorial_analysis || isOwnerViewing) {
+      const { data: editorial, error: editorialError } = await ensureEditorialAnalysis(dossier);
+      if (editorial) {
+        const MAX_CHARS = 2600;
+        const addTextPages = (kicker, title, text) => {
+          const parts = paginateText(text, MAX_CHARS);
+          parts.forEach((part, idx) => {
+            pages.push(pageWrapper(`
+              ${header}
+              ${sectionHead(kicker, parts.length > 1 ? `${title} (${idx + 1}/${parts.length})` : title)}
+              <div class="verified-note">${esc(part)}</div>
+            `));
+          });
+        };
+        addTextPages('Editorial Overview', 'Presentazione della proposta', editorial.full_description || editorial.short_description || '');
+        if (editorial.location_summary) addTextPages('Editorial Overview', 'Attrattività della zona', editorial.location_summary);
+        if (editorial.tourism_summary) addTextPages('Editorial Overview', 'Contesto turistico', editorial.tourism_summary);
+      } else if (isOwnerViewing && editorialError) {
+        pages.push(pageWrapper(`
+          ${header}
+          ${sectionHead('Editorial Overview', 'Presentazione della proposta')}
+          <div class="verified-note" style="color:#a33;">[Solo account test] Analisi editoriale non disponibile: ${esc(editorialError)}</div>
+        `));
+      }
+    }
+
+    // Turismo, trasporti e territorio — sempre incluso per Gold/Platinum (motore pesante, o simulato dall'account test)
+    if (dossier.include_discovery || (isOwnerViewing && tier !== 'light')) {
+      const disc = await ensureDiscoveryData(dossier);
+      if (disc) {
+        const territoryText = (lang !== 'it' && translated?.discovery_summary) || disc.summary || disc.narrative || 'Dati territoriali non disponibili per questa zona.';
+        const territoryParts = paginateText(territoryText, 2600);
+        territoryParts.forEach((part, idx) => {
+          pages.push(pageWrapper(`
+            ${header}
+            ${sectionHead('Location Intelligence', territoryParts.length > 1 ? `${t('territory', lang)} (${idx + 1}/${territoryParts.length})` : t('territory', lang))}
+            <div class="verified-note">${esc(part)}</div>
+          `));
+        });
+      } else if (isOwnerViewing) {
+        // Visibile SOLO all'account sviluppatore: dice perché manca invece di sparire.
+        pages.push(pageWrapper(`
+          ${header}
+          ${sectionHead('Location Intelligence', t('territory', lang))}
+          <div class="verified-note" style="color:#a33;">[Solo account test] Sezione territorio non generata: il motore discovery non ha risposto o non ha trovato dati per questa zona.</div>
+        `));
+      }
+    }
+
+    // Dati generali del territorio (popolazione/superficie/altitudine + vocazione territoriale)
+    // — motore Immonova reale (immonova-location-profile), A PAGAMENTO, incluso su ogni piano.
+    const { data: territory, error: territoryError } = await ensureTerritoryFacts(dossier);
+    if (territory) {
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Territory Data', 'Dati del territorio')}
+        <div class="verified-note" style="margin-bottom:20px;">${esc(buildTerritoryNarrative(dossier.property_city, dossier.property_province, territory))}</div>
+        <div class="metric-grid">
+          ${territory.population ? `<div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${Number(territory.population).toLocaleString('it-IT')}</div></div>` : ''}
+          ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
+          ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
+        </div>
+      `));
+    } else if (isOwnerViewing && territoryError) {
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Territory Data', 'Dati del territorio')}
+        <div class="verified-note" style="color:#a33;">[Solo account test] Dati territoriali generali non disponibili: ${esc(territoryError)}</div>
+      `));
+    }
+
+    // Composizione popolazione (età/reddito) — sempre inclusa, motore leggero/gratuito
+    const { data: popData, error: popError } = await ensurePopulationComposition(dossier);
+    if (popData) {
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Demographics', t('population', lang))}
+        ${barChartHTML(popData.age_distribution?.percentages || {})}
+        <div class="section-kicker" style="margin-top:30px;">${t('income', lang)}</div>
+        ${barChartHTML(popData.income_distribution?.percentages || {})}
+      `));
+    } else if (isOwnerViewing && popError) {
+      // Visibile SOLO all'account sviluppatore: dice la causa vera invece di sparire in
+      // silenzio, così il test dice esattamente cosa non va (es. comune non riconosciuto).
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Demographics', t('population', lang))}
+        <div class="verified-note" style="color:#a33;">[Solo account test] Dati demografici non disponibili: ${esc(popError)}</div>
+      `));
+    }
+
+    // ---- CAPITOLO "IMMOBILE" (foto/caratteristiche/dati verificati) — sempre PER ULTIMO,
+    // dopo il capitolo territorio&mercato, stesso principio del sommario di riferimento ----
+
     // Pagine foto immobile — PAGINATE 2 per pagina (mai tutte insieme), logo cliente
     // già bruciato via watermark nel file al momento dell'upload (Light: cliente+Folium;
     // Gold/Platinum: solo cliente), qui SOLO 1 foto per pagina, grande e MAI deformata
@@ -809,105 +915,6 @@
       });
     }
 
-    // Composizione popolazione (età/reddito) — sempre inclusa, motore leggero/gratuito
-    const { data: popData, error: popError } = await ensurePopulationComposition(dossier);
-    if (popData) {
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Demographics', t('population', lang))}
-        ${barChartHTML(popData.age_distribution?.percentages || {})}
-        <div class="section-kicker" style="margin-top:30px;">${t('income', lang)}</div>
-        ${barChartHTML(popData.income_distribution?.percentages || {})}
-      `));
-    } else if (isOwnerViewing && popError) {
-      // Visibile SOLO all'account sviluppatore: dice la causa vera invece di sparire in
-      // silenzio, così il test dice esattamente cosa non va (es. comune non riconosciuto).
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Demographics', t('population', lang))}
-        <div class="verified-note" style="color:#a33;">[Solo account test] Dati demografici non disponibili: ${esc(popError)}</div>
-      `));
-    }
-
-    // Dati generali del territorio (popolazione/superficie/altitudine + vocazione territoriale)
-    // — motore Immonova reale (immonova-location-profile), A PAGAMENTO, incluso su ogni piano.
-    const { data: territory, error: territoryError } = await ensureTerritoryFacts(dossier);
-    if (territory) {
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Territory Data', 'Dati del territorio')}
-        <div class="verified-note" style="margin-bottom:20px;">${esc(buildTerritoryNarrative(dossier.property_city, dossier.property_province, territory))}</div>
-        <div class="metric-grid">
-          ${territory.population ? `<div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${Number(territory.population).toLocaleString('it-IT')}</div></div>` : ''}
-          ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
-          ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
-        </div>
-      `));
-    } else if (isOwnerViewing && territoryError) {
-      pages.push(pageWrapper(`
-        ${header}
-        ${sectionHead('Territory Data', 'Dati del territorio')}
-        <div class="verified-note" style="color:#a33;">[Solo account test] Dati territoriali generali non disponibili: ${esc(territoryError)}</div>
-      `));
-    }
-
-    // "Analisi di mercato AI" RIMOSSA da Folium (vedi nota su ensureAiValuation più sopra):
-    // quel motore serve alle tue ricerche comparative interne, non ai dossier dei clienti.
-
-    // Descrizione editoriale — INCLUSA SU TUTTI I PIANI (Light incluso, decisione esplicita:
-    // motore economico ~0,09€, rende presentabile anche il dossier gratuito). Per l'account
-    // sviluppatore in test, comunque dietro consenso esplicito (vedi dossier._editorialAllowed).
-    // Ogni parte (descrizione, zona, turismo) ha la propria pagina dedicata, paginata
-    // se il testo non entra in una pagina sola — mai più tagliata in silenzio.
-    if (dossier.include_editorial_analysis || isOwnerViewing) {
-      const { data: editorial, error: editorialError } = await ensureEditorialAnalysis(dossier);
-      if (editorial) {
-        const MAX_CHARS = 2600;
-        const addTextPages = (kicker, title, text) => {
-          const parts = paginateText(text, MAX_CHARS);
-          parts.forEach((part, idx) => {
-            pages.push(pageWrapper(`
-              ${header}
-              ${sectionHead(kicker, parts.length > 1 ? `${title} (${idx + 1}/${parts.length})` : title)}
-              <div class="verified-note">${esc(part)}</div>
-            `));
-          });
-        };
-        addTextPages('Editorial Overview', 'Presentazione della proposta', editorial.full_description || editorial.short_description || '');
-        if (editorial.location_summary) addTextPages('Editorial Overview', 'Attrattività della zona', editorial.location_summary);
-        if (editorial.tourism_summary) addTextPages('Editorial Overview', 'Contesto turistico', editorial.tourism_summary);
-      } else if (isOwnerViewing && editorialError) {
-        pages.push(pageWrapper(`
-          ${header}
-          ${sectionHead('Editorial Overview', 'Presentazione della proposta')}
-          <div class="verified-note" style="color:#a33;">[Solo account test] Analisi editoriale non disponibile: ${esc(editorialError)}</div>
-        `));
-      }
-    }
-
-    // Turismo, trasporti e territorio — sempre incluso per Gold/Platinum (motore pesante, o simulato dall'account test)
-    if (dossier.include_discovery || (isOwnerViewing && tier !== 'light')) {
-      const disc = await ensureDiscoveryData(dossier);
-      if (disc) {
-        const territoryText = (lang !== 'it' && translated?.discovery_summary) || disc.summary || disc.narrative || 'Dati territoriali non disponibili per questa zona.';
-        const territoryParts = paginateText(territoryText, 2600);
-        territoryParts.forEach((part, idx) => {
-          pages.push(pageWrapper(`
-            ${header}
-            ${sectionHead('Location Intelligence', territoryParts.length > 1 ? `${t('territory', lang)} (${idx + 1}/${territoryParts.length})` : t('territory', lang))}
-            <div class="verified-note">${esc(part)}</div>
-          `));
-        });
-      } else if (isOwnerViewing) {
-        // Visibile SOLO all'account sviluppatore: dice perché manca invece di sparire.
-        pages.push(pageWrapper(`
-          ${header}
-          ${sectionHead('Location Intelligence', t('territory', lang))}
-          <div class="verified-note" style="color:#a33;">[Solo account test] Sezione territorio non generata: il motore discovery non ha risposto o non ha trovato dati per questa zona.</div>
-        `));
-      }
-    }
-
     // Pagina finale — riepilogo agenzia/agente: indirizzo, nome, contatti. Sempre inclusa,
     // ogni piano, è informazione del cliente stesso (nessun motore, nessun costo).
     pages.push(pageWrapper(`
@@ -920,6 +927,7 @@
         <div class="metric-card"><div class="metric-label">Indirizzo immobile di riferimento</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_address || '—')}</div></div>
       </div>
     `));
+
 
     // Inserimento pagine pubblicitarie tra una sezione e l'altra (Light e Gold)
     if (showAds) {
