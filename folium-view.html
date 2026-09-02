@@ -804,11 +804,15 @@
       const mapQueryStr = [dossier.property_address, dossier.property_city, dossier.property_province, 'Italia'].filter(Boolean).join(', ');
       let mapHTML;
       if (tier === 'light' || !hasCoords) {
-        // Sempre gratuito: OpenStreetMap via bbox se abbiamo lat/lng, altrimenti query testuale.
-        const osmSrc = hasCoords
-          ? `https://www.openstreetmap.org/export/embed.html?bbox=${dossier.property_lng-0.01}%2C${dossier.property_lat-0.008}%2C${dossier.property_lng+0.01}%2C${dossier.property_lat+0.008}&marker=${dossier.property_lat}%2C${dossier.property_lng}&layer=mapnik`
-          : `https://www.openstreetmap.org/export/embed.html?layer=mapnik`;
-        mapHTML = `<iframe class="map-frame" src="${osmSrc}" loading="lazy"></iframe>`;
+        // Sempre gratuito: immagine statica OpenStreetMap (staticmap.openstreetmap.de,
+        // servizio pubblico non ufficiale ma diffuso, nessuna chiave richiesta) — NON più
+        // un <iframe>: html2canvas non riesce a catturare il contenuto di un iframe
+        // cross-origin (limite di sicurezza del browser, non aggirabile), quindi risultava
+        // sempre vuoto nel PDF esportato anche quando si vedeva bene nel browser dal vivo.
+        // Con una vera <img> il problema non si pone più.
+        mapHTML = hasCoords
+          ? `<img class="map-frame" src="https://staticmap.openstreetmap.de/staticmap.php?center=${dossier.property_lat}%2C${dossier.property_lng}&zoom=15&size=1000x650&maptype=mapnik&markers=${dossier.property_lat}%2C${dossier.property_lng}%2Cred-pushpin" onerror="this.outerHTML='&lt;div class=&quot;map-frame&quot; style=&quot;display:flex;align-items:center;justify-content:center;color:#8a7a52;font-size:12px;&quot;&gt;Mappa non disponibile al momento.&lt;/div&gt;'">`
+          : `<div class="map-frame" style="display:flex;align-items:center;justify-content:center;color:#8a7a52;font-size:12px;">Coordinate non disponibili per questo indirizzo.</div>`;
       } else {
         mapHTML = `<img class="map-frame" id="locationMapImg" data-lat="${esc(String(dossier.property_lat))}" data-lng="${esc(String(dossier.property_lng))}">`;
       }
