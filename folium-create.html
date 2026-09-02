@@ -177,9 +177,13 @@
 
     <div class="section">
       <h2>Logo sulle foto</h2>
-      <div id="watermarkLight" class="data-choice" style="display:none;">Piano Light: le foto del dossier vengono mostrate con il tuo logo <b>e</b> il logo Folium, in posizione fissa — nessuna scelta disponibile.</div>
+      <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;cursor:pointer;">
+        <input type="checkbox" id="applyClientLogo" checked style="width:auto;">
+        <span style="font-size:13px;color:#2b2416;">Applica il logo della mia agenzia sulle foto dell'immobile</span>
+      </label>
+      <div id="watermarkLight" class="data-choice" style="display:none;">Piano Light: il logo Folium compare comunque su ogni foto, in posizione fissa (fa parte del piano gratuito). Deselezionando la casella sopra, si toglie solo il TUO logo — quello Folium resta.</div>
       <div id="watermarkGoldPlatinum" style="display:none;">
-        <div class="data-choice" style="margin-bottom:10px;">Piano Gold/Platinum: solo il tuo logo (nessun logo Folium), posizione a tua scelta.</div>
+        <div class="data-choice" style="margin-bottom:10px;">Piano Gold/Platinum: nessun logo Folium in ogni caso. Deselezionando la casella sopra, le foto restano senza alcun logo.</div>
         <label>Posizione logo</label>
         <select id="watermarkPosition">
           <option value="bottom-right">In basso a destra</option>
@@ -735,10 +739,11 @@
   }
 
   // Watermark reale, "bruciato" nell'immagine via canvas (come Immonova) —
-  // non un overlay CSS. Light: logo cliente (basso-sinistra) + logo Folium
-  // (basso-destra) sempre entrambi. Gold/Platinum: solo logo cliente, nella
-  // posizione scelta dal cliente in "Logo sulle foto".
-  async function applyPhotoWatermark(file, tier, clientLogoUrl, watermarkPosition){
+  // non un overlay CSS. Light: logo cliente (basso-sinistra, SOLO se applyClientLogo
+  // è true) + logo Folium (basso-destra, SEMPRE, non è disattivabile — fa parte del
+  // piano gratuito). Gold/Platinum: solo logo cliente (se applyClientLogo è true),
+  // nella posizione scelta dal cliente in "Logo sulle foto".
+  async function applyPhotoWatermark(file, tier, clientLogoUrl, watermarkPosition, applyClientLogo){
     try {
       const { img: sourceImg } = await loadImageFromFile(file);
       const canvas = document.createElement('canvas');
@@ -749,17 +754,19 @@
       ctx.drawImage(sourceImg, 0, 0, canvas.width, canvas.height);
 
       if (tier === 'light') {
-        const clientLogo = await loadClientLogo(clientLogoUrl);
-        const foliumLogo = await loadFoliumLogo();
-        if (clientLogo) {
-          const rect = computeWatermarkRect(canvas.width, canvas.height, clientLogo.height / clientLogo.width, 'bottom-left');
-          ctx.save(); ctx.globalAlpha = 0.9; ctx.drawImage(clientLogo, rect.x, rect.y, rect.width, rect.height); ctx.restore();
+        if (applyClientLogo) {
+          const clientLogo = await loadClientLogo(clientLogoUrl);
+          if (clientLogo) {
+            const rect = computeWatermarkRect(canvas.width, canvas.height, clientLogo.height / clientLogo.width, 'bottom-left');
+            ctx.save(); ctx.globalAlpha = 0.9; ctx.drawImage(clientLogo, rect.x, rect.y, rect.width, rect.height); ctx.restore();
+          }
         }
+        const foliumLogo = await loadFoliumLogo();
         if (foliumLogo) {
           const rect = computeWatermarkRect(canvas.width, canvas.height, foliumLogo.height / foliumLogo.width, 'bottom-right');
           ctx.save(); ctx.globalAlpha = 0.9; ctx.drawImage(foliumLogo, rect.x, rect.y, rect.width, rect.height); ctx.restore();
         }
-      } else {
+      } else if (applyClientLogo) {
         const clientLogo = await loadClientLogo(clientLogoUrl);
         if (clientLogo) {
           const pos = ['top-left','top-right','bottom-left','bottom-right'].includes(watermarkPosition) ? watermarkPosition : 'bottom-right';
@@ -914,6 +921,7 @@
       let uploaded = 0;
       const totalPhotos = propertyFiles.length + destinationFiles.length;
       const watermarkPosition = currentTier !== 'light' ? document.getElementById('watermarkPosition').value : 'bottom-right';
+      const applyClientLogo = document.getElementById('applyClientLogo').checked;
 
       // In modifica: le nuove foto si AGGIUNGONO in coda a quelle già presenti,
       // non le sostituiscono — calcolo da dove continuare la numerazione.
@@ -928,7 +936,7 @@
         let file = propertyFiles[i];
         if (currentTier !== 'light') { btn.textContent = `Miglioramento qualità foto (${uploaded+1}/${totalPhotos})…`; file = await enhancePhotoIfNeeded(file); }
         btn.textContent = `Applicazione logo (${uploaded+1}/${totalPhotos})…`;
-        file = await applyPhotoWatermark(file, currentTier, logoUrl, watermarkPosition);
+        file = await applyPhotoWatermark(file, currentTier, logoUrl, watermarkPosition, applyClientLogo);
         btn.textContent = `Caricamento foto (${uploaded+1}/${totalPhotos})…`;
         const url = await uploadFile('folium-photos', file, dossier.id);
         await sb.from('folium_dossier_photos').insert({
@@ -941,7 +949,7 @@
         let file = destinationFiles[i];
         if (currentTier !== 'light') { btn.textContent = `Miglioramento qualità foto (${uploaded+1}/${totalPhotos})…`; file = await enhancePhotoIfNeeded(file); }
         btn.textContent = `Applicazione logo (${uploaded+1}/${totalPhotos})…`;
-        file = await applyPhotoWatermark(file, currentTier, logoUrl, watermarkPosition);
+        file = await applyPhotoWatermark(file, currentTier, logoUrl, watermarkPosition, applyClientLogo);
         btn.textContent = `Caricamento foto (${uploaded+1}/${totalPhotos})…`;
         const url = await uploadFile('folium-photos', file, dossier.id);
         await sb.from('folium_dossier_photos').insert({
