@@ -15,15 +15,17 @@
   /* Dimensioni di default: verticale. applyTheme() le sovrascrive in orizzontale
      (max-width:1123px;min-height:794px) quando il cliente ha scelto quel formato
      in fase di creazione — vedi #themeStyle iniettato più sotto. */
-  .page{width:100%;max-width:794px;min-height:1123px;max-height:1123px;background:#fffdf8;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;color:#5c4a20;}
-  /* Nessuna texture decorativa (era quella di Immonova, non di Folium): sfondo
-     pulito, il colore lo decide il cliente tramite il tema scelto (var(--bg-page)). */
-  .page.pattern{background:var(--bg-page, #fffdf8);}
+  .page{width:100%;max-width:794px;min-height:1123px;max-height:1123px;background:#fff;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;color:#5c4a20;}
+  /* Nessuno sfondo: pagine bianche pulite, richiesta esplicita — prima era un
+     leggero fondo crema (#fffdf8), tolto del tutto. */
+  .page.pattern{background:#fff;}
   .page-inner{position:relative;z-index:2;padding:44px 48px;}
 
   /* ---- Copertina: foto piena pagina, overlay da sinistra, titolo grande ---- */
   .cover{color:#fff;}
-  .cover .cover-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:space-between;padding:38px 48px;}
+  /* Titolo in basso a sinistra (prima era in alto, sopra i metadati): tutto il
+     blocco testuale (kicker+titolo+meta) è ora ancorato in fondo alla copertina. */
+  .cover .cover-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;gap:28px;padding:38px 48px;}
   .cover::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(31,22,8,.80),rgba(31,22,8,.50),rgba(31,22,8,.12));z-index:1;}
   .cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
   .brand{font-size:26px;letter-spacing:.20em;color:var(--gold3);font-weight:300;}
@@ -41,7 +43,7 @@
   /* ---- Footer editoriale (page-folio), identico nome/stile al report reale ---- */
   .page-folio{position:absolute;left:48px;right:48px;bottom:18px;z-index:3;display:flex;justify-content:space-between;align-items:center;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(166,127,52,.6);}
   .page-folio.on-image{color:rgba(241,210,122,.85);}
-  .page-footer-logo{height:15px;width:auto;opacity:.85;margin-left:10px;display:inline-flex;align-items:center;}
+  .page-footer-logo{height:26px;width:auto;opacity:.95;margin-left:10px;display:inline-flex;align-items:center;}
 
   h1.title{font-weight:200;font-size:24px;letter-spacing:.06em;color:#2b2416;margin:0 0 6px;}
   .subtitle{font-size:12px;color:#8a7a52;margin-bottom:18px;letter-spacing:.03em;}
@@ -66,7 +68,14 @@
   .data-table td{padding:9px 0;border-bottom:1px solid rgba(166,127,52,.12);}
   .data-table td:first-child{color:var(--gold4);width:40%;font-size:10.5px;letter-spacing:.10em;text-transform:uppercase;}
   .contact-box{background:rgba(255,255,255,.5);border:1px solid rgba(166,127,52,.18);padding:16px 18px;font-size:13px;margin-top:20px;}
-  .verified-note{font-size:13.5px;line-height:1.8;white-space:pre-wrap;color:#5c4a20;}
+  /* Box per i dati inseriti manualmente (note/annessi/analisi): stesso stile a
+     riquadro delle altre card dati, non più testo nudo senza contenitore. */
+  .verified-note{font-size:13.5px;line-height:1.8;white-space:pre-wrap;color:#5c4a20;border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:18px 20px;}
+  /* ---- Posizione e mappa ---- */
+  .location-layout{display:grid;grid-template-columns:.85fr 1.3fr;gap:24px;margin-top:8px;}
+  .addr-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(166,127,52,.12);padding:9px 0;font-size:12.5px;color:#5c4a20;}
+  .addr-row strong{color:var(--gold4);min-width:100px;text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;}
+  .map-frame{width:100%;height:340px;border:1px solid rgba(166,127,52,.2);display:block;object-fit:cover;}
   /* pagina pubblicitaria */
   .ad-page{background:linear-gradient(160deg,#fdf9ef,#f6ecd2);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
   .ad-page .tag{font-size:9px;letter-spacing:.20em;color:#a4915c;margin-bottom:16px;text-transform:uppercase;}
@@ -74,7 +83,12 @@
   .ad-page h2{font-weight:200;font-size:22px;letter-spacing:.04em;color:#2b2416;margin:16px 0 8px;}
   .ad-page p{font-size:13px;color:#5c4f30;max-width:440px;}
   .ad-page .cta{margin-top:14px;padding:10px 24px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-radius:24px;text-decoration:none;font-size:12px;letter-spacing:1px;}
-  @media print { .toolbar{display:none;} .page{box-shadow:none;margin:0;page-break-after:always;page-break-inside:avoid;} #devTierSimulatorView{display:none !important;} }
+  @media print {
+    .toolbar{display:none;}
+    .page{box-shadow:none;margin:0;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid;page-break-before:avoid;}
+    .page:last-child{page-break-after:auto;break-after:auto;}
+    #devTierSimulatorView{display:none !important;}
+  }
   .loading{text-align:center;padding:80px 20px;color:#8a7a52;}
   .lead-gate{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));display:flex;align-items:center;justify-content:center;padding:20px;}
   .lead-gate-card{background:#fff;border-radius:16px;padding:32px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);}
@@ -100,8 +114,11 @@
 
 <div class="toolbar">
   <div>FOLIUM</div>
-  <button id="editBtn" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="goToEdit()">Modifica dossier</button>
-  <button id="printBtn" onclick="window.print()" style="display:none;">Stampa / Salva PDF</button>
+  <div style="display:flex;gap:10px;">
+    <button id="adminBtnView" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="location.href='folium-admin.html'">Dashboard admin</button>
+    <button id="editBtn" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="goToEdit()">Modifica dossier</button>
+    <button id="printBtn" onclick="window.print()" style="display:none;">Stampa / Salva PDF</button>
+  </div>
 </div>
 
 <div id="devTierSimulatorView" style="display:none;align-items:center;gap:8px;padding:8px 16px;background:#eef4ff;border-bottom:1px solid #c9d9f5;"></div>
@@ -275,11 +292,15 @@
       return { data: dossier.population_composition, error: null };
     }
     try {
+      // Passiamo anche CAP e regione oltre a comune/provincia: se il motore risolve
+      // meglio per CAP che per nome comune (causa sospetta di "nessun dato per Tuglie"),
+      // questi campi extra non guastano la chiamata che già funzionava per altri comuni.
       const data = await callImmonovaFunction('immonova-demographics-engine', {
-        comune: dossier.property_city, provincia: dossier.property_province
+        comune: dossier.property_city, provincia: dossier.property_province,
+        cap: dossier.property_postal_code, regione: dossier.property_region
       });
       await logEngineCall('immonova-demographics-engine', dossier, !!data?.age_distribution);
-      if (!data?.age_distribution) return { data: null, error: 'Il motore ha risposto ma senza dati per "' + dossier.property_city + '".' };
+      if (!data?.age_distribution) return { data: null, error: 'Il motore ha risposto ma senza dati per "' + dossier.property_city + '" (CAP ' + (dossier.property_postal_code || 'non impostato') + ').' };
       await sb.from('folium_dossiers').update({ population_composition: data }).eq('id', dossier.id);
       return { data, error: null };
     } catch (e) {
@@ -358,6 +379,7 @@
       const data = await callImmonovaFunction('immonova-discovery-engine', {
         comune: dossier.property_city,
         provincia: dossier.property_province,
+        cap: dossier.property_postal_code, regione: dossier.property_region,
         lat: dossier.property_lat, lng: dossier.property_lng
       });
       await logEngineCall('immonova-discovery-engine', dossier, !!data);
@@ -368,6 +390,25 @@
       console.error('Discovery Engine non disponibile:', e);
       await logEngineCall('immonova-discovery-engine', dossier, false);
       return null;
+    }
+  }
+
+  // Carica la mappa statica Immonova (Gold/Platinum, a pagamento) via fetch autenticato
+  // diretto — stesso identico pattern di report-view.html Immonova: mai un iframe live
+  // per la mappa a pagamento (si stampa/scarica come immagine, non serve interattività).
+  async function loadLocationMapImage(){
+    const img = document.getElementById('locationMapImg');
+    if (!img) return;
+    const lat = img.getAttribute('data-lat'), lng = img.getAttribute('data-lng');
+    if (!lat || !lng) return;
+    try {
+      const url = `${IMMONOVA_URL}/functions/v1/static-map-proxy?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&zoom=15&size=1200x700&scale=2`;
+      const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${IMMONOVA_ANON_KEY}`, 'apikey': IMMONOVA_ANON_KEY } });
+      if (!resp.ok) { console.warn('Mappa posizione non caricata:', resp.status, await resp.text()); return; }
+      const blob = await resp.blob();
+      img.src = URL.createObjectURL(blob);
+    } catch (e) {
+      console.warn('Mappa posizione: errore fetch', e);
     }
   }
 
@@ -558,6 +599,44 @@
         ${esc(client?.contact_email)} · ${esc(client?.contact_phone)}
       </div>
     `));
+
+    // Posizione e mappa — indirizzo sempre mostrato (dato gratuito, nessuna chiamata
+    // esterna). La mappa invece: Light usa SOLO OpenStreetMap (iframe embed gratuito,
+    // nessuna chiave, nessun costo — rispetta la regola "Light solo servizi gratuiti");
+    // Gold/Platinum usano la mappa statica Immonova (Google Static Maps, a pagamento,
+    // più curata con i punti di interesse), stesso pattern static-map-proxy del report
+    // Immonova di riferimento, richiamata via callImmonovaFunction (mai deploy su Dominus).
+    if (dossier.property_address) {
+      dossier.property_lat = dossier.property_lat != null ? Number(dossier.property_lat) : null;
+      dossier.property_lng = dossier.property_lng != null ? Number(dossier.property_lng) : null;
+      const hasCoords = Number.isFinite(dossier.property_lat) && Number.isFinite(dossier.property_lng);
+      const mapQueryStr = [dossier.property_address, dossier.property_city, dossier.property_province, 'Italia'].filter(Boolean).join(', ');
+      let mapHTML;
+      if (tier === 'light' || !hasCoords) {
+        // Sempre gratuito: OpenStreetMap via bbox se abbiamo lat/lng, altrimenti query testuale.
+        const osmSrc = hasCoords
+          ? `https://www.openstreetmap.org/export/embed.html?bbox=${dossier.property_lng-0.01}%2C${dossier.property_lat-0.008}%2C${dossier.property_lng+0.01}%2C${dossier.property_lat+0.008}&marker=${dossier.property_lat}%2C${dossier.property_lng}&layer=mapnik`
+          : `https://www.openstreetmap.org/export/embed.html?layer=mapnik`;
+        mapHTML = `<iframe class="map-frame" src="${osmSrc}" loading="lazy"></iframe>`;
+      } else {
+        mapHTML = `<img class="map-frame" id="locationMapImg" data-lat="${esc(String(dossier.property_lat))}" data-lng="${esc(String(dossier.property_lng))}">`;
+      }
+      const addrRow = (label, val) => val ? `<div class="addr-row"><strong>${esc(label)}</strong><span>${esc(val)}</span></div>` : '';
+      pages.push(pageWrapper(`
+        ${header}
+        ${sectionHead('Asset Location', 'Posizione e localizzazione')}
+        <div class="location-layout">
+          <div>
+            ${addrRow('Indirizzo', dossier.property_address)}
+            ${addrRow('CAP', dossier.property_postal_code)}
+            ${addrRow('Comune', dossier.property_city)}
+            ${addrRow('Provincia', dossier.property_province)}
+            ${addrRow('Regione', dossier.property_region)}
+          </div>
+          ${mapHTML}
+        </div>
+      `));
+    }
 
     // Pagine foto immobile — PAGINATE 2 per pagina (mai tutte insieme), logo cliente
     // già bruciato via watermark nel file al momento dell'upload (Light: cliente+Folium;
@@ -750,6 +829,7 @@
     } else {
       el.innerHTML = numberPages(pages).join('');
     }
+    loadLocationMapImage(); // no-op se non c'è un <img id="locationMapImg"> (Light o senza coordinate)
   }
 
   // ---- Lead gate: chi non è il proprietario del dossier (né l'account
@@ -769,6 +849,9 @@
 
     if (isOwnerAccount || isDossierOwner) {
       document.getElementById('printBtn').style.display = '';
+      // Link alla dashboard admin: SOLO per l'account sviluppatore, mai per il
+      // proprietario del dossier che sta semplicemente vedendo il proprio lavoro.
+      if (isOwnerAccount) document.getElementById('adminBtnView').style.display = '';
       // "Modifica" solo per il vero proprietario del dossier — l'account sviluppatore
       // che sta solo TESTANDO il dossier di qualcun altro non deve poterlo modificare.
       if (isDossierOwner) document.getElementById('editBtn').style.display = '';

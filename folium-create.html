@@ -41,6 +41,7 @@
 <header>
   <div class="brand">FOLIUM</div>
   <div style="display:flex;align-items:center;gap:12px;">
+    <div class="plan" id="adminLink" style="display:none;cursor:pointer;" onclick="location.href='folium-admin.html'">Dashboard admin</div>
     <div class="plan" id="planBadge">…</div>
     <div class="logout" onclick="logout()">Esci</div>
   </div>
@@ -82,8 +83,13 @@
       <input type="text" id="address" placeholder="Via, numero civico, città" required>
       <div class="row2">
         <div><label>Città</label><input type="text" id="city" required></div>
-        <div><label>Provincia</label><input type="text" id="province" maxlength="2"></div>
+        <div><label>Provincia</label><input type="text" id="province" maxlength="2" placeholder="es. LE"></div>
       </div>
+      <div class="row2">
+        <div><label>CAP</label><input type="text" id="postalCode" maxlength="5" placeholder="es. 73059" required></div>
+        <div><label>Regione</label><input type="text" id="region" placeholder="es. Puglia"></div>
+      </div>
+      <div class="count" id="geoStatus" style="margin-top:2px;"></div>
       <div class="row2">
         <div><label>Tipologia</label>
           <select id="propType">
@@ -254,6 +260,9 @@
       }
       currentClient = client;
       isOwner = (user.email || '').toLowerCase() === OWNER_EMAIL;
+      // Pulsante verso la dashboard admin: visibile SOLO all'account sviluppatore,
+      // nessun altro cliente Folium deve poterla raggiungere o anche solo vederla.
+      if (isOwner) document.getElementById('adminLink').style.display = '';
       document.getElementById('contactEmail').value = client.contact_email || user.email || '';
       document.getElementById('contactPhone').value = client.contact_phone || '';
       document.getElementById('displayName').value = client.company_name || client.full_name || '';
@@ -276,6 +285,8 @@
           document.getElementById('address').value = existing.property_address || '';
           document.getElementById('city').value = existing.property_city || '';
           document.getElementById('province').value = existing.property_province || '';
+          document.getElementById('postalCode').value = existing.property_postal_code || '';
+          document.getElementById('region').value = existing.property_region || '';
           document.getElementById('propType').value = existing.property_type || '';
           document.getElementById('size').value = existing.property_size_sqm || '';
           document.getElementById('price').value = existing.property_price || '';
@@ -743,6 +754,27 @@
     return data.publicUrl;
   }
 
+  // Geocodifica GRATUITA (OpenStreetMap Nominatim, nessuna API key, nessun costo —
+  // rispetta la regola "Light usa solo servizi gratuiti", ma qui vale per TUTTI i
+  // piani perché serve sempre a: (1) dare comune+provincia+CAP corretti ai motori
+  // dati Immonova invece di un solo nome città ambiguo, (2) fornire lat/lng per la
+  // mappa e per il Discovery Engine. Nessuna chiamata Google Maps/Places qui.
+  async function geocodeAddress(fields){
+    const q = [fields.address, fields.postalCode, fields.city, fields.province, 'Italia'].filter(Boolean).join(', ');
+    if (!q) return null;
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=it&q=${encodeURIComponent(q)}`;
+      const resp = await fetch(url, { headers: { 'Accept-Language': 'it' } });
+      if (!resp.ok) return null;
+      const results = await resp.json();
+      if (!results || !results[0]) return null;
+      return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+    } catch (e) {
+      console.warn('Geocodifica non riuscita (non bloccante):', e);
+      return null;
+    }
+  }
+
   document.getElementById('dossierForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentClient) { showMsg('Profilo cliente non trovato: esci e rifai il login (l\'account potrebbe essere stato creato prima di un fix precedente).', false); return; }
@@ -763,10 +795,24 @@
       // senza passare da Stripe. Light: restano un add-on a pagamento (gestito dopo l'insert).
       const freeLanguages = (currentTier !== 'light') ? selectedLanguages : [];
 
+      const geoStatus = document.getElementById('geoStatus');
+      if (geoStatus) geoStatus.textContent = 'Localizzazione indirizzo…';
+      const geo = await geocodeAddress({
+        address: document.getElementById('address').value.trim(),
+        postalCode: document.getElementById('postalCode').value.trim(),
+        city: document.getElementById('city').value.trim(),
+        province: document.getElementById('province').value.trim()
+      });
+      if (geoStatus) geoStatus.textContent = '';
+
       const dossierFields = {
         property_address: document.getElementById('address').value.trim(),
         property_city: document.getElementById('city').value.trim(),
         property_province: document.getElementById('province').value.trim() || null,
+        property_postal_code: document.getElementById('postalCode').value.trim() || null,
+        property_region: document.getElementById('region').value.trim() || null,
+        property_lat: geo ? geo.lat : null,
+        property_lng: geo ? geo.lng : null,
         property_type: document.getElementById('propType').value,
         property_size_sqm: document.getElementById('size').value || null,
         property_price: document.getElementById('price').value || null,
