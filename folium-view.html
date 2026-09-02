@@ -134,7 +134,8 @@
   <div style="display:flex;gap:10px;">
     <button id="adminBtnView" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="location.href='folium-admin.html'">Dashboard admin</button>
     <button id="editBtn" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="goToEdit()">Modifica dossier</button>
-    <button id="printBtn" onclick="window.print()" style="display:none;">Stampa / Salva PDF</button>
+    <button id="pdfBtn" onclick="generateServerPdf()" style="display:none;">Genera PDF</button>
+    <button id="printBtn" onclick="window.print()" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);">Stampa dal browser</button>
   </div>
 </div>
 
@@ -207,11 +208,12 @@
     if (!box) return;
     box.style.display = 'flex';
     const labels = { light: 'Light', gold: 'Gold', platinum: 'Platinum' };
-    const paidNote = activeTier !== 'light'
-      ? (ownerAllowPaidCalls
-          ? `<span style="font-size:11px;color:#2f7d3a;margin-left:10px;">✓ Motori a pagamento attivi per questo test</span>`
-          : `<button onclick="allowPaidCallsAndRerender()" style="margin-left:10px;font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid #c0392b;background:#fff;color:#c0392b;cursor:pointer;">Genera sezioni a pagamento (costa reale)</button>`)
-      : '';
+    // Il pulsante di consenso ora compare SEMPRE, non solo su Gold/Platinum: da quando
+    // la narrativa editoriale (a pagamento, ~0,09€) è inclusa anche su Light, serve
+    // poterla sbloccare anche testando in quella modalità — prima restava irraggiungibile.
+    const paidNote = ownerAllowPaidCalls
+      ? `<span style="font-size:11px;color:#2f7d3a;margin-left:10px;">✓ Motori a pagamento attivi per questo test</span>`
+      : `<button onclick="allowPaidCallsAndRerender()" style="margin-left:10px;font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid #c0392b;background:#fff;color:#c0392b;cursor:pointer;">Genera sezioni a pagamento (costa reale)</button>`;
     box.innerHTML = `
       <span style="font-size:11px;letter-spacing:.5px;color:#3a5a9c;text-transform:uppercase;margin-right:6px;">Test come:</span>
       ${['light','gold','platinum'].map(t => `<div class="dev-tier-pill ${t === activeTier ? 'active' : ''}" onclick="switchDevTier('${t}')">${labels[t]}</div>`).join('')}
@@ -650,7 +652,7 @@
 
     const header = `
       <div class="page-header">
-        ${client?.logo_url ? `<img class="client-logo" src="${esc(client.logo_url)}">` : `<div></div>`}
+        ${client?.logo_url ? `<img class="client-logo" src="${esc(client.logo_url)}" onerror="this.style.display='none'">` : `<div></div>`}
         ${showFoliumBrand ? `<div class="brand-mark" style="display:flex;align-items:center;gap:8px;"><span style="height:22px;">${FOLIUM_ICON_SVG}</span>Folium Dossier</div>` : `<div></div>`}
       </div>`;
 
@@ -668,7 +670,7 @@
             <div class="brand">FOLIUM</div>
             <div class="brand-sub">Dossier Immobiliare</div>
           </div>
-          ${client?.logo_url ? `<img class="cover-client-logo" src="${esc(client.logo_url)}">` : ''}
+          ${client?.logo_url ? `<img class="cover-client-logo" src="${esc(client.logo_url)}" onerror="this.style.display='none'">` : ''}
         </div>
         <div>
           <div class="cover-kicker">Dossier Riservato</div>
@@ -767,10 +769,16 @@
         </div>
       `));
     } else if (tier === 'light' && dossier.amenities_description) {
+      // Il cliente Light scrive un testo libero separato da virgole: ogni pezzo
+      // diventa un box a sé, coerente con lo stile a pittogrammi di Gold/Platinum
+      // invece di un unico paragrafo indistinto.
+      const items = dossier.amenities_description.split(',').map(s => s.trim()).filter(Boolean);
       pages.push(pageWrapper(`
         ${header}
         ${sectionHead('Asset Characteristics', 'Caratteristiche e annessi')}
-        <div class="verified-note">${esc(dossier.amenities_description)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px;">
+          ${items.map(item => `<div class="verified-note" style="padding:16px 18px;font-size:13.5px;">${esc(item)}</div>`).join('')}
+        </div>
       `));
     }
 
@@ -932,6 +940,32 @@
     window.location.href = `folium-create.html?edit=${encodeURIComponent(dossierId)}`;
   }
 
+  // Genera il PDF lato server (folium-generate-pdf), invece di dipendere dalla stampa
+  // del browser: una sola chiamata, output identico su ogni dispositivo — pensata per
+  // essere usata anche da un agente/assistente che lavora in autonomia, non solo da un
+  // umano davanti al dialogo di stampa.
+  async function generateServerPdf(){
+    const btn = document.getElementById('pdfBtn');
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Generazione PDF in corso…';
+    try {
+      const { data: sessionData } = await sb.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/folium-generate-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token || SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ dossier_id: dossierId })
+      });
+      const result = await resp.json();
+      if (!result.success) throw new Error(result.message || 'Errore sconosciuto durante la generazione del PDF.');
+      window.open(result.pdf_url, '_blank');
+    } catch (e) {
+      alert('Generazione PDF non riuscita: ' + (e.message || e) + '\n\nPuoi comunque usare "Stampa dal browser" nel frattempo.');
+    } finally {
+      btn.disabled = false; btn.textContent = original;
+    }
+  }
+
   async function checkAccessAndRender(){
     const { data: dossier } = await sb.from('folium_dossiers').select('id, client_id, is_shared').eq('id', dossierId).single();
     if (!dossier) { document.getElementById('content').textContent = 'Dossier non trovato.'; return; }
@@ -942,6 +976,7 @@
 
     if (isOwnerAccount || isDossierOwner) {
       document.getElementById('printBtn').style.display = '';
+      document.getElementById('pdfBtn').style.display = '';
       // Link alla dashboard admin: SOLO per l'account sviluppatore, mai per il
       // proprietario del dossier che sta semplicemente vedendo il proprio lavoro.
       if (isOwnerAccount) document.getElementById('adminBtnView').style.display = '';
