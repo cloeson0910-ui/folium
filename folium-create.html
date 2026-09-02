@@ -53,9 +53,9 @@
   <div id="devTierSimulator" style="display:none;background:#eef4ff;border:1px solid #c9d9f5;border-radius:10px;padding:12px 14px;margin-bottom:16px;">
     <div style="font-size:11px;letter-spacing:.5px;color:#3a5a9c;text-transform:uppercase;margin-bottom:8px;">Modalità test (solo account sviluppatore) — simula il tipo di cliente</div>
     <div style="display:flex;gap:8px;">
-      <label class="dev-tier-chip"><input type="radio" name="devTier" value="light" style="width:auto;"> Light</label>
+      <label class="dev-tier-chip"><input type="radio" name="devTier" value="light" style="width:auto;" checked> Light</label>
       <label class="dev-tier-chip"><input type="radio" name="devTier" value="gold" style="width:auto;"> Gold</label>
-      <label class="dev-tier-chip"><input type="radio" name="devTier" value="platinum" style="width:auto;" checked> Platinum</label>
+      <label class="dev-tier-chip"><input type="radio" name="devTier" value="platinum" style="width:auto;"> Platinum</label>
     </div>
     <div style="font-size:11px;color:#5c6b8a;margin-top:8px;">Genera questo dossier come se fossi un cliente in quel piano — utile per testare tutti e 3 senza pagamenti reali. Le foto vengono corrette/con logo secondo il piano scelto qui.</div>
   </div>
@@ -385,7 +385,7 @@
 
     const rows = [
       ['Popolazione della zona', true],
-      ['Analisi di mercato AI', tier !== 'light'],
+      ['Posizione e mappa', true],
       ['Descrizione editoriale AI', tier !== 'light'],
       ['Turismo, trasporti e territorio', tier !== 'light'],
       ['Caratteristiche con pittogramma', tier !== 'light'],
@@ -843,7 +843,6 @@
           status: 'draft',
           had_ads: willHaveAds,
           tier_at_generation: currentTier,
-          include_ai_valuation: fullFeatures,
           include_discovery: fullFeatures,
           include_editorial_analysis: fullFeatures,
           translated_languages: freeLanguages,
