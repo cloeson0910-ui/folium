@@ -102,6 +102,15 @@
     </div>
   </div>
 
+  <div class="tier-block" style="margin-bottom:6px;">
+    <label style="display:block;font-size:11px;letter-spacing:.5px;color:#8a7a52;margin-bottom:5px;text-transform:uppercase;">Codice promo</label>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="promoInput" placeholder="Hai un codice?" style="flex:1;padding:10px 12px;border:1px solid #ddd2b3;border-radius:8px;font-size:13px;text-transform:uppercase;">
+      <button onclick="applyPromoCode()" style="padding:10px 16px;border:none;border-radius:8px;background:#efe8d8;color:#6b5314;font-size:12.5px;cursor:pointer;white-space:nowrap;">Applica</button>
+    </div>
+    <div id="promoStatus" style="font-size:12px;margin-top:6px;"></div>
+  </div>
+
   <div id="msg" class="msg"></div>
 </div>
 
@@ -116,13 +125,51 @@
     el.textContent = text; el.className = 'msg err';
   }
 
+  // Codice promo: la validazione qui è SOLO per un feedback immediato all'utente (mostra lo
+  // sconto prima di pagare). Il prezzo VERO viene ricalcolato e applicato lato server dentro
+  // folium-create-checkout, che ripete la stessa validazione — mai fidarsi del client per
+  // l'importo finale di un pagamento. TENANT_ID fisso, stesso usato in tutto Folium.
+  const TENANT_ID = "724f71d8-b499-46c1-9047-021280e913c9";
+  let appliedPromoCode = null;
+
+  async function applyPromoCode(){
+    const input = document.getElementById('promoInput');
+    const status = document.getElementById('promoStatus');
+    const code = input.value.trim().toUpperCase();
+    if (!code) { appliedPromoCode = null; status.textContent = ''; return; }
+
+    const { data: promo, error } = await sb.from('folium_promo_codes')
+      .select('*').eq('tenant_id', TENANT_ID).eq('code', code).eq('active', true).maybeSingle();
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (error || !promo) {
+      appliedPromoCode = null;
+      status.innerHTML = '<span style="color:#a33;">Codice non valido.</span>';
+      return;
+    }
+    if (promo.expires_at && promo.expires_at < today) {
+      appliedPromoCode = null;
+      status.innerHTML = '<span style="color:#a33;">Codice scaduto.</span>';
+      return;
+    }
+    if (promo.max_uses != null && promo.uses_count >= promo.max_uses) {
+      appliedPromoCode = null;
+      status.innerHTML = '<span style="color:#a33;">Codice esaurito.</span>';
+      return;
+    }
+
+    appliedPromoCode = code;
+    const discountLabel = promo.discount_type === 'percentage' ? `-${promo.discount_value}%` : `-${promo.discount_value}€`;
+    status.innerHTML = `<span style="color:#2f7d3a;">Codice applicato: ${discountLabel} — sarà calcolato sul totale al passaggio a Stripe.</span>`;
+  }
+
   async function startCheckout(tier, packageType){
     const { data: { user } } = await sb.auth.getUser();
     if (!user) { window.location.href = 'folium-register.html'; return; }
 
     try {
       const { data, error } = await sb.functions.invoke('folium-create-checkout', {
-        body: { tier, package_type: packageType }
+        body: { tier, package_type: packageType, promo_code: appliedPromoCode || null }
       });
       if (error) throw error;
       if (data?.url) {
