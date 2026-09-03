@@ -755,8 +755,8 @@
     // Annessi/caratteristiche — integrati nella pagina "Sintesi dell'immobile" su
     // richiesta esplicita, non più una sezione a parte. Pittogrammi per Gold/Platinum,
     // box di testo libero per Light (stesso contenuto di prima, solo posizione diversa).
-    const AMENITY_ICONS = { pool:'🏊', sea_view:'🌊', garden:'🌳', garage:'🚗', terrace:'🏛️', annex:'🏡', fireplace:'🔥', air_conditioning:'❄️', elevator:'🛗', gym:'🏋️', wine_cellar:'🍷', security:'🔒', solar_panels:'☀️', sea_access:'⚓' };
-    const AMENITY_LABELS_IT = { pool:'Piscina', sea_view:'Vista mare', garden:'Giardino', garage:'Garage', terrace:'Terrazza', annex:'Annesso/Dependance', fireplace:'Camino', air_conditioning:'Aria condizionata', elevator:'Ascensore', gym:'Palestra', wine_cellar:'Cantina vini', security:'Sistema di sicurezza', solar_panels:'Pannelli solari', sea_access:'Accesso privato al mare' };
+    const AMENITY_ICONS = { pool:'🏊', sea_view:'🌊', garden:'🌳', garage:'🚗', terrace:'🏛️', annex:'🏡', fireplace:'🔥', air_conditioning:'❄️', elevator:'🛗', gym:'🏋️', wine_cellar:'🍷', security:'🔒', solar_panels:'☀️', sea_access:'⚓', heating:'🌡️', habitability:'📋', parking:'🅿️', seafront:'🏖️', historic_center:'⛲' };
+    const AMENITY_LABELS_IT = { pool:'Piscina', sea_view:'Vista mare', garden:'Giardino', garage:'Garage', terrace:'Terrazza', annex:'Annesso/Dependance', fireplace:'Camino', air_conditioning:'Aria condizionata', elevator:'Ascensore', gym:'Palestra', wine_cellar:'Cantina vini', security:'Sistema di sicurezza', solar_panels:'Pannelli solari', sea_access:'Accesso privato al mare', heating:'Riscaldamento', habitability:'Agibilità', parking:'Parcheggio', seafront:'Fronte mare', historic_center:'Centro storico' };
     let annexesHTML = '';
     if (tier !== 'light' && (dossier.amenities || []).length) {
       annexesHTML = `
