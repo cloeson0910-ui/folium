@@ -58,7 +58,7 @@
 <body>
 
 <header>
-  <div class="brand">FOLIUM</div>
+  <div class="brand">FOLIUM <span style="font-weight:300;opacity:.75;">Dossier Generator</span></div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="plan" id="adminLink" style="display:none;cursor:pointer;" onclick="location.href='folium-admin.html'">Dashboard admin</div>
     <div class="plan" id="planBadge">…</div>
@@ -99,6 +99,26 @@
         <div><label>Email di contatto</label><input type="email" id="contactEmail" required></div>
         <div><label>Telefono di contatto</label><input type="tel" id="contactPhone" required></div>
       </div>
+
+    <div class="section">
+      <h2>Logo sulle foto<span class="info-i">i<span class="tooltip-box">Se e dove applicare il logo della tua agenzia sulle foto dell'immobile. Su Light il logo Folium resta comunque sempre presente.</span></span></h2>
+      <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;cursor:pointer;">
+        <input type="checkbox" id="applyClientLogo" checked style="width:auto;">
+        <span style="font-size:13px;color:#2b2416;">Applica il logo della mia agenzia sulle foto dell'immobile</span>
+      </label>
+      <div id="watermarkLight" class="data-choice" style="display:none;">Piano Light: il logo Folium compare comunque su ogni foto, in posizione fissa (fa parte del piano gratuito). Deselezionando la casella sopra, si toglie solo il TUO logo — quello Folium resta.</div>
+      <div id="watermarkGoldPlatinum" class="locked-wrap" style="display:none;">
+        <div class="lock-badge-wrap"><span class="lock-badge">🔒 Riservato a Gold/Platinum<span class="tooltip-box">Su Light la posizione del logo è fissa. <a href="folium-checkout.html">Passa a Gold o Platinum →</a> per scegliere dove metterlo.</span></span></div>
+        <div class="data-choice" style="margin-bottom:10px;">Piano Gold/Platinum: nessun logo Folium in ogni caso. Deselezionando la casella sopra, le foto restano senza alcun logo.</div>
+        <label>Posizione logo</label>
+        <select id="watermarkPosition">
+          <option value="bottom-right">In basso a destra</option>
+          <option value="bottom-left">In basso a sinistra</option>
+          <option value="top-right">In alto a destra</option>
+          <option value="top-left">In alto a sinistra</option>
+        </select>
+      </div>
+    </div>
     </div>
 
     <div class="section">
@@ -138,85 +158,6 @@
       <input type="file" id="propPhotos" accept="image/*" multiple style="display:none">
       <div class="thumbs" id="propPreview"></div>
       <div class="count" id="propCount">0 / 15 foto</div>
-    </div>
-
-    <div class="section">
-      <h2>Foto destinazione / dintorni <span style="font-weight:400;color:#a49470;">(facoltative)</span><span class="info-i">i<span class="tooltip-box">Foto opzionali della zona, del panorama o dei dintorni, per dare contesto oltre all'immobile stesso — non obbligatorie.</span></span></h2>
-      <div class="upload-box" onclick="document.getElementById('destPhotos').click()">Tocca per aggiungere foto</div>
-      <input type="file" id="destPhotos" accept="image/*" multiple style="display:none">
-      <div class="thumbs" id="destPreview"></div>
-    </div>
-
-    <div class="section">
-      <h2>Dati verificati<span class="info-i">i<span class="tooltip-box">Metratura precisa, dati catastali, planimetria, classe energetica e altri dati tecnici verificabili dell'immobile.</span></span></h2>
-      <label>Note / dati catastali / planimetria / classe energetica, ecc.</label>
-      <textarea id="verifiedData" placeholder="Inserisci qui i dati verificati che vuoi includere nel dossier"></textarea>
-    </div>
-
-    <div class="section">
-      <h2>Caratteristiche e annessi<span class="info-i">i<span class="tooltip-box">Elementi distintivi dell'immobile — piscina, giardino, garage, vista mare, ecc. Su Gold/Platinum compaiono nel dossier con un pittogramma dedicato invece che come testo libero.</span></span></h2>
-      <div id="amenitiesLight" style="display:none;">
-        <label>Descrizione libera (piano Light — senza pittogrammi)</label>
-        <textarea id="amenitiesDescription" placeholder="Es. piscina privata, vista mare, giardino di 800mq, garage doppio..."></textarea>
-      </div>
-      <div id="amenitiesGoldPlatinum" class="locked-wrap" style="display:none;">
-        <div class="lock-badge-wrap"><span class="lock-badge">🔒 Riservato a Gold/Platinum<span class="tooltip-box">Su Light questa sezione resta bloccata. <a href="folium-checkout.html">Passa a Gold o Platinum →</a> per selezionare le caratteristiche con pittogramma dedicato.</span></span></div>
-        <div class="data-choice" style="margin-bottom:10px;">Seleziona le caratteristiche presenti: compariranno nel dossier con pittogramma dedicato.</div>
-        <div id="amenityChips" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h2>Contenuti del dossier<span class="info-i">i<span class="tooltip-box">Riepilogo di cosa è incluso nel tuo piano attuale — cambia automaticamente in base al piano.</span></span></h2>
-      <div id="contentsSummary" class="data-choice">Caricamento piano…</div>
-    </div>
-
-    <div class="section">
-      <h2>Formato e stile<span class="info-i">i<span class="tooltip-box">Come si presenta il dossier finale: orientamento della pagina, carattere e colore del tema — disponibile su tutti i piani.</span></span></h2>
-      <label>Orientamento pagina</label>
-      <select id="pageOrientation">
-        <option value="portrait">Verticale</option>
-        <option value="landscape">Orizzontale</option>
-      </select>
-      <div class="row2">
-        <div>
-          <label>Carattere</label>
-          <select id="fontTheme">
-            <option value="poppins">Moderno (Poppins)</option>
-            <option value="serif">Classico (Serif)</option>
-            <option value="mono">Tecnico (Monospace)</option>
-          </select>
-        </div>
-        <div>
-          <label>Colore tema</label>
-          <select id="colorTheme">
-            <option value="gold">Oro/Bronzo</option>
-            <option value="navy">Blu Navy</option>
-            <option value="emerald">Verde Smeraldo</option>
-            <option value="graphite">Grigio Grafite</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h2>Logo sulle foto<span class="info-i">i<span class="tooltip-box">Se e dove applicare il logo della tua agenzia sulle foto dell'immobile. Su Light il logo Folium resta comunque sempre presente.</span></span></h2>
-      <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;cursor:pointer;">
-        <input type="checkbox" id="applyClientLogo" checked style="width:auto;">
-        <span style="font-size:13px;color:#2b2416;">Applica il logo della mia agenzia sulle foto dell'immobile</span>
-      </label>
-      <div id="watermarkLight" class="data-choice" style="display:none;">Piano Light: il logo Folium compare comunque su ogni foto, in posizione fissa (fa parte del piano gratuito). Deselezionando la casella sopra, si toglie solo il TUO logo — quello Folium resta.</div>
-      <div id="watermarkGoldPlatinum" class="locked-wrap" style="display:none;">
-        <div class="lock-badge-wrap"><span class="lock-badge">🔒 Riservato a Gold/Platinum<span class="tooltip-box">Su Light la posizione del logo è fissa. <a href="folium-checkout.html">Passa a Gold o Platinum →</a> per scegliere dove metterlo.</span></span></div>
-        <div class="data-choice" style="margin-bottom:10px;">Piano Gold/Platinum: nessun logo Folium in ogni caso. Deselezionando la casella sopra, le foto restano senza alcun logo.</div>
-        <label>Posizione logo</label>
-        <select id="watermarkPosition">
-          <option value="bottom-right">In basso a destra</option>
-          <option value="bottom-left">In basso a sinistra</option>
-          <option value="top-right">In alto a destra</option>
-          <option value="top-left">In alto a sinistra</option>
-        </select>
-      </div>
     </div>
 
     <div class="section">
@@ -286,6 +227,66 @@
           <div class="thumbs" id="renovationRenderGallery" style="margin-top:10px;"></div>
         </div>
 
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Foto destinazione / dintorni <span style="font-weight:400;color:#a49470;">(facoltative)</span><span class="info-i">i<span class="tooltip-box">Foto opzionali della zona, del panorama o dei dintorni, per dare contesto oltre all'immobile stesso — non obbligatorie.</span></span></h2>
+      <div class="upload-box" onclick="document.getElementById('destPhotos').click()">Tocca per aggiungere foto</div>
+      <input type="file" id="destPhotos" accept="image/*" multiple style="display:none">
+      <div class="thumbs" id="destPreview"></div>
+    </div>
+
+    <div class="section">
+      <h2>Dati verificati<span class="info-i">i<span class="tooltip-box">Metratura precisa, dati catastali, planimetria, classe energetica e altri dati tecnici verificabili dell'immobile.</span></span></h2>
+      <label>Note / dati catastali / planimetria / classe energetica, ecc.</label>
+      <textarea id="verifiedData" placeholder="Inserisci qui i dati verificati che vuoi includere nel dossier"></textarea>
+    </div>
+
+    <div class="section">
+      <h2>Caratteristiche e annessi<span class="info-i">i<span class="tooltip-box">Elementi distintivi dell'immobile — piscina, giardino, garage, vista mare, ecc. Su Gold/Platinum compaiono nel dossier con un pittogramma dedicato invece che come testo libero.</span></span></h2>
+      <div id="amenitiesLight" style="display:none;">
+        <label>Descrizione libera (piano Light — senza pittogrammi)</label>
+        <div style="font-size:11.5px;color:#8a7a52;margin:-4px 0 8px;">Separa ogni caratteristica con una virgola: ognuna diventerà un box a sé nel dossier finale (es. "piscina privata, vista mare, garage doppio" → 3 box distinti, non un unico paragrafo).</div>
+        <textarea id="amenitiesDescription" placeholder="Es. piscina privata, vista mare, giardino di 800mq, garage doppio..."></textarea>
+      </div>
+      <div id="amenitiesGoldPlatinum" class="locked-wrap" style="display:none;">
+        <div class="lock-badge-wrap"><span class="lock-badge">🔒 Riservato a Gold/Platinum<span class="tooltip-box">Su Light questa sezione resta bloccata. <a href="folium-checkout.html">Passa a Gold o Platinum →</a> per selezionare le caratteristiche con pittogramma dedicato.</span></span></div>
+        <div class="data-choice" style="margin-bottom:10px;">Seleziona le caratteristiche presenti: compariranno nel dossier con pittogramma dedicato.</div>
+        <div id="amenityChips" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Contenuti del dossier<span class="info-i">i<span class="tooltip-box">Riepilogo di cosa è incluso nel tuo piano attuale — cambia automaticamente in base al piano.</span></span></h2>
+      <div id="contentsSummary" class="data-choice">Caricamento piano…</div>
+    </div>
+
+    <div class="section">
+      <h2>Formato e stile<span class="info-i">i<span class="tooltip-box">Come si presenta il dossier finale: orientamento della pagina, carattere e colore del tema — disponibile su tutti i piani.</span></span></h2>
+      <label>Orientamento pagina</label>
+      <select id="pageOrientation">
+        <option value="portrait">Verticale</option>
+        <option value="landscape">Orizzontale</option>
+      </select>
+      <div class="row2">
+        <div>
+          <label>Carattere</label>
+          <select id="fontTheme">
+            <option value="poppins">Moderno (Poppins)</option>
+            <option value="serif">Classico (Serif)</option>
+            <option value="mono">Tecnico (Monospace)</option>
+          </select>
+        </div>
+        <div>
+          <label>Colore tema</label>
+          <select id="colorTheme">
+            <option value="gold">Oro/Bronzo</option>
+            <option value="navy">Blu Navy</option>
+            <option value="emerald">Verde Smeraldo</option>
+            <option value="graphite">Grigio Grafite</option>
+          </select>
+        </div>
       </div>
     </div>
 
