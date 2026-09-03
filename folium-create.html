@@ -36,11 +36,14 @@
   .logout{font-size:11px;color:#8a7a52;text-decoration:underline;cursor:pointer;}
 
   .locked-wrap{ position:relative; }
-  .locked-wrap.is-locked > *:not(.lock-overlay){ opacity:.35; filter:grayscale(55%); pointer-events:none; user-select:none; }
-  .lock-overlay{ display:none; position:absolute; inset:0; flex-direction:column; align-items:center; justify-content:center; text-align:center; background:rgba(255,255,255,.6); border-radius:8px; gap:7px; padding:14px; }
-  .locked-wrap.is-locked .lock-overlay{ display:flex; }
-  .lock-overlay .lock-badge{ font-size:11px; letter-spacing:.5px; text-transform:uppercase; color:#8a6d1f; background:#fdf6e8; border:1px solid #eee0bd; padding:6px 14px; border-radius:20px; font-weight:600; }
-  .lock-overlay a{ font-size:12px; color:#a77d31; text-decoration:underline; }
+  .locked-wrap.is-locked > *:not(.lock-badge-wrap){ opacity:.6; pointer-events:none; user-select:none; }
+  .lock-badge-wrap{ display:none; position:relative; margin-bottom:10px; }
+  .locked-wrap.is-locked .lock-badge-wrap{ display:inline-block; }
+  .lock-badge{ display:inline-flex; align-items:center; gap:5px; font-size:11px; letter-spacing:.3px; color:#8a6d1f; background:#fdf6e8; border:1px solid #eee0bd; padding:6px 14px; border-radius:20px; font-weight:600; cursor:help; }
+  .info-i, .lock-badge{ position:relative; }
+  .tooltip-box{ display:none; position:absolute; left:0; bottom:130%; width:230px; background:#20180a; color:#f1d27a; font-size:11.5px; font-weight:400; font-style:normal; line-height:1.55; padding:11px 13px; border-radius:8px; z-index:60; text-align:left; box-shadow:0 8px 22px rgba(0,0,0,.3); }
+  .tooltip-box a{ color:#f1d27a; text-decoration:underline; }
+  .info-i:hover .tooltip-box, .lock-badge:hover .tooltip-box{ display:block; }
   .info-i{ display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background:#eee0bd; color:#8a6d1f; font-size:10px; font-weight:700; font-style:italic; cursor:help; margin-left:6px; vertical-align:middle; }
 
   .promo-widget{ position:fixed; right:18px; bottom:18px; z-index:200; width:270px; background:#20180a; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.35); overflow:hidden; font-family:inherit; }
@@ -84,7 +87,7 @@
   <form id="dossierForm">
 
     <div class="section">
-      <h2>Il tuo logo e contatti<span class="info-i" title="Il nome che comparirà come intestatario del dossier, la tua email e telefono di contatto, e il logo della tua agenzia — usato in copertina e (facoltativamente) sulle foto.">i</span></h2>
+      <h2>Il tuo logo e contatti<span class="info-i">i<span class="tooltip-box">Il nome che comparirà come intestatario del dossier, la tua email e telefono di contatto, e il logo della tua agenzia — usato in copertina e (facoltativamente) sulle foto.</span></span></h2>
       <label>Logo (comparirà sul dossier)</label>
       <div class="upload-box" onclick="document.getElementById('logoInput').click()">Tocca per caricare il logo</div>
       <input type="file" id="logoInput" accept="image/*" class="hidden" style="display:none">
@@ -99,7 +102,7 @@
     </div>
 
     <div class="section">
-      <h2>Indirizzo immobile<span class="info-i" title="L'indirizzo esatto dell'immobile: via, comune, provincia — usato per generare la mappa, i dati di popolazione della zona e (su Gold/Platinum) l'analisi del territorio.">i</span></h2>
+      <h2>Indirizzo immobile<span class="info-i">i<span class="tooltip-box">L'indirizzo esatto dell'immobile: via, comune, provincia — usato per generare la mappa, i dati di popolazione della zona e (su Gold/Platinum) l'analisi del territorio.</span></span></h2>
       <label>Indirizzo completo</label>
       <input type="text" id="address" placeholder="Via, numero civico, città" required>
       <div class="row2">
@@ -130,7 +133,7 @@
     </div>
 
     <div class="section">
-      <h2>Foto immobile <span style="font-weight:400;color:#a49470;">(max 15)</span><span class="info-i" title="Le foto reali dell'immobile che vuoi mostrare nel dossier, in ordine di importanza — la prima caricata sarà la più prominente.">i</span></h2>
+      <h2>Foto immobile <span style="font-weight:400;color:#a49470;">(max 15)</span><span class="info-i">i<span class="tooltip-box">Le foto reali dell'immobile che vuoi mostrare nel dossier, in ordine di importanza — la prima caricata sarà la più prominente.</span></span></h2>
       <div class="upload-box" onclick="document.getElementById('propPhotos').click()">Tocca per aggiungere foto</div>
       <input type="file" id="propPhotos" accept="image/*" multiple style="display:none">
       <div class="thumbs" id="propPreview"></div>
@@ -138,41 +141,38 @@
     </div>
 
     <div class="section">
-      <h2>Foto destinazione / dintorni <span style="font-weight:400;color:#a49470;">(facoltative)</span><span class="info-i" title="Foto opzionali della zona, del panorama o dei dintorni, per dare contesto oltre all'immobile stesso — non obbligatorie.">i</span></h2>
+      <h2>Foto destinazione / dintorni <span style="font-weight:400;color:#a49470;">(facoltative)</span><span class="info-i">i<span class="tooltip-box">Foto opzionali della zona, del panorama o dei dintorni, per dare contesto oltre all'immobile stesso — non obbligatorie.</span></span></h2>
       <div class="upload-box" onclick="document.getElementById('destPhotos').click()">Tocca per aggiungere foto</div>
       <input type="file" id="destPhotos" accept="image/*" multiple style="display:none">
       <div class="thumbs" id="destPreview"></div>
     </div>
 
     <div class="section">
-      <h2>Dati verificati<span class="info-i" title="Metratura precisa, dati catastali, planimetria, classe energetica e altri dati tecnici verificabili dell'immobile.">i</span></h2>
+      <h2>Dati verificati<span class="info-i">i<span class="tooltip-box">Metratura precisa, dati catastali, planimetria, classe energetica e altri dati tecnici verificabili dell'immobile.</span></span></h2>
       <label>Note / dati catastali / planimetria / classe energetica, ecc.</label>
       <textarea id="verifiedData" placeholder="Inserisci qui i dati verificati che vuoi includere nel dossier"></textarea>
     </div>
 
     <div class="section">
-      <h2>Caratteristiche e annessi<span class="info-i" title="Elementi distintivi dell'immobile — piscina, giardino, garage, vista mare, ecc. Su Gold/Platinum compaiono nel dossier con un pittogramma dedicato invece che come testo libero.">i</span></h2>
+      <h2>Caratteristiche e annessi<span class="info-i">i<span class="tooltip-box">Elementi distintivi dell'immobile — piscina, giardino, garage, vista mare, ecc. Su Gold/Platinum compaiono nel dossier con un pittogramma dedicato invece che come testo libero.</span></span></h2>
       <div id="amenitiesLight" style="display:none;">
         <label>Descrizione libera (piano Light — senza pittogrammi)</label>
         <textarea id="amenitiesDescription" placeholder="Es. piscina privata, vista mare, giardino di 800mq, garage doppio..."></textarea>
       </div>
       <div id="amenitiesGoldPlatinum" class="locked-wrap" style="display:none;">
+        <div class="lock-badge-wrap"><span class="lock-badge">🔒 Riservato a Gold/Platinum<span class="tooltip-box">Su Light questa sezione resta bloccata. <a href="folium-checkout.html">Passa a Gold o Platinum →</a> per selezionare le caratteristiche con pittogramma dedicato.</span></span></div>
         <div class="data-choice" style="margin-bottom:10px;">Seleziona le caratteristiche presenti: compariranno nel dossier con pittogramma dedicato.</div>
         <div id="amenityChips" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-        <div class="lock-overlay">
-          <span class="lock-badge">🔒 Riservato a clienti Gold e Platinum</span>
-          <a href="folium-checkout.html">Passa a Gold o Platinum →</a>
-        </div>
       </div>
     </div>
 
     <div class="section">
-      <h2>Contenuti del dossier<span class="info-i" title="Riepilogo di cosa è incluso nel tuo piano attuale — cambia automaticamente in base al piano.">i</span></h2>
+      <h2>Contenuti del dossier<span class="info-i">i<span class="tooltip-box">Riepilogo di cosa è incluso nel tuo piano attuale — cambia automaticamente in base al piano.</span></span></h2>
       <div id="contentsSummary" class="data-choice">Caricamento piano…</div>
     </div>
 
     <div class="section">
-      <h2>Formato e stile<span class="info-i" title="Come si presenta il dossier finale: orientamento della pagina, carattere e colore del tema — disponibile su tutti i piani.">i</span></h2>
+      <h2>Formato e stile<span class="info-i">i<span class="tooltip-box">Come si presenta il dossier finale: orientamento della pagina, carattere e colore del tema — disponibile su tutti i piani.</span></span></h2>
       <label>Orientamento pagina</label>
       <select id="pageOrientation">
         <option value="portrait">Verticale</option>
@@ -200,13 +200,14 @@
     </div>
 
     <div class="section">
-      <h2>Logo sulle foto<span class="info-i" title="Se e dove applicare il logo della tua agenzia sulle foto dell'immobile. Su Light il logo Folium resta comunque sempre presente.">i</span></h2>
+      <h2>Logo sulle foto<span class="info-i">i<span class="tooltip-box">Se e dove applicare il logo della tua agenzia sulle foto dell'immobile. Su Light il logo Folium resta comunque sempre presente.</span></span></h2>
       <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;cursor:pointer;">
         <input type="checkbox" id="applyClientLogo" checked style="width:auto;">
         <span style="font-size:13px;color:#2b2416;">Applica il logo della mia agenzia sulle foto dell'immobile</span>
       </label>
       <div id="watermarkLight" class="data-choice" style="display:none;">Piano Light: il logo Folium compare comunque su ogni foto, in posizione fissa (fa parte del piano gratuito). Deselezionando la casella sopra, si toglie solo il TUO logo — quello Folium resta.</div>
       <div id="watermarkGoldPlatinum" class="locked-wrap" style="display:none;">
+        <div class="lock-badge-wrap"><span class="lock-badge">🔒 Riservato a Gold/Platinum<span class="tooltip-box">Su Light la posizione del logo è fissa. <a href="folium-checkout.html">Passa a Gold o Platinum →</a> per scegliere dove metterlo.</span></span></div>
         <div class="data-choice" style="margin-bottom:10px;">Piano Gold/Platinum: nessun logo Folium in ogni caso. Deselezionando la casella sopra, le foto restano senza alcun logo.</div>
         <label>Posizione logo</label>
         <select id="watermarkPosition">
@@ -215,15 +216,81 @@
           <option value="top-right">In alto a destra</option>
           <option value="top-left">In alto a sinistra</option>
         </select>
-        <div class="lock-overlay">
-          <span class="lock-badge">🔒 Riservato a clienti Gold e Platinum</span>
-          <a href="folium-checkout.html">Passa a Gold o Platinum →</a>
-        </div>
       </div>
     </div>
 
     <div class="section">
-      <h2>Traduzioni <span style="font-weight:400;color:#a49470;">(facoltative, a pagamento)</span><span class="info-i" title="Genera il dossier anche in altre lingue oltre all'italiano — gratis su Gold/Platinum, a pagamento su Light.">i</span></h2>
+      <h2>Render ristrutturazione IA <span style="font-weight:400;color:#a49470;">(facoltativo)</span><span class="info-i">i<span class="tooltip-box">Carica una foto di un ambiente e genera una versione ristrutturata realistica con l'IA, più una stima dei costi. Il render generato può essere aggiunto alle foto dell'immobile.</span></span></h2>
+      <div id="renovationLight" style="display:none;">
+        <div class="lock-badge-wrap"><span class="lock-badge">🔒 Riservato a Gold/Platinum<span class="tooltip-box">Il render IA e la stima costi di ristrutturazione sono disponibili solo su Gold e Platinum. <a href="folium-checkout.html">Passa a Gold o Platinum →</a></span></span></div>
+      </div>
+      <div id="renovationGoldPlatinum" class="locked-wrap" style="display:none;">
+        <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;cursor:pointer;">
+          <input type="checkbox" id="renovationRequired" style="width:auto;">
+          <span style="font-size:13px;color:#2b2416;">Immobile da ristrutturare — calcola costi e genera render</span>
+        </label>
+
+        <div id="renovationFields" style="display:none;">
+          <div class="row2">
+            <div>
+              <label>Livello degrado</label>
+              <select id="renovationLevel">
+                <option value="leggero">Leggero</option>
+                <option value="medio" selected>Medio</option>
+                <option value="pesante">Pesante</option>
+              </select>
+            </div>
+            <div>
+              <label>Stile valorizzazione</label>
+              <select id="renovationStyle">
+                <option value="conservativo">Conservativo</option>
+                <option value="normale" selected>Normale</option>
+                <option value="lusso">Lusso</option>
+              </select>
+            </div>
+          </div>
+          <label>Mq da ristrutturare</label>
+          <input type="number" id="renovationAreaSqm" min="0">
+          <div class="row2">
+            <div><label>Costo minimo stimato (€)</label><input type="text" id="renovationCostMin" readonly></div>
+            <div><label>Costo massimo stimato (€)</label><input type="text" id="renovationCostMax" readonly></div>
+          </div>
+          <label>Costo medio stimato (€)</label>
+          <input type="text" id="renovationCostAvg" readonly>
+          <label>Note ristrutturazione (facoltative)</label>
+          <textarea id="renovationNotes" placeholder="Es. preservare volte storiche, rifare bagni, mantenere pietra originale..."></textarea>
+
+          <label style="margin-top:14px;">Ambiente foto</label>
+          <select id="renovationRoomType">
+            <option value="kitchen">Cucina</option>
+            <option value="living_room">Soggiorno</option>
+            <option value="bedroom">Camera</option>
+            <option value="bathroom">Bagno</option>
+            <option value="facade">Facciata / Esterni</option>
+            <option value="garden">Giardino</option>
+            <option value="pool">Piscina</option>
+            <option value="other">Altro</option>
+          </select>
+          <label>Foto ambiente da ristrutturare</label>
+          <div class="upload-box" onclick="document.getElementById('renovationPhotoInput').click()">Tocca per caricare la foto</div>
+          <input type="file" id="renovationPhotoInput" accept="image/*" style="display:none">
+          <div class="thumbs" id="renovationPhotoPreview"></div>
+
+          <div style="display:flex;gap:14px;margin:10px 0;">
+            <label class="check" style="display:flex;align-items:center;gap:5px;font-size:12.5px;"><input type="checkbox" id="renderStyleConservativo" style="width:auto;" checked> Conservativo</label>
+            <label class="check" style="display:flex;align-items:center;gap:5px;font-size:12.5px;"><input type="checkbox" id="renderStyleNormale" style="width:auto;" checked> Normale</label>
+            <label class="check" style="display:flex;align-items:center;gap:5px;font-size:12.5px;"><input type="checkbox" id="renderStyleLusso" style="width:auto;"> Lusso</label>
+          </div>
+          <button type="button" class="btn" id="generateRenderBtn" style="margin-top:0;">Genera Render IA (max 2 per volta)</button>
+          <div id="renovationRenderStatus" class="count" style="margin-top:8px;"></div>
+          <div class="thumbs" id="renovationRenderGallery" style="margin-top:10px;"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Traduzioni <span style="font-weight:400;color:#a49470;">(facoltative, a pagamento)</span><span class="info-i">i<span class="tooltip-box">Genera il dossier anche in altre lingue oltre all'italiano — gratis su Gold/Platinum, a pagamento su Light.</span></span></h2>
       <div class="data-choice" style="margin-bottom:10px;">Incluse gratis nei piani Gold e Platinum. Su Light, 5€ a lingua. Il dossier resta comunque leggibile nella lingua originale: la traduzione aggiunge un selettore lingua nel dossier finale.</div>
       <div id="langChecks" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
       <div class="ad-price-box" id="translationPriceBox" style="background:#fdf9ef;border:1px solid #eee0bd;border-radius:8px;padding:10px 12px;font-size:13px;color:#6b5314;">Nessuna lingua selezionata — 0€</div>
@@ -265,7 +332,7 @@
      messaggio "passa a Platinum" e fa scorrere le pubblicità realmente attive del tenant,
      a rotazione, come "prova" concreta di cosa vede chi resta su Light/Gold. -->
 <div id="promoWidget" class="promo-widget" style="display:none;">
-  <button type="button" class="promo-widget-close" onclick="document.getElementById('promoWidget').style.display='none';" aria-label="Chiudi">✕</button>
+  <button type="button" class="promo-widget-close" onclick="closePromoWidget();" aria-label="Chiudi">✕</button>
   <div class="promo-widget-head">Passa a <b>Platinum</b> per non avere pubblicità sul tuo dossier — <a href="folium-checkout.html">scopri di più</a></div>
   <div class="promo-widget-carousel" id="promoWidgetCarousel"></div>
 </div>
@@ -490,8 +557,19 @@
   function updatePromoWidget(tier){
     const widget = document.getElementById('promoWidget');
     if (tier === 'platinum') { widget.style.display = 'none'; return; }
+    currentPromoWidgetTier = tier; // serve al riapparire automatico, per non farlo tornare se nel frattempo si è passati a Platinum
     widget.style.display = 'block';
     loadPromoWidgetAds(); // idempotente (promoWidgetLoaded), non riparte ad ogni cambio piano
+  }
+
+  // Chiudere il widget non lo disattiva per sempre: ricompare da solo dopo 30s (a meno che
+  // nel frattempo il piano non sia diventato Platinum, dove non serve più).
+  let currentPromoWidgetTier = 'light';
+  function closePromoWidget(){
+    document.getElementById('promoWidget').style.display = 'none';
+    setTimeout(() => {
+      if (currentPromoWidgetTier !== 'platinum') document.getElementById('promoWidget').style.display = 'block';
+    }, 30000);
   }
 
   function updatePlanUI(){
@@ -545,6 +623,12 @@
     document.getElementById('watermarkLight').style.display = isLight ? 'block' : 'none';
     document.getElementById('watermarkGoldPlatinum').style.display = 'block';
     document.getElementById('watermarkGoldPlatinum').classList.toggle('is-locked', isLight);
+
+    // Render ristrutturazione: su Light non ha senso nemmeno mostrare i campi bloccati (è
+    // un pulsante costoso legato a una vera chiamata AI, non un campo dati come gli altri
+    // due sopra) — qui si mostra solo l'avviso "riservato", niente form.
+    document.getElementById('renovationLight').style.display = isLight ? 'block' : 'none';
+    document.getElementById('renovationGoldPlatinum').style.display = isLight ? 'none' : 'block';
 
     updatePromoWidget(tier);
   }
@@ -638,6 +722,144 @@
     destinationFiles.forEach((f, idx) => {
       renderThumb(box, f, ()=>{ destinationFiles.splice(idx,1); renderDestPreview(); });
     });
+  }
+
+  // ---- Render ristrutturazione IA (Gold/Platinum) --------------------------
+  // Stessa formula costi già in uso su Immonova (motore diverso, stesse tariffe/€ al mq),
+  // verificata sul file sorgente vero fornito dall'utente prima di replicarla.
+  function renovationRates(style, level){
+    const rates = {
+      conservativo: { min: 400, max: 700 },
+      normale: { min: 800, max: 1400 },
+      lusso: { min: 1500, max: 3000 }
+    };
+    let multiplier = 1;
+    if (level === 'leggero') multiplier = 0.90;
+    if (level === 'medio') multiplier = 1.00;
+    if (level === 'pesante') multiplier = 1.18;
+    const selected = rates[style] || rates.normale;
+    return { min: selected.min * multiplier, max: selected.max * multiplier };
+  }
+
+  function calculateRenovationBudget(){
+    const sqm = Number(document.getElementById('renovationAreaSqm').value) || Number(document.getElementById('size').value) || 0;
+    const style = document.getElementById('renovationStyle').value;
+    const level = document.getElementById('renovationLevel').value;
+    const rates = renovationRates(style, level);
+    const min = Math.round(sqm * rates.min);
+    const max = Math.round(sqm * rates.max);
+    const avg = Math.round((min + max) / 2);
+    document.getElementById('renovationCostMin').value = sqm ? min.toLocaleString('it-IT') : '';
+    document.getElementById('renovationCostMax').value = sqm ? max.toLocaleString('it-IT') : '';
+    document.getElementById('renovationCostAvg').value = sqm ? avg.toLocaleString('it-IT') : '';
+  }
+
+  document.getElementById('renovationRequired').addEventListener('change', (e) => {
+    const on = e.target.checked;
+    document.getElementById('renovationFields').style.display = on ? 'block' : 'none';
+    if (on) {
+      if (!document.getElementById('renovationAreaSqm').value) {
+        const size = document.getElementById('size').value;
+        if (size) document.getElementById('renovationAreaSqm').value = size;
+      }
+      calculateRenovationBudget();
+    }
+  });
+  ['renovationAreaSqm', 'renovationStyle', 'renovationLevel'].forEach(id => {
+    document.getElementById(id).addEventListener('input', calculateRenovationBudget);
+    document.getElementById(id).addEventListener('change', calculateRenovationBudget);
+  });
+
+  let renovationPhotoFile = null;
+  let renovationPhotoBase64 = null;
+  document.getElementById('renovationPhotoInput').addEventListener('change', (e) => {
+    renovationPhotoFile = e.target.files[0] || null;
+    const box = document.getElementById('renovationPhotoPreview');
+    box.innerHTML = '';
+    renovationPhotoBase64 = null;
+    if (!renovationPhotoFile) return;
+    renderThumb(box, renovationPhotoFile, () => { renovationPhotoFile = null; renovationPhotoBase64 = null; box.innerHTML = ''; });
+    const reader = new FileReader();
+    reader.onload = () => { renovationPhotoBase64 = reader.result; };
+    reader.readAsDataURL(renovationPhotoFile);
+  });
+
+  document.getElementById('generateRenderBtn').addEventListener('click', async () => {
+    const status = document.getElementById('renovationRenderStatus');
+    const btn = document.getElementById('generateRenderBtn');
+    try {
+      if (!renovationPhotoBase64) throw new Error('Carica prima una foto dell\'ambiente da ristrutturare.');
+      const styles = [];
+      if (document.getElementById('renderStyleConservativo').checked) styles.push('conservativo');
+      if (document.getElementById('renderStyleNormale').checked) styles.push('normale');
+      if (document.getElementById('renderStyleLusso').checked) styles.push('lusso');
+      if (!styles.length) throw new Error('Seleziona almeno uno stile da generare.');
+      if (styles.length > 2) throw new Error('Seleziona al massimo 2 stili per volta (limite del motore, per non superare i tempi di una singola chiamata).');
+
+      // Chiamata a un servizio AI a pagamento: conferma esplicita prima di procedere, per
+      // non ripetere l'errore di costo reale già capitato in passato con motori automatici.
+      if (!confirm('Generare il render con IA ha un costo reale (chiamata a un servizio a pagamento). Continuare?')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Generazione in corso...';
+      status.textContent = '';
+
+      const { data, error } = await sb.functions.invoke('folium-generate-renovation-render', {
+        body: {
+          photo_base64: renovationPhotoBase64,
+          room_type: document.getElementById('renovationRoomType').value,
+          styles,
+          notes: document.getElementById('renovationNotes').value.trim() || null
+        }
+      });
+      if (error) throw error;
+      if (!data || !data.success) throw new Error((data && (data.message || (data.errors && data.errors[0]?.message))) || 'Errore generazione render IA.');
+
+      renderRenovationGallery(data.results || []);
+      status.textContent = `${(data.results || []).length} render generati.` + (data.errors?.length ? ` ${data.errors.length} stile/i non riusciti: ${data.errors.map(e => e.style).join(', ')}.` : '');
+    } catch (e) {
+      status.textContent = 'Errore: ' + (e.message || e);
+    }
+    btn.disabled = false;
+    btn.textContent = 'Genera Render IA (max 2 per volta)';
+  });
+
+  const RENDER_STYLE_LABEL = { conservativo: 'Conservativo', normale: 'Normale', lusso: 'Lusso' };
+
+  function renderRenovationGallery(results){
+    const box = document.getElementById('renovationRenderGallery');
+    box.innerHTML = '';
+    results.forEach((r, idx) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:inline-block;text-align:center;margin:0 8px 8px 0;';
+      const img = document.createElement('img');
+      img.src = r.image_base64;
+      img.style.cssText = 'width:110px;height:110px;object-fit:cover;border-radius:8px;display:block;';
+      const label = document.createElement('div');
+      label.textContent = RENDER_STYLE_LABEL[r.style] || r.style;
+      label.style.cssText = 'font-size:10.5px;color:#8a7a52;margin-top:3px;';
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.textContent = 'Aggiungi alle foto';
+      addBtn.style.cssText = 'font-size:10px;padding:4px 8px;margin-top:4px;border:1px solid #ddd2b3;border-radius:6px;background:#fff;color:#6b5314;cursor:pointer;';
+      addBtn.onclick = () => addRenovationRenderToPhotos(r, idx);
+      div.appendChild(img); div.appendChild(label); div.appendChild(document.createElement('br')); div.appendChild(addBtn);
+      box.appendChild(div);
+    });
+  }
+
+  // Il render scelto diventa a tutti gli effetti una foto immobile normale — nessuna
+  // tabella/stato separato da gestire: si aggiunge allo stesso array già usato per le foto
+  // caricate a mano, stesso limite MAX_PROPERTY_PHOTOS, stesso flusso di upload al submit.
+  function addRenovationRenderToPhotos(result, idx){
+    if (propertyFiles.length >= MAX_PROPERTY_PHOTOS) { alert(`Hai già raggiunto il massimo di ${MAX_PROPERTY_PHOTOS} foto immobile.`); return; }
+    const byteChars = atob(result.image_base64.split(',').pop());
+    const bytes = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+    const file = new File([bytes], `render-${result.style}-${Date.now()}.png`, { type: 'image/png' });
+    propertyFiles.push(file);
+    renderPropPreview();
+    alert('Render aggiunto alle foto dell\'immobile.');
   }
 
   function showMsg(text, ok){
