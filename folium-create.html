@@ -12,6 +12,26 @@
   header .brand{font-weight:300;letter-spacing:4px;font-size:20px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
   header .plan{font-size:11px;letter-spacing:1px;background:#ffffff22;padding:6px 12px;border-radius:20px;}
   .wrap{max-width:600px;margin:0 auto;padding:20px 16px 80px;}
+  @media (min-width: 900px){
+    .wrap{
+      max-width:1040px; display:grid;
+      grid-template-columns: 600px 320px; gap:28px; align-items:start;
+    }
+    .create-sidebar{ display:block; }
+    .sidebar-sticky{ position:sticky; top:20px; }
+  }
+  .create-sidebar{ display:block; margin-top:24px; }
+  @media (min-width: 900px){
+    .create-sidebar{ margin-top:0; }
+  }
+  .section-title-side{ font-size:11px; letter-spacing:1px; text-transform:uppercase; color:#8a7a52; margin-bottom:10px; font-weight:600; }
+  .sidebar-plan-card{ background:#fff; border:1px solid #eee0bd; border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .sidebar-plan-card.current{ border-color:#c79c43; box-shadow:0 3px 10px rgba(199,156,67,.15); }
+  .sidebar-plan-card h4{ margin:0 0 4px; font-size:13.5px; color:#20180a; display:flex; align-items:center; gap:6px; }
+  .sidebar-plan-card .cur-badge{ font-size:9px; letter-spacing:.5px; text-transform:uppercase; background:#c79c43; color:#fff; padding:2px 7px; border-radius:10px; }
+  .sidebar-plan-card .price-line{ font-size:12px; color:#6b5314; margin:2px 0; }
+  .sidebar-plan-card .price-line b{ font-size:15px; }
+  .sidebar-plan-card a.upgrade{ display:inline-block; margin-top:8px; font-size:11.5px; color:#a77d31; text-decoration:underline; }
   .banner{background:#fff5df;border:1px solid #eadfb8;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#8a6d1f;margin-bottom:18px;line-height:1.5;}
   .banner b{color:#6b5314;}
   .section{background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.08);padding:20px;margin-bottom:18px;}
@@ -68,6 +88,7 @@
 </header>
 
 <div class="wrap">
+  <div class="create-main">
   <div class="banner" id="planBanner">Caricamento piano…</div>
 
   <button type="button" onclick="openSampleDossier()" style="width:100%;margin-bottom:16px;padding:13px;border:1px solid #ddd2b3;border-radius:9px;background:#fff;color:#6b5314;font-size:13px;letter-spacing:.3px;cursor:pointer;">
@@ -316,6 +337,14 @@
     <button type="submit" class="btn" id="btnSubmit">Genera il mio dossier</button>
     <div id="msg" class="msg"></div>
   </form>
+  </div>
+
+  <aside class="create-sidebar">
+    <div class="sidebar-sticky">
+      <div class="section-title-side">Piani e tariffe</div>
+      <div id="sidebarPlans">Caricamento…</div>
+    </div>
+  </aside>
 </div>
 
 <!-- Anteprima dossier di esempio: SOLO consultazione. Il contenuto viene da un altro
@@ -597,6 +626,34 @@
     }, 30000);
   }
 
+  let sidebarPricingLoaded = false;
+  async function renderSidebarPlans(currentTier){
+    const box = document.getElementById('sidebarPlans');
+    if (!sidebarPricingLoaded) {
+      const { data } = await sb.from('folium_pricing').select('*').eq('tenant_id', TENANT_ID).eq('category', 'dossier_package');
+      sidebarPricingRows = data || [];
+      sidebarPricingLoaded = true;
+    }
+    const fmt = (cents) => (cents / 100).toLocaleString('it-IT', { minimumFractionDigits: (cents / 100) % 1 ? 2 : 0 });
+    const singleGold = sidebarPricingRows.find(r => r.key === 'gold_single');
+    const singlePlatinum = sidebarPricingRows.find(r => r.key === 'platinum_single');
+
+    const cards = [
+      { key: 'light', name: 'Light', priceLine: 'Gratuito', desc: 'Dati base + popolazione, con pubblicità.' },
+      { key: 'gold', name: 'Gold', priceLine: singleGold ? `da <b>${fmt(singleGold.price_cents)}€</b>` : '—', desc: 'Tutte le funzioni, con pubblicità.' },
+      { key: 'platinum', name: 'Platinum', priceLine: singlePlatinum ? `da <b>${fmt(singlePlatinum.price_cents)}€</b>` : '—', desc: 'Tutte le funzioni, senza pubblicità.' }
+    ];
+
+    box.innerHTML = cards.map(c => `
+      <div class="sidebar-plan-card ${c.key === currentTier ? 'current' : ''}">
+        <h4>${c.name} ${c.key === currentTier ? '<span class="cur-badge">Attuale</span>' : ''}</h4>
+        <div class="price-line">${c.priceLine}</div>
+        <div style="font-size:11.5px;color:#8a7a52;">${c.desc}</div>
+        ${c.key !== currentTier && c.key !== 'light' ? '<a class="upgrade" href="folium-checkout.html">Vedi i pacchetti →</a>' : ''}
+      </div>`).join('');
+  }
+  let sidebarPricingRows = [];
+
   function updatePlanUI(){
     const badge = document.getElementById('planBadge');
     const banner = document.getElementById('planBanner');
@@ -656,6 +713,7 @@
     document.getElementById('renovationRenderGoldPlatinum').style.display = isLight ? 'none' : 'block';
 
     updatePromoWidget(tier);
+    renderSidebarPlans(tier);
   }
 
   // ---- Caratteristiche/annessi a pittogramma (Gold/Platinum) --------------

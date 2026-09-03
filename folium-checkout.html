@@ -48,59 +48,8 @@
 
 <div class="wrap">
 
-  <div class="tier-block gold">
-    <div class="tier-head gold"><span class="dot"></span><h2>FOLIUM Gold</h2></div>
-    <div class="tier-desc">Tutte le funzioni (popolazione, analisi di mercato AI, turismo/territorio) — con pagine pubblicitarie tra le sezioni e logo Folium.</div>
-
-    <div class="plan">
-      <h3>Dossier singolo</h3>
-      <div class="price">22€ <span>una tantum</span></div>
-      <div class="desc">Un dossier Gold completo.</div>
-      <button onclick="startCheckout('gold','single')">Acquista</button>
-    </div>
-
-    <div class="plan best">
-      <div class="badge">PIÙ SCELTO</div>
-      <h3>Pacchetto 10 dossier</h3>
-      <div class="price">15€ <span>/ cad. — 150€ totali</span></div>
-      <div class="desc">10 dossier Gold da usare quando vuoi.</div>
-      <button onclick="startCheckout('gold','pack10')">Acquista</button>
-    </div>
-
-    <div class="plan">
-      <h3>Pacchetto 50 dossier</h3>
-      <div class="price">11€ <span>/ cad. — 550€ totali</span></div>
-      <div class="desc">Per chi usa Folium regolarmente.</div>
-      <button onclick="startCheckout('gold','pack50')">Acquista</button>
-    </div>
-  </div>
-
-  <div class="tier-block platinum">
-    <div class="tier-head platinum"><span class="dot"></span><h2>FOLIUM Platinum</h2></div>
-    <div class="tier-desc">Tutte le funzioni, senza pagine pubblicitarie e senza logo Folium sul dossier.</div>
-
-    <div class="plan">
-      <h3>Dossier singolo</h3>
-      <div class="price">25€ <span>una tantum</span></div>
-      <div class="desc">Un dossier Platinum completo.</div>
-      <button onclick="startCheckout('platinum','single')">Acquista</button>
-    </div>
-
-    <div class="plan best platinum-best">
-      <div class="badge">PIÙ SCELTO</div>
-      <h3>Pacchetto 10 dossier</h3>
-      <div class="price">19€ <span>/ cad. — 190€ totali</span></div>
-      <div class="desc">10 dossier Platinum da usare quando vuoi.</div>
-      <button onclick="startCheckout('platinum','pack10')">Acquista</button>
-    </div>
-
-    <div class="plan">
-      <h3>Pacchetto 50 dossier</h3>
-      <div class="price">12,50€ <span>/ cad. — 625€ totali</span></div>
-      <div class="desc">Per chi usa Folium regolarmente.</div>
-      <button onclick="startCheckout('platinum','pack50')">Acquista</button>
-    </div>
-  </div>
+  <div id="goldBlock" class="tier-block gold"></div>
+  <div id="platinumBlock" class="tier-block platinum"></div>
 
   <div class="tier-block" style="margin-bottom:6px;">
     <label style="display:block;font-size:11px;letter-spacing:.5px;color:#8a7a52;margin-bottom:5px;text-transform:uppercase;">Codice promo</label>
@@ -131,6 +80,55 @@
   // l'importo finale di un pagamento. TENANT_ID fisso, stesso usato in tutto Folium.
   const TENANT_ID = "724f71d8-b499-46c1-9047-021280e913c9";
   let appliedPromoCode = null;
+
+  // Prezzi caricati da folium_pricing (modificabili dall'admin, mai più hardcoded qui).
+  // Il conteggio dossier per tipo pacchetto resta fisso (non è un prezzo), il resto viene
+  // dal DB. Il prezzo VERO addebitato lo ricalcola comunque folium-create-checkout.ts
+  // lato server — questo serve solo a mostrare le card correttamente.
+  const PACKAGE_COUNT = { single: 1, pack10: 10, pack50: 50 };
+  const PACKAGE_DESC = {
+    gold: { single: 'Un dossier Gold completo.', pack10: '10 dossier Gold da usare quando vuoi.', pack50: 'Per chi usa Folium regolarmente.' },
+    platinum: { single: 'Un dossier Platinum completo.', pack10: '10 dossier Platinum da usare quando vuoi.', pack50: 'Per chi usa Folium regolarmente.' }
+  };
+  const PACKAGE_TITLE = { single: 'Dossier singolo', pack10: 'Pacchetto 10 dossier', pack50: 'Pacchetto 50 dossier' };
+
+  async function renderPlans(){
+    const { data } = await sb.from('folium_pricing').select('*').eq('tenant_id', TENANT_ID).eq('category', 'dossier_package');
+    if (!data || !data.length) {
+      document.getElementById('goldBlock').innerHTML = '<div class="tier-desc">Prezzi non disponibili al momento. Riprova tra poco.</div>';
+      return;
+    }
+    ['gold', 'platinum'].forEach(tier => {
+      const rows = data.filter(r => r.key.startsWith(tier + '_'));
+      const tierClass = tier === 'platinum' ? 'platinum' : 'gold';
+      const desc = tier === 'gold'
+        ? 'Tutte le funzioni (popolazione, analisi di mercato AI, turismo/territorio) — con pagine pubblicitarie tra le sezioni e logo Folium.'
+        : 'Tutte le funzioni, senza pagine pubblicitarie e senza logo Folium sul dossier.';
+      const plansHTML = rows.map(r => {
+        const packageType = r.key.replace(tier + '_', '');
+        const unitPrice = (r.price_cents / 100);
+        const count = PACKAGE_COUNT[packageType] || 1;
+        const totalPrice = unitPrice * count;
+        const fmt = (n) => n.toLocaleString('it-IT', { minimumFractionDigits: n % 1 ? 2 : 0 });
+        const priceHTML = count === 1
+          ? `${fmt(unitPrice)}€ <span>una tantum</span>`
+          : `${fmt(unitPrice)}€ <span>/ cad. — ${fmt(totalPrice)}€ totali</span>`;
+        const isBest = packageType === 'pack10';
+        return `<div class="plan${isBest ? ' best' + (tier === 'platinum' ? ' platinum-best' : '') : ''}">
+          ${isBest ? '<div class="badge">PIÙ SCELTO</div>' : ''}
+          <h3>${PACKAGE_TITLE[packageType] || packageType}</h3>
+          <div class="price">${priceHTML}</div>
+          <div class="desc">${PACKAGE_DESC[tier][packageType] || ''}</div>
+          <button onclick="startCheckout('${tier}','${packageType}')">Acquista</button>
+        </div>`;
+      }).join('');
+      document.getElementById(tier + 'Block').innerHTML = `
+        <div class="tier-head ${tierClass}"><span class="dot"></span><h2>FOLIUM ${tier === 'gold' ? 'Gold' : 'Platinum'}</h2></div>
+        <div class="tier-desc">${desc}</div>
+        ${plansHTML}`;
+    });
+  }
+  renderPlans();
 
   async function applyPromoCode(){
     const input = document.getElementById('promoInput');

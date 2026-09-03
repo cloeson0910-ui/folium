@@ -55,6 +55,7 @@
   <div onclick="showTab('purchases', this)">Acquisti</div>
   <div onclick="showTab('engines', this)">Motori dati</div>
   <div onclick="showTab('promo', this)">Codici promo</div>
+  <div onclick="showTab('pricing', this)">Prezzi</div>
 </div>
 
 <div class="wrap">
@@ -191,6 +192,15 @@
     <div id="promoCodesList"></div>
   </div>
 
+  <div id="tab-pricing" class="hidden">
+    <div class="section-title">Pacchetti dossier (Gold/Platinum)</div>
+    <div id="pricingDossierList"></div>
+    <div class="section-title">Pubblicità — prezzo base mensile per slot</div>
+    <div id="pricingAdSlotList"></div>
+    <div class="section-title">Pubblicità — sconto per periodo</div>
+    <div id="pricingAdDiscountList"></div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -203,7 +213,7 @@
   function showTab(id, el){
     document.querySelectorAll('.tabs div').forEach(d => d.classList.remove('active'));
     el.classList.add('active');
-    ['overview','clients','advertisers','purchases','engines','promo'].forEach(t => {
+    ['overview','clients','advertisers','purchases','engines','promo','pricing'].forEach(t => {
       document.getElementById('tab-'+t).classList.toggle('hidden', t !== id);
     });
   }
@@ -217,6 +227,7 @@
     const { data: client } = await sb.from('folium_clients').select('tenant_id').eq('id', user.id).maybeSingle();
     TENANT_ID = client?.tenant_id || '724f71d8-b499-46c1-9047-021280e913c9'; // stesso UUID scelto in folium-register.html
 
+    await loadAllPricing(); // PRIMA degli altri: computeAdPrice ne dipende
     loadOverview();
     loadClients();
     loadAdvertisers();
@@ -373,12 +384,76 @@
   // ---- Pagine pubblicitarie: prezzi base mensili per posizione/formato, con sconto
   // per periodo. Accesso fisso (vedi LEGGIMI): l'inserzionista paga la posizione, non
   // un numero di stampe garantito.
-  const AD_BASE_MONTHLY_PRICE = {
+  // Valori di default = fallback se folium_pricing non ha ancora risposto/non è
+  // raggiungibile — loadAllPricing() li sovrascrive con quelli reali del DB, modificabili
+  // dalla tab "Prezzi" senza toccare codice.
+  let AD_BASE_MONTHLY_PRICE = {
     full: { premium: 79, high: 55, standard: 35 },
     half: { premium: 45, high: 30, standard: 20 }
   };
-  const AD_PERIOD_MONTHS = { quarterly: 3, semestral: 6, annual: 12 };
-  const AD_PERIOD_DISCOUNT = { quarterly: 0, semestral: 0.10, annual: 0.20 };
+  const AD_PERIOD_MONTHS = { quarterly: 3, semestral: 6, annual: 12 }; // durata fissa, non un prezzo — resta hardcoded
+  let AD_PERIOD_DISCOUNT = { quarterly: 0, semestral: 0.10, annual: 0.20 };
+  let dossierPricingRows = []; // righe grezze da folium_pricing, category='dossier_package' — usate solo dalla tab Prezzi
+
+  async function loadAllPricing(){
+    const { data } = await sb.from('folium_pricing').select('*').eq('tenant_id', TENANT_ID);
+    if (!data) return;
+    data.filter(r => r.category === 'ad_slot').forEach(r => {
+      const [tier, format] = r.key.split('_'); // es. "premium_full" -> tier=premium, format=full
+      if (AD_BASE_MONTHLY_PRICE[format]) AD_BASE_MONTHLY_PRICE[format][tier] = r.price_cents / 100;
+    });
+    data.filter(r => r.category === 'ad_period_discount').forEach(r => {
+      AD_PERIOD_DISCOUNT[r.key] = r.discount_percent / 100;
+    });
+    dossierPricingRows = data.filter(r => r.category === 'dossier_package');
+    renderPricingTab(data);
+  }
+
+  async function savePricingRow(id, field, value){
+    const patch = {};
+    patch[field] = value;
+    const { error } = await sb.from('folium_pricing').update(patch).eq('id', id);
+    if (error) { alert('Errore salvataggio prezzo: ' + error.message); return; }
+    await loadAllPricing();
+    updateAdPriceBox(); // il simulatore prezzo pubblicità riflette subito la modifica
+    alert('Prezzo aggiornato.');
+  }
+
+  function renderPricingTab(rows){
+    const dossierLabel = { gold: 'Gold', platinum: 'Platinum' };
+    const dossier = rows.filter(r => r.category === 'dossier_package');
+    document.getElementById('pricingDossierList').innerHTML = dossier.map(r => `
+      <div class="card">
+        <h4>${r.label}</h4>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" step="0.01" min="0" value="${(r.price_cents / 100).toFixed(2)}" id="price_${r.id}" style="width:110px;">
+          <span style="font-size:12px;color:#8a7a52;">€</span>
+          <button class="btn-sm" onclick="const v = Math.round(Number(document.getElementById('price_${r.id}').value) * 100); savePricingRow('${r.id}', 'price_cents', v);">Salva</button>
+        </div>
+      </div>`).join('') || '<div class="empty">Nessun prezzo configurato</div>';
+
+    const adSlot = rows.filter(r => r.category === 'ad_slot');
+    document.getElementById('pricingAdSlotList').innerHTML = adSlot.map(r => `
+      <div class="card">
+        <h4>${r.label}</h4>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" step="0.01" min="0" value="${(r.price_cents / 100).toFixed(2)}" id="price_${r.id}" style="width:110px;">
+          <span style="font-size:12px;color:#8a7a52;">€/mese</span>
+          <button class="btn-sm" onclick="const v = Math.round(Number(document.getElementById('price_${r.id}').value) * 100); savePricingRow('${r.id}', 'price_cents', v);">Salva</button>
+        </div>
+      </div>`).join('') || '<div class="empty">Nessun prezzo configurato</div>';
+
+    const adDiscount = rows.filter(r => r.category === 'ad_period_discount');
+    document.getElementById('pricingAdDiscountList').innerHTML = adDiscount.map(r => `
+      <div class="card">
+        <h4>${r.label}</h4>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="number" step="1" min="0" max="100" value="${r.discount_percent}" id="disc_${r.id}" style="width:90px;">
+          <span style="font-size:12px;color:#8a7a52;">% di sconto</span>
+          <button class="btn-sm" onclick="savePricingRow('${r.id}', 'discount_percent', Number(document.getElementById('disc_${r.id}').value));">Salva</button>
+        </div>
+      </div>`).join('') || '<div class="empty">Nessuno sconto configurato</div>';
+  }
 
   // Data (YYYY-MM-DD) in fuso ORARIO LOCALE, non UTC. Bug corretto 2026-09-02:
   // Date.toISOString() converte sempre in UTC, e con l'Italia in anticipo su UTC (UTC+1/+2)
