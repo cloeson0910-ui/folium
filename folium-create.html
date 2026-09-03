@@ -374,6 +374,27 @@
   let currentUser = null;
   let currentClient = null;
 
+  // Traccia data/ora dell'ultima visita + zona approssimativa (via geolocalizzazione IP,
+  // MAI la posizione GPS del browser: niente permessi da chiedere al cliente, funziona in
+  // background senza che se ne accorga). Best-effort su entrambi i passi — se la
+  // geolocalizzazione fallisce o è lenta, si salva comunque l'orario da solo, e viceversa;
+  // non deve MAI bloccare o rallentare l'uso reale della pagina.
+  async function trackClientVisit(clientId){
+    try {
+      await sb.from('folium_clients').update({ last_seen_at: new Date().toISOString() }).eq('id', clientId);
+    } catch (e) { /* non bloccante */ }
+    try {
+      const resp = await fetch('https://ipwho.is/');
+      const geo = await resp.json();
+      if (geo && geo.success !== false) {
+        const parts = [geo.city, geo.region, geo.country].filter(Boolean);
+        if (parts.length) {
+          await sb.from('folium_clients').update({ last_seen_location: parts.join(', ') }).eq('id', clientId);
+        }
+      }
+    } catch (e) { /* geolocalizzazione facoltativa, non bloccante */ }
+  }
+
   async function init(){
     try {
       let { data: { user } } = await sb.auth.getUser();
@@ -427,6 +448,7 @@
         document.getElementById('logoutBtn').style.display = 'none';
         document.getElementById('loginLink').style.display = '';
       }
+      trackClientVisit(user.id); // best-effort, mai bloccante — vedi funzione sotto
       document.getElementById('contactEmail').value = client.contact_email || user.email || '';
       document.getElementById('contactPhone').value = client.contact_phone || '';
       document.getElementById('displayName').value = client.company_name || client.full_name || '';

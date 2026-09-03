@@ -75,7 +75,7 @@
   <div id="tab-clients" class="hidden">
     <div class="section-title">Clienti registrati</div>
     <table id="clientsTable">
-      <thead><tr><th>Nome</th><th>Contatti</th><th>Piano</th><th>Dossier creati</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Contatti</th><th>Piano</th><th>Dossier creati</th><th>Ultima connessione</th><th>Zona</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -317,8 +317,10 @@
         <td>${c.contact_email || ''}<br>${c.contact_phone || ''}</td>
         <td><span class="pill ${c.plan === 'light' ? 'free' : 'paid'}">${c.plan === 'light' ? 'Light' : (c.plan === 'gold' ? 'Gold' : 'Platinum')}</span></td>
         <td>${counts[c.id] || 0} totali<br><span style="font-size:11px;color:#8a7a52;">${planStatus}</span></td>
+        <td>${c.last_seen_at ? new Date(c.last_seen_at).toLocaleString('it-IT') : '<span style="color:#aaa;">mai</span>'}</td>
+        <td>${c.last_seen_location || '<span style="color:#aaa;">—</span>'}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="4" class="empty">Nessun cliente registrato</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="empty">Nessun cliente registrato</td></tr>';
   }
 
   async function createAdvertiser(){
