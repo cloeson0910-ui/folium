@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLIUM — Acquista uno spazio pubblicitario</title>
+<style>
+  :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:var(--cream);color:#2b2416;}
+  header{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:26px 18px;text-align:center;color:var(--gold3);}
+  header .brand{font-weight:300;letter-spacing:4px;font-size:20px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  header p{font-size:12.5px;color:#e8dcb8;margin-top:6px;}
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 80px;}
+  .section{background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.08);padding:20px;margin-bottom:16px;}
+  .section h2{font-size:13px;letter-spacing:1px;color:var(--gold4);margin:0 0 14px;text-transform:uppercase;}
+  label{display:block;font-size:12px;color:#8a7a52;margin:12px 0 5px;font-weight:600;}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid #ddd2b3;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;}
+  textarea{min-height:70px;resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .upload-box{border:2px dashed #ddd2b3;border-radius:10px;padding:24px;text-align:center;color:#8a7a52;font-size:13px;cursor:pointer;margin-top:6px;}
+  .thumbs img{width:100%;max-height:220px;object-fit:contain;border-radius:8px;margin-top:10px;background:#f6f2ea;}
+  .price-box{background:#fdf9ef;border:1px solid #eee0bd;border-radius:10px;padding:14px 16px;margin-top:16px;font-size:13px;color:#6b5314;}
+  .price-box .amount{font-size:24px;font-weight:600;color:var(--gold4);}
+  .btn{width:100%;margin-top:16px;padding:15px;border:none;border-radius:9px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold4));color:#fff;font-size:14px;letter-spacing:1px;cursor:pointer;}
+  .btn:disabled{opacity:.55;cursor:default;}
+  .msg{font-size:13px;margin-top:14px;padding:10px;border-radius:8px;display:none;}
+  .msg.err{background:#fbe4e4;color:#a33;display:block;}
+  .hint{font-size:11.5px;color:#8a7a52;margin-top:-2px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">FOLIUM</div>
+  <p>Il tuo spazio pubblicitario dentro i dossier immobiliari</p>
+</header>
+
+<div class="wrap">
+  <form id="adCheckoutForm">
+    <div class="section">
+      <h2>La tua attività</h2>
+      <label>Nome azienda/attività</label>
+      <input type="text" id="advertiserName" required>
+      <div class="row2">
+        <div><label>Email</label><input type="email" id="advertiserEmail" required></div>
+        <div><label>Telefono</label><input type="tel" id="advertiserPhone"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Il tuo annuncio</h2>
+      <label>Immagine annuncio (verticale, formato dossier)</label>
+      <div class="upload-box" onclick="document.getElementById('adImageInput').click()">Tocca per caricare l'immagine</div>
+      <input type="file" id="adImageInput" accept="image/*" style="display:none">
+      <div class="thumbs" id="adImagePreview"></div>
+      <label>Titolo (facoltativo)</label>
+      <input type="text" id="adHeadline">
+      <label>Testo breve (facoltativo)</label>
+      <textarea id="adSubtext"></textarea>
+      <div class="row2">
+        <div><label>Testo pulsante (facoltativo)</label><input type="text" id="adCtaText" placeholder="Es. Scopri di più"></div>
+        <div><label>Link sito (facoltativo)</label><input type="text" id="adCtaUrl" placeholder="tuosito.it"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Posizione, formato e periodo</h2>
+      <label>Slot</label>
+      <select id="adPosition"></select>
+      <label>Formato</label>
+      <select id="adFormat">
+        <option value="full">Pagina intera</option>
+        <option value="half">Mezza pagina</option>
+      </select>
+      <label>Periodo</label>
+      <select id="adBillingPeriod">
+        <option value="quarterly">Trimestrale — nessuno sconto</option>
+        <option value="semestral">Semestrale — sconto</option>
+        <option value="annual">Annuale — sconto maggiore</option>
+      </select>
+      <label>Data di inizio</label>
+      <input type="date" id="adStartDate">
+      <div class="hint" id="startDateHint"></div>
+
+      <div class="price-box" id="priceBox">Prezzo: —</div>
+    </div>
+
+    <button type="submit" class="btn" id="btnSubmit">Vai al pagamento</button>
+    <div id="msg" class="msg"></div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_ToGgNAX4tIn6O7gb6hMa4A_kRi1yztz";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const TENANT_ID = "724f71d8-b499-46c1-9047-021280e913c9";
+
+  function toLocalDateStr(d){
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function addDaysStr(dateStr, n){
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return toLocalDateStr(d);
+  }
+  function slotTier(slot){
+    slot = Number(slot);
+    if (slot === 1) return 'premium';
+    if (slot === 2 || slot === 3) return 'high';
+    return 'standard';
+  }
+
+  let slotAvailability = {};
+  let pricingRows = [];
+  let startDateManuallySet = false;
+
+  async function loadAvailabilityAndPricing(){
+    const today = toLocalDateStr(new Date());
+    const [{ data: adRows }, { data: prices }] = await Promise.all([
+      sb.from('folium_ad_pages').select('position_slot, ad_format, subscription_end')
+        .eq('tenant_id', TENANT_ID).eq('active', true).gte('subscription_end', today),
+      sb.from('folium_pricing').select('*').eq('tenant_id', TENANT_ID)
+        .in('category', ['ad_slot', 'ad_period_discount']),
+    ]);
+    pricingRows = prices || [];
+
+    const bySlot = {};
+    (adRows || []).forEach(r => (bySlot[r.position_slot] = bySlot[r.position_slot] || []).push(r));
+    const tierLabel = { premium: 'Premium', high: 'Alta visibilità', standard: 'Standard' };
+
+    const sel = document.getElementById('adPosition');
+    sel.innerHTML = '';
+    slotAvailability = {};
+    for (let slot = 1; slot <= 6; slot++) {
+      const occ = bySlot[slot] || [];
+      const full = occ.find(r => r.ad_format === 'full');
+      let statusLabel, nextFullAvailable, nextHalfAvailable;
+      if (full) {
+        nextFullAvailable = addDaysStr(full.subscription_end, 1);
+        nextHalfAvailable = addDaysStr(full.subscription_end, 1);
+        statusLabel = `occupato fino al ${full.subscription_end}`;
+      } else if (occ.length >= 2) {
+        const maxEnd = occ.reduce((m, r) => (r.subscription_end > m ? r.subscription_end : m), occ[0].subscription_end);
+        const minEnd = occ.reduce((m, r) => (r.subscription_end < m ? r.subscription_end : m), occ[0].subscription_end);
+        nextFullAvailable = addDaysStr(maxEnd, 1);
+        nextHalfAvailable = addDaysStr(minEnd, 1);
+        statusLabel = `entrambe le metà occupate fino al ${maxEnd}`;
+      } else if (occ.length === 1) {
+        nextFullAvailable = addDaysStr(occ[0].subscription_end, 1);
+        nextHalfAvailable = today;
+        statusLabel = `1 metà libera ora`;
+      } else {
+        nextFullAvailable = today;
+        nextHalfAvailable = today;
+        statusLabel = 'completamente libero';
+      }
+      slotAvailability[slot] = { nextFullAvailable, nextHalfAvailable };
+      const opt = document.createElement('option');
+      opt.value = slot;
+      opt.textContent = `Slot ${slot} · ${tierLabel[slotTier(slot)]} — ${statusLabel}`;
+      sel.appendChild(opt);
+    }
+    suggestStartDate();
+    updatePriceBox();
+  }
+
+  function suggestStartDate(){
+    if (startDateManuallySet) return;
+    const slot = Number(document.getElementById('adPosition').value);
+    const format = document.getElementById('adFormat').value;
+    const avail = slotAvailability[slot];
+    if (!avail) return;
+    const date = format === 'full' ? avail.nextFullAvailable : avail.nextHalfAvailable;
+    document.getElementById('adStartDate').value = date;
+    document.getElementById('startDateHint').textContent = `Prima data disponibile per questo slot/formato: ${date} (modificabile).`;
+  }
+
+  function updatePriceBox(){
+    const slot = Number(document.getElementById('adPosition').value);
+    const format = document.getElementById('adFormat').value;
+    const period = document.getElementById('adBillingPeriod').value;
+    const tier = slotTier(slot);
+    const slotRow = pricingRows.find(r => r.category === 'ad_slot' && r.key === `${tier}_${format}`);
+    const discountRow = pricingRows.find(r => r.category === 'ad_period_discount' && r.key === period);
+    const box = document.getElementById('priceBox');
+    if (!slotRow) { box.textContent = 'Prezzo non disponibile per questa combinazione.'; return; }
+    const months = { quarterly: 3, semestral: 6, annual: 12 }[period];
+    const monthly = slotRow.price_cents / 100;
+    const discount = (discountRow?.discount_percent || 0) / 100;
+    const total = Math.round(monthly * months * (1 - discount) * 100) / 100;
+    box.innerHTML = `<span class="amount">${total.toLocaleString('it-IT', { minimumFractionDigits: 2 })}€</span> totali per il periodo scelto (${monthly.toLocaleString('it-IT')}€/mese${discount ? `, sconto ${Math.round(discount*100)}%` : ''})`;
+  }
+
+  document.getElementById('adPosition').addEventListener('change', () => { suggestStartDate(); updatePriceBox(); });
+  document.getElementById('adFormat').addEventListener('change', () => { suggestStartDate(); updatePriceBox(); });
+  document.getElementById('adBillingPeriod').addEventListener('change', updatePriceBox);
+  document.getElementById('adStartDate').addEventListener('input', () => { startDateManuallySet = true; });
+
+  let adImageFile = null;
+  document.getElementById('adImageInput').addEventListener('change', (e) => {
+    adImageFile = e.target.files[0] || null;
+    const box = document.getElementById('adImagePreview');
+    box.innerHTML = '';
+    if (adImageFile) {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(adImageFile);
+      box.appendChild(img);
+    }
+  });
+
+  function showMsg(text){
+    const el = document.getElementById('msg');
+    el.textContent = text; el.className = 'msg err';
+  }
+
+  document.getElementById('adCheckoutForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmit');
+    try {
+      if (!adImageFile) throw new Error('Carica l\'immagine dell\'annuncio.');
+
+      btn.disabled = true;
+      btn.textContent = 'Caricamento immagine...';
+
+      const ext = adImageFile.name.split('.').pop();
+      const path = `${TENANT_ID}/self-service/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+      const { error: uploadError } = await sb.storage.from('folium-ads').upload(path, adImageFile, { upsert: false });
+      if (uploadError) throw new Error('Errore caricamento immagine: ' + uploadError.message);
+      const { data: urlData } = sb.storage.from('folium-ads').getPublicUrl(path);
+
+      btn.textContent = 'Avvio pagamento...';
+
+      const { data, error } = await sb.functions.invoke('folium-create-ad-checkout', {
+        body: {
+          tenant_id: TENANT_ID,
+          advertiser_name: document.getElementById('advertiserName').value.trim(),
+          advertiser_email: document.getElementById('advertiserEmail').value.trim(),
+          advertiser_phone: document.getElementById('advertiserPhone').value.trim() || null,
+          image_url: urlData.publicUrl,
+          headline: document.getElementById('adHeadline').value.trim() || null,
+          subtext: document.getElementById('adSubtext').value.trim() || null,
+          cta_text: document.getElementById('adCtaText').value.trim() || null,
+          cta_url: document.getElementById('adCtaUrl').value.trim() || null,
+          position_slot: Number(document.getElementById('adPosition').value),
+          ad_format: document.getElementById('adFormat').value,
+          billing_period: document.getElementById('adBillingPeriod').value,
+          subscription_start: document.getElementById('adStartDate').value,
+        }
+      });
+      if (error) throw error;
+      if (!data?.url) throw new Error(data?.error || 'URL di pagamento non ricevuto');
+      window.location.href = data.url;
+    } catch (err) {
+      showMsg('Errore: ' + (err.message || err));
+      btn.disabled = false;
+      btn.textContent = 'Vai al pagamento';
+    }
+  });
+
+  loadAvailabilityAndPricing();
+</script>
+</body>
+</html>
