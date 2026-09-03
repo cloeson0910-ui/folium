@@ -592,7 +592,7 @@
     const today = new Date();
     const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
     const { data } = await sb.from('folium_ad_pages')
-      .select('image_url, headline, folium_advertisers(name)')
+      .select('image_url, headline, cta_url, folium_advertisers(name)')
       .eq('tenant_id', TENANT_ID).eq('active', true)
       .lte('subscription_start', todayStr).gte('subscription_end', todayStr)
       .limit(8);
@@ -610,7 +610,13 @@
     const box = document.getElementById('promoWidgetCarousel');
     if (!promoWidgetAds.length) { box.innerHTML = '<div style="font-size:11px;color:#a49470;">Nessuna pubblicità al momento</div>'; return; }
     const ad = promoWidgetAds[promoWidgetIndex];
-    box.innerHTML = `<img src="${ad.image_url}" alt="">
+    const img = `<img src="${ad.image_url}" alt="">`;
+    // Cliccabile solo se l'inserzionista ha impostato un link (cta_url) — altrimenti la
+    // foto resta un'immagine normale, non un link vuoto/rotto.
+    const imgHTML = ad.cta_url
+      ? `<a href="${ad.cta_url}" target="_blank" rel="noopener sponsored" style="cursor:pointer;">${img}</a>`
+      : img;
+    box.innerHTML = `${imgHTML}
       <div class="pw-name">${ad.folium_advertisers?.name || ''}${ad.headline ? ' — ' + ad.headline : ''}</div>`;
   }
 
