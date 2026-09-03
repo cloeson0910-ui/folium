@@ -612,9 +612,13 @@
     const ad = promoWidgetAds[promoWidgetIndex];
     const img = `<img src="${ad.image_url}" alt="">`;
     // Cliccabile solo se l'inserzionista ha impostato un link (cta_url) — altrimenti la
-    // foto resta un'immagine normale, non un link vuoto/rotto.
-    const imgHTML = ad.cta_url
-      ? `<a href="${ad.cta_url}" target="_blank" rel="noopener sponsored" style="cursor:pointer;">${img}</a>`
+    // foto resta un'immagine normale, non un link vuoto/rotto. Il link salvato può non
+    // avere http(s):// davanti (es. "sito.it" scritto così in admin) — senza protocollo il
+    // browser lo tratta come percorso RELATIVO al dominio Folium invece che come sito
+    // esterno, aprendo un indirizzo tipo folium.dominus-suite.it/sito.it. Normalizzato qui.
+    const ctaHref = ad.cta_url ? (/^https?:\/\//i.test(ad.cta_url) ? ad.cta_url : 'https://' + ad.cta_url) : null;
+    const imgHTML = ctaHref
+      ? `<a href="${ctaHref}" target="_blank" rel="noopener sponsored" style="cursor:pointer;">${img}</a>`
       : img;
     box.innerHTML = `${imgHTML}
       <div class="pw-name">${ad.folium_advertisers?.name || ''}${ad.headline ? ' — ' + ad.headline : ''}</div>`;

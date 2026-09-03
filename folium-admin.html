@@ -698,7 +698,13 @@
       headline: document.getElementById('adHeadline').value.trim() || null,
       subtext: document.getElementById('adSubtext').value.trim() || null,
       cta_text: document.getElementById('adCtaText').value.trim() || null,
-      cta_url: document.getElementById('adCtaUrl').value.trim() || null,
+      // Aggiunge https:// se manca (es. "sito.it" scritto senza protocollo) — senza,
+      // il link risultava relativo al dominio Folium invece che al sito esterno.
+      cta_url: (() => {
+        const raw = document.getElementById('adCtaUrl').value.trim();
+        if (!raw) return null;
+        return /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+      })(),
       position_slot: slot,
       ad_format: format,
       billing_period: period,

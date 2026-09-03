@@ -1022,7 +1022,7 @@
               <img class="ad-img" src="${esc(ad.image_url)}">
               ${ad.headline ? `<h2>${esc(ad.headline)}</h2>` : ''}
               ${ad.subtext ? `<p>${esc(ad.subtext)}</p>` : ''}
-              ${ad.cta_text && ad.cta_url ? `<a class="cta" href="${esc(ad.cta_url)}" target="_blank">${esc(ad.cta_text)}</a>` : ''}
+              ${ad.cta_text && ad.cta_url ? `<a class="cta" href="${esc(/^https?:\/\//i.test(ad.cta_url) ? ad.cta_url : 'https://' + ad.cta_url)}" target="_blank">${esc(ad.cta_text)}</a>` : ''}
             `, true));
             try { await sb.from('folium_ad_impressions').insert({ ad_page_id: ad.id, dossier_id: dossierId }); }
             catch (e) { console.error('Log impressione pubblicità fallito (non bloccante):', e); }
