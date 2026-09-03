@@ -161,47 +161,49 @@
     </div>
 
     <div class="section">
-      <h2>Render ristrutturazione IA <span style="font-weight:400;color:#a49470;">(facoltativo)</span><span class="info-i">i<span class="tooltip-box">Carica una foto di un ambiente e genera una versione ristrutturata realistica con l'IA, più una stima dei costi. Il render generato può essere aggiunto alle foto dell'immobile.</span></span></h2>
-      <div id="renovationLight" style="display:none;">
-        <span class="lock-badge">🔒 Riservato a Gold/Platinum<span class="tooltip-box">Il render IA e la stima costi di ristrutturazione sono disponibili solo su Gold e Platinum. <a href="folium-checkout.html">Passa a Gold o Platinum →</a></span></span>
-      </div>
-      <div id="renovationGoldPlatinum" class="locked-wrap" style="display:none;">
-        <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;cursor:pointer;">
-          <input type="checkbox" id="renovationRequired" style="width:auto;">
-          <span style="font-size:13px;color:#2b2416;">Immobile da ristrutturare — calcola costi e genera render</span>
-        </label>
+      <h2>Ristrutturazione <span style="font-weight:400;color:#a49470;">(facoltativo)</span><span class="info-i">i<span class="tooltip-box">Calcola una stima dei costi di ristrutturazione (disponibile su tutti i piani). Su Gold/Platinum puoi anche caricare una foto ambiente e generare un render IA della versione ristrutturata.</span></span></h2>
+      <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;cursor:pointer;">
+        <input type="checkbox" id="renovationRequired" style="width:auto;">
+        <span style="font-size:13px;color:#2b2416;">Immobile da ristrutturare — calcola costi stimati</span>
+      </label>
 
-        <div id="renovationFields" style="display:none;">
-          <div class="row2">
-            <div>
-              <label>Livello degrado</label>
-              <select id="renovationLevel">
-                <option value="leggero">Leggero</option>
-                <option value="medio" selected>Medio</option>
-                <option value="pesante">Pesante</option>
-              </select>
-            </div>
-            <div>
-              <label>Stile valorizzazione</label>
-              <select id="renovationStyle">
-                <option value="conservativo">Conservativo</option>
-                <option value="normale" selected>Normale</option>
-                <option value="lusso">Lusso</option>
-              </select>
-            </div>
+      <div id="renovationFields" style="display:none;">
+        <div class="row2">
+          <div>
+            <label>Livello degrado</label>
+            <select id="renovationLevel">
+              <option value="leggero">Leggero</option>
+              <option value="medio" selected>Medio</option>
+              <option value="pesante">Pesante</option>
+            </select>
           </div>
-          <label>Mq da ristrutturare</label>
-          <input type="number" id="renovationAreaSqm" min="0">
-          <div class="row2">
-            <div><label>Costo minimo stimato (€)</label><input type="text" id="renovationCostMin" readonly></div>
-            <div><label>Costo massimo stimato (€)</label><input type="text" id="renovationCostMax" readonly></div>
+          <div>
+            <label>Stile valorizzazione</label>
+            <select id="renovationStyle">
+              <option value="conservativo">Conservativo</option>
+              <option value="normale" selected>Normale</option>
+              <option value="lusso">Lusso</option>
+            </select>
           </div>
-          <label>Costo medio stimato (€)</label>
-          <input type="text" id="renovationCostAvg" readonly>
-          <label>Note ristrutturazione (facoltative)</label>
-          <textarea id="renovationNotes" placeholder="Es. preservare volte storiche, rifare bagni, mantenere pietra originale..."></textarea>
+        </div>
+        <label>Mq da ristrutturare</label>
+        <input type="number" id="renovationAreaSqm" min="0">
+        <div class="row2">
+          <div><label>Costo minimo stimato (€)</label><input type="text" id="renovationCostMin" readonly></div>
+          <div><label>Costo massimo stimato (€)</label><input type="text" id="renovationCostMax" readonly></div>
+        </div>
+        <label>Costo medio stimato (€)</label>
+        <input type="text" id="renovationCostAvg" readonly>
+        <div style="background:#fdf1ef;border:1px solid #e8b3ac;border-radius:8px;padding:9px 12px;font-size:11.5px;color:#8a2a1f;margin:6px 0 10px;line-height:1.5;">⚠ Stato dell'immobile, livello di ristrutturazione e costi indicati sono <b>stime indicative</b>, calcolate su parametri medi di mercato — non un preventivo reale né un sopralluogo tecnico. I costi effettivi vanno sempre verificati con un professionista.</div>
+        <label>Note ristrutturazione (facoltative)</label>
+        <textarea id="renovationNotes" placeholder="Es. preservare volte storiche, rifare bagni, mantenere pietra originale..."></textarea>
 
-          <label style="margin-top:14px;">Ambiente foto</label>
+        <div id="renovationRenderLight" style="display:none;margin-top:14px;">
+          <span class="lock-badge">🔒 Render IA riservato a Gold/Platinum<span class="tooltip-box">Su Light hai comunque il calcolo costi qui sopra. Il render fotografico con IA è disponibile solo su Gold e Platinum. <a href="folium-checkout.html">Passa a Gold o Platinum →</a></span></span>
+        </div>
+
+        <div id="renovationRenderGoldPlatinum" style="display:none;margin-top:14px;">
+          <label>Ambiente foto</label>
           <select id="renovationRoomType">
             <option value="kitchen">Cucina</option>
             <option value="living_room">Soggiorno</option>
@@ -628,8 +630,8 @@
     // Render ristrutturazione: su Light non ha senso nemmeno mostrare i campi bloccati (è
     // un pulsante costoso legato a una vera chiamata AI, non un campo dati come gli altri
     // due sopra) — qui si mostra solo l'avviso "riservato", niente form.
-    document.getElementById('renovationLight').style.display = isLight ? 'block' : 'none';
-    document.getElementById('renovationGoldPlatinum').style.display = isLight ? 'none' : 'block';
+    document.getElementById('renovationRenderLight').style.display = isLight ? 'block' : 'none';
+    document.getElementById('renovationRenderGoldPlatinum').style.display = isLight ? 'none' : 'block';
 
     updatePromoWidget(tier);
   }
