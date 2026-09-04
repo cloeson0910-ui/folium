@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLIUM — Conferma spazio pubblicitario</title>
+<style>
+  :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:#efe9dc;color:#2b2416;min-height:100vh;}
+  header{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:26px 18px;text-align:center;color:var(--gold3);}
+  header .brand{font-weight:300;letter-spacing:4px;font-size:20px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .wrap{max-width:520px;margin:0 auto;padding:30px 16px 60px;}
+  .card{background:#fff;border-radius:16px;box-shadow:0 10px 34px rgba(0,0,0,.1);padding:34px 28px;text-align:center;}
+  .icon{width:64px;height:64px;margin:0 auto 20px;}
+  h1{font-size:20px;font-weight:400;margin:0 0 10px;color:#2b2416;}
+  p.lead{font-size:14px;color:#6b5314;line-height:1.7;margin:0 0 22px;}
+  .details{text-align:left;background:#fdf9ef;border:1px solid #eee0bd;border-radius:10px;padding:16px 18px;margin-bottom:22px;}
+  .details .row{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px solid #eee0bd;}
+  .details .row:last-child{border-bottom:none;}
+  .details .row span:first-child{color:#8a7a52;}
+  .details .row span:last-child{font-weight:600;color:#2b2416;}
+  .btn{display:inline-block;padding:13px 28px;border-radius:9px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold4));color:#fff;font-size:13.5px;letter-spacing:.5px;text-decoration:none;}
+  .status-pending{color:#a77d31;}
+  .status-refunded{color:#a33;}
+  .spinner{width:26px;height:26px;border:3px solid #eee0bd;border-top-color:var(--gold4);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<header><div class="brand">FOLIUM</div></header>
+
+<div class="wrap">
+  <div class="card" id="card">
+    <div class="spinner"></div>
+    <h1>Verifica del pagamento in corso...</h1>
+    <p class="lead">Un attimo — stiamo confermando il pagamento con Stripe e attivando il tuo spazio pubblicitario.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_ToGgNAX4tIn6O7gb6hMa4A_kRi1yztz";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const params = new URLSearchParams(window.location.search);
+  const purchaseId = params.get('purchase_id');
+
+  const TIER_LABEL = { premium: 'Premium', high: 'Alta visibilità', standard: 'Standard' };
+  function slotTier(slot){
+    if (slot === 1) return 'premium';
+    if (slot === 2 || slot === 3) return 'high';
+    return 'standard';
+  }
+
+  function renderPaid(purchase){
+    const format = purchase.ad_format === 'full' ? 'Pagina intera' : 'Mezza pagina';
+    const tier = TIER_LABEL[slotTier(purchase.position_slot)];
+    document.getElementById('card').innerHTML = `
+      <svg class="icon" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="none" stroke="#2f7d3a" stroke-width="3"/><path d="M20 33 L28 41 L45 23" fill="none" stroke="#2f7d3a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1>Il tuo spazio pubblicitario è attivo</h1>
+      <p class="lead">Il pagamento è confermato — il tuo annuncio è già visibile nei dossier generati da questo momento in poi, nello slot che hai scelto.</p>
+      <div class="details">
+        <div class="row"><span>Slot</span><span>${purchase.position_slot} · ${tier}</span></div>
+        <div class="row"><span>Formato</span><span>${format}</span></div>
+        <div class="row"><span>Attivo dal</span><span>${purchase.subscription_start}</span></div>
+        <div class="row"><span>Fino al</span><span>${purchase.subscription_end}</span></div>
+        <div class="row"><span>Importo</span><span>${(purchase.price_paid_cents / 100).toLocaleString('it-IT', { minimumFractionDigits: 2 })}€</span></div>
+      </div>
+      <p style="font-size:12.5px;color:#8a7a52;">Una copia della fattura Stripe arriverà via email a ${purchase.advertiser_email}.</p>
+    `;
+  }
+
+  function renderRefundedConflict(purchase){
+    document.getElementById('card').innerHTML = `
+      <svg class="icon" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="none" stroke="#a33" stroke-width="3"/><path d="M32 18 V36 M32 44 V46" stroke="#a33" stroke-width="4" stroke-linecap="round"/></svg>
+      <h1 class="status-refunded">Lo slot è stato occupato nel frattempo</h1>
+      <p class="lead">Ci dispiace: tra il momento in cui hai avviato il pagamento e la sua conferma, un altro inserzionista ha occupato questa esatta posizione/data. <b>Il pagamento è stato rimborsato automaticamente</b> — nessun addebito resterà sul tuo conto.</p>
+      <a class="btn" href="folium-ads-checkout.html">Scegli un'altra posizione →</a>
+    `;
+  }
+
+  function renderStillPending(){
+    document.getElementById('card').innerHTML = `
+      <div class="spinner"></div>
+      <h1 class="status-pending">Il pagamento è quasi confermato</h1>
+      <p class="lead">Stripe sta ancora completando la conferma — capita raramente, di solito bastano pochi secondi in più. Non chiudere questa pagina, la stiamo ricontrollando automaticamente. Se dopo un minuto non si aggiorna, scrivici pure indicando l'ordine.</p>
+    `;
+    setTimeout(checkPurchaseStatus, 4000);
+  }
+
+  function renderNotFound(){
+    document.getElementById('card').innerHTML = `
+      <h1>Ordine non trovato</h1>
+      <p class="lead">Non troviamo un ordine corrispondente a questo link. Se hai appena pagato, contattaci indicando l'email usata al checkout.</p>
+      <a class="btn" href="folium-ads-checkout.html">Torna al checkout</a>
+    `;
+  }
+
+  let attempts = 0;
+  async function checkPurchaseStatus(){
+    attempts++;
+    if (!purchaseId) { renderNotFound(); return; }
+
+    const { data: purchase, error } = await sb
+      .from('folium_ad_purchases')
+      .select('*')
+      .eq('id', purchaseId)
+      .maybeSingle();
+
+    if (error || !purchase) { renderNotFound(); return; }
+
+    if (purchase.status === 'paid') { renderPaid(purchase); return; }
+    if (purchase.status === 'refunded_conflict') { renderRefundedConflict(purchase); return; }
+
+    // 'pending' o 'failed': il webhook Stripe potrebbe non aver ancora finito di
+    // processare l'evento nel preciso istante in cui l'utente torna sul sito — è
+    // normale, ricontrolliamo qualche volta prima di considerarlo un problema vero.
+    if (attempts < 10) {
+      renderStillPending();
+    } else {
+      document.getElementById('card').innerHTML = `
+        <h1 class="status-pending">Conferma più lenta del solito</h1>
+        <p class="lead">Il pagamento risulta ancora in elaborazione. Se hai completato il pagamento su Stripe, andrà a buon fine a breve — ricarica questa pagina tra qualche minuto, oppure contattaci se il dubbio persiste.</p>
+        <a class="btn" href="javascript:location.reload()">Ricontrolla ora</a>
+      `;
+    }
+  }
+
+  checkPurchaseStatus();
+</script>
+</body>
+</html>
