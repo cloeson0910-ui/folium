@@ -199,6 +199,8 @@
     <div id="pricingAdSlotList"></div>
     <div class="section-title">Pubblicità — sconto per periodo</div>
     <div id="pricingAdDiscountList"></div>
+    <div class="section-title">Pubblicità — moltiplicatore per copertura geografica</div>
+    <div id="pricingGeoMultiplierList"></div>
   </div>
 
 </div>
@@ -453,6 +455,18 @@
           <button class="btn-sm" onclick="savePricingRow('${r.id}', 'discount_percent', Number(document.getElementById('disc_${r.id}').value));">Salva</button>
         </div>
       </div>`).join('') || '<div class="empty">Nessuno sconto configurato</div>';
+
+    const geoMultiplier = rows.filter(r => r.category === 'geo_multiplier');
+    document.getElementById('pricingGeoMultiplierList').innerHTML = geoMultiplier.map(r => `
+      <div class="card">
+        <h4>${r.label}</h4>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:12px;color:#8a7a52;">×</span>
+          <input type="number" step="0.5" min="1" value="${r.multiplier}" id="mult_${r.id}" style="width:90px;">
+          <span style="font-size:12px;color:#8a7a52;">rispetto al prezzo base slot</span>
+          <button class="btn-sm" onclick="savePricingRow('${r.id}', 'multiplier', Number(document.getElementById('mult_${r.id}').value));">Salva</button>
+        </div>
+      </div>`).join('') || '<div class="empty">Nessun moltiplicatore configurato</div>';
   }
 
   // Data (YYYY-MM-DD) in fuso ORARIO LOCALE, non UTC. Bug corretto 2026-09-02:
@@ -470,14 +484,25 @@
   // periodo); uno slot "mezza pagina" può ospitare al massimo 2 inserzioni sovrapposte
   // contemporaneamente (le due metà) — una terza è comunque un conflitto, dato che non
   // esiste un tracciamento di QUALE metà (sinistra/destra) occupa ciascuna inserzione.
-  // Le pagine disattivate non contano come occupanti dello slot.
-  function findSlotConflicts(rows, slot, format, startStr, endStr, excludeId){
-    const overlapping = rows.filter(r =>
+  // Le pagine disattivate non contano come occupanti dello slot. Tiene conto anche della
+  // sovrapposizione geografica (target_comuni) — un annuncio locale non è in conflitto con
+  // un altro annuncio locale di una zona diversa, anche sullo stesso slot/date. Le
+  // inserzioni create da qui (admin) restano "tutta Italia" di default (nessuna UI ancora
+  // per scegliere un'area, arriva in un secondo momento) — si sovrappongono sempre.
+  function geoOverlaps(a, b){
+    if (!a || !a.length || !b || !b.length) return true;
+    const setB = new Set(b);
+    return a.some(code => setB.has(code));
+  }
+
+  function findSlotConflicts(rows, slot, format, startStr, endStr, excludeId, targetComuni){
+    const overlappingDate = rows.filter(r =>
       r.id !== excludeId &&
       r.active &&
       Number(r.position_slot) === Number(slot) &&
       r.subscription_start <= endStr && r.subscription_end >= startStr
     );
+    const overlapping = overlappingDate.filter(r => geoOverlaps(r.target_comuni, targetComuni));
     if (overlapping.length === 0) return [];
     if (format === 'full' || overlapping.some(r => r.ad_format === 'full')) return overlapping;
     // da qui in poi: sia la nuova inserzione sia tutte quelle sovrapposte sono "mezza pagina"
@@ -490,7 +515,7 @@
   function computeExistingConflicts(rows){
     const map = new Map();
     rows.filter(r => r.active).forEach(r => {
-      const conflicts = findSlotConflicts(rows, r.position_slot, r.ad_format, r.subscription_start, r.subscription_end, r.id);
+      const conflicts = findSlotConflicts(rows, r.position_slot, r.ad_format, r.subscription_start, r.subscription_end, r.id, r.target_comuni);
       if (conflicts.length) map.set(r.id, conflicts);
     });
     return map;
@@ -671,9 +696,9 @@
     // scrivere qualunque cosa — uno slot "intera pagina" è esclusivo, uno "mezza pagina"
     // ospita al massimo 2 inserzioni sovrapposte.
     const { data: existingRows } = await sb.from('folium_ad_pages')
-      .select('id, position_slot, ad_format, subscription_start, subscription_end, active, folium_advertisers(name)')
+      .select('id, position_slot, ad_format, subscription_start, subscription_end, active, target_comuni, folium_advertisers(name)')
       .eq('tenant_id', TENANT_ID);
-    const conflicts = findSlotConflicts(existingRows || [], slot, format, startStr, endStr, editingAdPageId);
+    const conflicts = findSlotConflicts(existingRows || [], slot, format, startStr, endStr, editingAdPageId, null); // ad create da admin restano "tutta Italia" (null) finché non c'è una UI di targeting anche qui
     if (conflicts.length) {
       const details = conflicts.map(c => `"${c.folium_advertisers?.name || '—'}" (dal ${c.subscription_start} al ${c.subscription_end})`).join('; ');
       alert(`Impossibile salvare: lo slot ${slot} in queste date è già occupato da ${details}. Scegli un'altra data (guarda il suggerimento sotto il campo data) o un altro slot.`);

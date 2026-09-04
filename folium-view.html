@@ -567,7 +567,30 @@
     box.appendChild(note);
   }
 
-  async function pickAdPage(tenantId, preferredSlot, excludeIds){
+  // Risolve il comune dell'immobile del dossier al suo codice ISTAT (una volta sola per
+  // dossier, non per ogni slot) — serve a pickAdPage per mostrare solo pubblicità la cui
+  // area di copertura include davvero questo comune, non pubblicità di un'altra regione.
+  async function resolveDossierIstatCode(dossier){
+    if (!dossier.property_city) return null;
+    const { data } = await sb.from('folium_italy_comuni')
+      .select('istat')
+      .ilike('comune', dossier.property_city.trim())
+      .maybeSingle();
+    if (data) return data.istat;
+    // Ambiguità (comune omonimo in più province) o nessun match diretto: prova a
+    // restringere anche per provincia, se fornita.
+    if (dossier.property_province) {
+      const { data: data2 } = await sb.from('folium_italy_comuni')
+        .select('istat')
+        .ilike('comune', dossier.property_city.trim())
+        .ilike('sigla_provincia', dossier.property_province.trim())
+        .maybeSingle();
+      if (data2) return data2.istat;
+    }
+    return null; // comune non riconosciuto: pickAdPage tratterà come "nessuna corrispondenza locale", mostra solo pubblicità nazionali
+  }
+
+  async function pickAdPage(tenantId, preferredSlot, excludeIds, dossierIstatCode){
     const today = new Date().toISOString().slice(0, 10);
     const { data: ads } = await sb.from('folium_ad_pages')
       .select('*, folium_advertisers(name)').eq('tenant_id', tenantId).eq('active', true)
@@ -579,7 +602,17 @@
     // nello stesso dossier solo perché gli altri erano già stati usati. Se per questo slot
     // non c'è (più) nessun inserzionista disponibile, quella posizione resta senza pubblicità
     // invece di mostrarne una sbagliata o duplicata.
-    const inSlot = ads.filter(a => a.position_slot === preferredSlot && !excludeIds.includes(a.id));
+    let inSlot = ads.filter(a => a.position_slot === preferredSlot && !excludeIds.includes(a.id));
+
+    // FILTRO GEOGRAFICO: un annuncio con target_comuni vuoto/null copre tutta Italia,
+    // sempre ammesso. Un annuncio con un'area specifica compare SOLO se il comune di
+    // questo immobile è tra quelli coperti — un idraulico di Lecce non deve comparire
+    // nel dossier di un immobile a Bergamo.
+    inSlot = inSlot.filter(a => {
+      if (!a.target_comuni || !a.target_comuni.length) return true; // tutta Italia
+      if (!dossierIstatCode) return false; // area sconosciuta per questo dossier: gli annunci locali non si applicano
+      return a.target_comuni.includes(dossierIstatCode);
+    });
     if (!inSlot.length) return null;
 
     // selezione pesata semplice, solo tra gli inserzionisti di QUESTO slot
@@ -1008,11 +1041,12 @@
       const sponsorNames = []; // raccolti qui, stampati poi nel footer di OGNI pagina
       const finalPages = [];
       let slotNumber = 0;
+      const dossierIstatCode = await resolveDossierIstatCode(dossier); // una volta sola, non per ogni slot
       for (let i = 0; i < pages.length; i++) {
         finalPages.push(pages[i]);
         if (i < pages.length - 1) {
           slotNumber++; // slot 1 = subito dopo la prima pagina (copertina), poi 2,3...
-          const ad = await pickAdPage(dossier.tenant_id, slotNumber, usedAdIds);
+          const ad = await pickAdPage(dossier.tenant_id, slotNumber, usedAdIds, dossierIstatCode);
           if (ad) {
             usedAdIds.push(ad.id);
             const advertiserName = ad.folium_advertisers?.name;

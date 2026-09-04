@@ -134,6 +134,38 @@
     </div>
 
     <div class="section">
+      <label>Dove vuoi comparire?</label>
+      <div class="hint" style="margin-bottom:10px;">Più ampia l'area scelta, più il prezzo sale — un annuncio nazionale non costa quanto uno locale.</div>
+      <select id="geoScope">
+        <option value="national">Tutta Italia</option>
+        <option value="regional">Regioni specifiche</option>
+        <option value="provincial">Province specifiche</option>
+        <option value="radius">Raggio da un indirizzo</option>
+      </select>
+
+      <div id="geoRegional" style="display:none;margin-top:10px;">
+        <label>Seleziona una o più regioni</label>
+        <select id="geoRegionSelect" multiple size="6"></select>
+      </div>
+
+      <div id="geoProvincial" style="display:none;margin-top:10px;">
+        <label>Seleziona una o più province</label>
+        <select id="geoProvinceSelect" multiple size="6"></select>
+      </div>
+
+      <div id="geoRadius" style="display:none;margin-top:10px;">
+        <label>Indirizzo di riferimento</label>
+        <input type="text" id="geoAddress" placeholder="Es. Via Roma 1, Tuglie (LE)">
+        <label>Raggio (km)</label>
+        <input type="number" id="geoRadiusKm" value="20" min="1" max="300">
+        <button type="button" class="pick-btn" style="margin-top:8px;" onclick="searchRadius()">Cerca comuni nel raggio</button>
+        <div class="hint" id="geoRadiusResult" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="hint" id="geoAreaSummary" style="margin-top:12px;font-weight:600;color:#6b5314;"></div>
+    </div>
+
+    <div class="section">
       <label>Nome azienda/attività</label>
       <input type="text" id="advertiserName" required>
       <div class="row2">
@@ -170,8 +202,125 @@
   const SUPABASE_ANON_KEY = "sb_publishable_ToGgNAX4tIn6O7gb6hMa4A_kRi1yztz";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const TENANT_ID = "724f71d8-b499-46c1-9047-021280e913c9";
-  const TIER_LABEL = { premium: 'Premium', high: 'Alta visibilita', standard: 'Standard' };
+  const TIER_LABEL = { premium: 'Premium', high: 'Alta visibilità', standard: 'Standard' };
   const MAX_EDITORIAL_WORDS = 60;
+  const GEOAPIFY_KEY = "8ddfaf5a70914383939b99fa369a8dd5"; // stessa chiave già usata per la mappa Light in folium-view.html
+
+  // ---- Targeting geografico: comuni italiani caricati una sola volta all'apertura della
+  // pagina (istat/comune/provincia/sigla/regione), usati per popolare i menu
+  // regione/provincia e per il calcolo del raggio in km. Nessuna chiamata Supabase in più
+  // per ogni singola scelta dell'utente, tutto in memoria dopo il primo caricamento.
+  let allComuni = [];
+  let geoTarget = { scope: 'national', comuni: [], label: 'Tutta Italia' };
+
+  async function loadAllComuni(withCoords){
+    // Supabase limita le righe per chiamata (di solito 1000): scarica a blocchi finché
+    // non arriva un blocco più corto del richiesto, così funziona sempre — indipendente
+    // dal limite configurato sul progetto, senza doverlo indovinare.
+    const cols = withCoords ? 'istat, comune, provincia, sigla_provincia, regione, lat, long' : 'istat, comune, provincia, sigla_provincia, regione';
+    let all = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await sb.from('folium_italy_comuni').select(cols).range(from, from + pageSize - 1);
+      if (error || !data || !data.length) break;
+      all = all.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    allComuni = all;
+  }
+
+  async function initGeoTargeting(){
+    await loadAllComuni(false);
+    // Popola i due menu a partire dai valori distinti reali (non un elenco scritto a
+    // mano, che rischierebbe di non combaciare mai perfettamente con i dati veri).
+    const regioni = [...new Set(allComuni.map(c => c.regione))].sort();
+    const province = [...new Set(allComuni.map(c => c.provincia))].sort();
+    document.getElementById('geoRegionSelect').innerHTML = regioni.map(r => `<option value="${r}">${r}</option>`).join('');
+    document.getElementById('geoProvinceSelect').innerHTML = province.map(p => `<option value="${p}">${p}</option>`).join('');
+  }
+
+  document.getElementById('geoScope').addEventListener('change', (e) => {
+    const scope = e.target.value;
+    document.getElementById('geoRegional').style.display = scope === 'regional' ? 'block' : 'none';
+    document.getElementById('geoProvincial').style.display = scope === 'provincial' ? 'block' : 'none';
+    document.getElementById('geoRadius').style.display = scope === 'radius' ? 'block' : 'none';
+    if (scope === 'national') applyGeoTarget('national', [], 'Tutta Italia');
+    else { geoTarget = { scope, comuni: [], label: '' }; updateGeoSummary(); updatePriceBox(); }
+  });
+
+  document.getElementById('geoRegionSelect').addEventListener('change', (e) => {
+    const selected = Array.from(e.target.selectedOptions).map(o => o.value);
+    const comuni = allComuni.filter(c => selected.includes(c.regione)).map(c => c.istat);
+    applyGeoTarget('regional', comuni, selected.join(', ') || 'Nessuna regione selezionata');
+  });
+
+  document.getElementById('geoProvinceSelect').addEventListener('change', (e) => {
+    const selected = Array.from(e.target.selectedOptions).map(o => o.value);
+    const comuni = allComuni.filter(c => selected.includes(c.provincia)).map(c => c.istat);
+    applyGeoTarget('provincial', comuni, selected.map(p => 'Provincia di ' + p).join(', ') || 'Nessuna provincia selezionata');
+  });
+
+  function haversineKm(lat1, lon1, lat2, lon2){
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  async function searchRadius(){
+    const address = document.getElementById('geoAddress').value.trim();
+    const km = Number(document.getElementById('geoRadiusKm').value) || 20;
+    const resultEl = document.getElementById('geoRadiusResult');
+    if (!address) { resultEl.textContent = 'Inserisci un indirizzo.'; return; }
+    resultEl.textContent = 'Ricerca indirizzo...';
+    try {
+      const resp = await fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&filter=countrycode:it&limit=1&apiKey=${GEOAPIFY_KEY}`);
+      const data = await resp.json();
+      const feature = data && data.features && data.features[0];
+      if (!feature) { resultEl.textContent = 'Indirizzo non trovato, prova a essere più preciso.'; return; }
+      const lon = feature.geometry.coordinates[0], lat = feature.geometry.coordinates[1];
+
+      // Le coordinate dei comuni non sono nel caricamento iniziale (leggero, solo per i
+      // menu) — le scarico ora, una volta sola, solo quando servono davvero.
+      if (!allComuni.length || allComuni[0].lat === undefined) await loadAllComuni(true);
+
+      const withinRadius = allComuni.filter(c => haversineKm(lat, lon, Number(c.lat), Number(c.long)) <= km);
+      if (!withinRadius.length) { resultEl.textContent = 'Nessun comune trovato in questo raggio — prova ad allargarlo.'; return; }
+
+      resultEl.textContent = `${withinRadius.length} comuni trovati entro ${km} km da "${feature.properties.formatted}".`;
+      applyGeoTarget('radius', withinRadius.map(c => c.istat), `${km}km da ${feature.properties.city || address}`);
+    } catch (e) {
+      resultEl.textContent = 'Errore nella ricerca: ' + (e.message || e);
+    }
+  }
+
+  function applyGeoTarget(scope, comuni, label){
+    geoTarget = { scope, comuni, label };
+    updateGeoSummary();
+    updatePriceBox();
+  }
+
+  function updateGeoSummary(){
+    const el = document.getElementById('geoAreaSummary');
+    if (geoTarget.scope === 'national') { el.textContent = 'Copertura: tutta Italia.'; return; }
+    el.textContent = `Copertura: ${geoTarget.comuni.length} comuni (${geoTarget.label}).`;
+  }
+
+  // Fascia di moltiplicatore corrispondente alla copertura scelta — STESSA regola usata
+  // server-side (pickMultiplierKey in folium-create-ad-checkout.ts): qui serve solo per
+  // mostrare un prezzo indicativo prima di pagare, il prezzo VERO lo ricalcola il server.
+  function pickMultiplierKey(scope, comuniCount){
+    if (scope === 'national') return 'nazionale';
+    if (scope === 'regional') return 'regione';
+    if (scope === 'provincial') return 'provincia';
+    if (comuniCount <= 5) return 'tier_1_5';
+    if (comuniCount <= 15) return 'tier_6_15';
+    return 'tier_16_40';
+  }
+
 
   function toLocalDateStr(d){
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -285,7 +434,7 @@
       sb.from('folium_ad_pages').select('position_slot, ad_format, subscription_end, image_url, headline, subtext, folium_advertisers(name)')
         .eq('tenant_id', TENANT_ID).eq('active', true).gte('subscription_end', today),
       sb.from('folium_pricing').select('*').eq('tenant_id', TENANT_ID)
-        .in('category', ['ad_slot', 'ad_period_discount']),
+        .in('category', ['ad_slot', 'ad_period_discount', 'geo_multiplier']),
     ]);
     pricingRows = prices || [];
 
@@ -390,13 +539,16 @@
     const tier = slotTier(selectedSlot.slot);
     const slotRow = pricingRows.find(r => r.category === 'ad_slot' && r.key === `${tier}_${format}`);
     const discountRow = pricingRows.find(r => r.category === 'ad_period_discount' && r.key === period);
+    const multiplierKey = pickMultiplierKey(geoTarget.scope, geoTarget.comuni.length);
+    const multiplierRow = pricingRows.find(r => r.category === 'geo_multiplier' && r.key === multiplierKey);
     const box = document.getElementById('priceBox');
     if (!slotRow) { box.textContent = 'Prezzo non disponibile per questa combinazione.'; return; }
     const months = { quarterly: 3, semestral: 6, annual: 12 }[period];
     const monthly = slotRow.price_cents / 100;
     const discount = (discountRow && discountRow.discount_percent || 0) / 100;
-    const total = Math.round(monthly * months * (1 - discount) * 100) / 100;
-    box.innerHTML = `<span class="amount">${total.toLocaleString('it-IT', { minimumFractionDigits: 2 })}&euro;</span> totali per il periodo scelto (${monthly.toLocaleString('it-IT')}&euro;/mese${discount ? `, sconto ${Math.round(discount*100)}%` : ''})`;
+    const multiplier = (multiplierRow && Number(multiplierRow.multiplier)) || 1;
+    const total = Math.round(monthly * months * multiplier * (1 - discount) * 100) / 100;
+    box.innerHTML = `<span class="amount">${total.toLocaleString('it-IT', { minimumFractionDigits: 2 })}&euro;</span> totali per il periodo e l'area scelti (${monthly.toLocaleString('it-IT')}&euro;/mese base${multiplier !== 1 ? ` × ${multiplier} per la copertura` : ''}${discount ? `, sconto ${Math.round(discount*100)}%` : ''})`;
   }
 
   document.getElementById('adFormat').addEventListener('change', () => { suggestStartDate(); updatePriceBox(); });
@@ -431,6 +583,7 @@
     const btn = document.getElementById('btnSubmit');
     try {
       if (!selectedSlot) throw new Error('Scegli prima uno slot sfogliando il dossier qui sopra.');
+      if (geoTarget.scope !== 'national' && geoTarget.comuni.length === 0) throw new Error('Seleziona almeno un\'area geografica (regione/provincia/raggio) prima di procedere.');
       if (!adImageFile) throw new Error("Carica l'immagine dell'annuncio.");
       const subtext = document.getElementById('adSubtext').value.trim();
       const wordCount = subtext.split(/\s+/).filter(Boolean).length;
@@ -459,6 +612,9 @@
           cta_text: document.getElementById('adCtaText').value.trim() || null,
           cta_url: document.getElementById('adCtaUrl').value.trim() || null,
           position_slot: selectedSlot.slot,
+          target_scope: geoTarget.scope,
+          target_comuni: geoTarget.scope === 'national' ? [] : geoTarget.comuni,
+          target_label: geoTarget.scope === 'national' ? 'Tutta Italia' : geoTarget.label,
           ad_format: document.getElementById('adFormat').value,
           billing_period: document.getElementById('adBillingPeriod').value,
           subscription_start: document.getElementById('adStartDate').value,
@@ -496,6 +652,7 @@
 
   renderDossier();
   loadAvailabilityAndPricing();
+  initGeoTargeting();
 </script>
 </body>
 </html>
