@@ -314,7 +314,19 @@
       const withinRadius = allComuni.filter(c => haversineKm(lat, lon, Number(c.lat), Number(c.long)) <= km);
       if (!withinRadius.length) { resultEl.textContent = 'Nessun comune trovato in questo raggio — prova ad allargarlo.'; return; }
 
-      resultEl.textContent = `${withinRadius.length} comuni trovati entro ${km} km da "${feature.properties.formatted}".`;
+      // Lista vera, ordinata dal più vicino, con la distanza indicata — così si può
+      // verificare prima di pagare, non solo un numero senza dettaglio.
+      withinRadius.forEach(c => { c._distanceKm = haversineKm(lat, lon, Number(c.lat), Number(c.long)); });
+      withinRadius.sort((a, b) => a._distanceKm - b._distanceKm);
+      const listHTML = withinRadius.map(c =>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee0bd;">
+          <span>${c.comune} <span style="color:#a49470;">(${c.sigla_provincia})</span></span>
+          <span style="color:#a49470;">${c._distanceKm.toFixed(1)} km</span>
+        </div>`).join('');
+
+      resultEl.innerHTML = `
+        <div style="font-weight:600;margin-bottom:8px;">${withinRadius.length} comuni trovati entro ${km} km da "${feature.properties.formatted}":</div>
+        <div style="max-height:260px;overflow-y:auto;font-size:12px;background:#fff;border:1px solid #eee0bd;border-radius:8px;padding:8px 12px;">${listHTML}</div>`;
       applyGeoTarget('radius', withinRadius.map(c => c.istat), `${km}km da ${feature.properties.city || address}`);
     } catch (e) {
       resultEl.textContent = 'Errore nella ricerca: ' + (e.message || e);
