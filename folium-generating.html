@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOLIUM — Generazione dossier in corso</title>
+<style>
+  :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;}
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{font-family:'Poppins',Arial,sans-serif;background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));color:#fdfbf5;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;text-align:center;}
+  .brand{font-weight:300;letter-spacing:4px;font-size:22px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:26px;}
+  .spinner-ring{width:52px;height:52px;border:3px solid rgba(241,210,122,.25);border-top-color:var(--gold3);border-radius:50%;animation:spin 0.9s linear infinite;margin-bottom:22px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  h1{font-size:16px;font-weight:400;margin:0 0 8px;}
+  .status-text{font-size:12.5px;color:#e8dcb8;min-height:18px;margin-bottom:24px;}
+  .progress-track{width:100%;max-width:320px;height:6px;background:rgba(241,210,122,.18);border-radius:4px;overflow:hidden;margin-bottom:30px;}
+  .progress-fill{height:100%;width:40%;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3));border-radius:4px;animation:indeterminate 1.6s ease-in-out infinite;}
+  @keyframes indeterminate{0%{transform:translateX(-100%);}100%{transform:translateX(350%);}}
+  .sponsor-box{width:100%;max-width:340px;background:rgba(0,0,0,.22);border-radius:14px;padding:16px;}
+  .sponsor-label{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold3);margin-bottom:10px;}
+  .sponsor-box img{width:100%;max-height:180px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px;}
+  .sponsor-name{font-size:11.5px;color:#e8dcb8;}
+  .no-close-note{font-size:10px;color:rgba(255,255,255,.45);margin-top:22px;max-width:320px;}
+</style>
+</head>
+<body>
+
+<div class="brand">FOLIUM</div>
+<div class="spinner-ring"></div>
+<h1>Generazione del dossier in corso</h1>
+<div class="status-text" id="statusText">Avvio…</div>
+<div class="progress-track"><div class="progress-fill"></div></div>
+
+<div class="sponsor-box" id="sponsorBox" style="display:none;">
+  <div class="sponsor-label">Nel frattempo</div>
+  <div id="sponsorSlide"></div>
+</div>
+
+<div class="no-close-note">Non chiudere questa finestra — si chiuderà da sola appena il dossier sarà pronto.</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_ToGgNAX4tIn6O7gb6hMa4A_kRi1yztz";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const TENANT_ID = "724f71d8-b499-46c1-9047-021280e913c9";
+
+  // Riceve lo stato reale (testi già scritti in folium-create.html: "Caricamento foto
+  // (2/5)…" ecc.) dalla finestra che l'ha aperta, via postMessage — questa finestra non
+  // rifà nessun lavoro, mostra solo cosa sta succedendo davvero nell'altra.
+  window.addEventListener('message', (e) => {
+    if (!e.data || e.data.type !== 'folium-progress') return;
+    document.getElementById('statusText').textContent = e.data.text || '';
+  });
+
+  // Nessun pulsante di chiusura nell'interfaccia (richiesto) — la X del browser resta
+  // comunque disponibile (nessun sito può disattivarla, per sicurezza del browser stesso),
+  // ma un avviso scoraggia una chiusura accidentale mentre il dossier è ancora in corso.
+  window.addEventListener('beforeunload', (e) => {
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  let sponsorAds = [];
+  let sponsorIndex = 0;
+  async function loadSponsors(){
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await sb.from('folium_ad_pages')
+      .select('image_url, headline, folium_advertisers(name)')
+      .eq('tenant_id', TENANT_ID).eq('active', true)
+      .lte('subscription_start', today).gte('subscription_end', today)
+      .limit(8);
+    sponsorAds = data || [];
+    if (sponsorAds.length) {
+      document.getElementById('sponsorBox').style.display = 'block';
+      renderSponsorSlide();
+      if (sponsorAds.length > 1) setInterval(() => { sponsorIndex = (sponsorIndex + 1) % sponsorAds.length; renderSponsorSlide(); }, 4000);
+    }
+  }
+  function renderSponsorSlide(){
+    const ad = sponsorAds[sponsorIndex];
+    document.getElementById('sponsorSlide').innerHTML = `
+      <img src="${ad.image_url}" alt="">
+      <div class="sponsor-name">${ad.folium_advertisers?.name || ''}${ad.headline ? ' — ' + ad.headline : ''}</div>`;
+  }
+  loadSponsors();
+</script>
+</body>
+</html>

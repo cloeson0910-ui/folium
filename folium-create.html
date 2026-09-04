@@ -684,6 +684,34 @@
     if (genCarouselInterval) { clearInterval(genCarouselInterval); genCarouselInterval = null; }
   }
 
+  // Finestra dedicata alla generazione (barra di avanzamento + sponsor, richiesta
+  // esplicitamente al posto del solo widget nella pagina) — apre folium-generating.html
+  // e le inoltra lo stato reale via postMessage, semplicemente rileggendo il testo del
+  // pulsante ogni po' (che il resto del codice aggiorna già ad ogni fase: foto, logo,
+  // ecc.) invece di dover toccare ogni singolo punto in cui quel testo cambia.
+  let generationWindow = null;
+  let generationRelayInterval = null;
+  let lastRelayedStatus = '';
+
+  function openGenerationWindow(btn){
+    generationWindow = window.open('folium-generating.html', 'folium_generating', 'width=440,height=620');
+    if (!generationWindow) return; // popup bloccato dal browser: la generazione prosegue comunque, solo senza la finestra
+    lastRelayedStatus = '';
+    generationRelayInterval = setInterval(() => {
+      if (!generationWindow || generationWindow.closed) { clearInterval(generationRelayInterval); return; }
+      if (btn.textContent !== lastRelayedStatus) {
+        lastRelayedStatus = btn.textContent;
+        generationWindow.postMessage({ type: 'folium-progress', text: lastRelayedStatus }, '*');
+      }
+    }, 300);
+  }
+
+  function closeGenerationWindow(){
+    if (generationRelayInterval) { clearInterval(generationRelayInterval); generationRelayInterval = null; }
+    if (generationWindow && !generationWindow.closed) generationWindow.close();
+    generationWindow = null;
+  }
+
   function updatePromoWidget(tier){
     const widget = document.getElementById('promoWidget');
     if (tier === 'platinum') { widget.style.display = 'none'; return; }
@@ -1332,6 +1360,7 @@
     const btn = document.getElementById('btnSubmit');
     btn.disabled = true; btn.textContent = editDossierId ? 'Salvataggio in corso…' : 'Caricamento in corso…';
     startGenerationCarousel(); // riempie l'attesa reale (geocodifica, foto, logo) invece di uno spinner vuoto
+    openGenerationWindow(btn); // finestra dedicata con barra di avanzamento + sponsor, richiesta esplicitamente
     try {
       let logoUrl = currentClient.logo_url;
       if (logoFile) logoUrl = await uploadFile('folium-logos', logoFile, currentUser.id);
@@ -1490,13 +1519,16 @@
           // Il dossier esiste comunque senza le nuove traduzioni: non blocchiamo l'utente,
           // ma le lingue nuove NON vengono aggiunte (restano da pagare al prossimo tentativo).
           console.error('Checkout traduzioni non avviato:', checkoutError);
+          closeGenerationWindow();
           window.location.href = `folium-view.html?id=${dossier.id}`;
           return;
         }
+        closeGenerationWindow();
         window.location.href = checkoutData.url;
         return;
       }
 
+      closeGenerationWindow();
       window.location.href = `folium-view.html?id=${dossier.id}`;
     } catch (err) {
       const parts = [err.message, err.details, err.hint, err.code].filter(Boolean).join(' | ');
@@ -1504,6 +1536,7 @@
       console.error('Errore completo generazione dossier:', err);
       btn.disabled = false; btn.textContent = editDossierId ? 'Salva modifiche' : 'Genera il mio dossier';
       stopGenerationCarousel(); // in caso di errore il riquadro non deve restare visibile a form di nuovo attivo
+      closeGenerationWindow();
     }
   });
 
