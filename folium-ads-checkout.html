@@ -67,6 +67,8 @@
   .avail-status.busy{color:#a33;}
   .pick-btn{padding:9px 18px;border:1px solid var(--gold4);border-radius:20px;background:transparent;color:var(--gold4);font-size:12px;cursor:pointer;white-space:nowrap;}
   .pick-btn.selected{background:var(--gold4);color:#fff;}
+  .geo-chip{padding:7px 13px;border:1px solid #ddd2b3;border-radius:18px;background:#fff;color:#5c4f30;font-size:12.5px;cursor:pointer;user-select:none;}
+  .geo-chip.selected{background:var(--gold4);color:#fff;border-color:var(--gold4);}
   .competitors-wrap{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
   .competitor-card{flex:1;min-width:150px;border:1px solid rgba(166,127,52,.25);border-radius:10px;overflow:hidden;background:#fff;}
   .competitor-card img{width:100%;height:120px;object-fit:cover;display:block;}
@@ -144,13 +146,14 @@
       </select>
 
       <div id="geoRegional" style="display:none;margin-top:10px;">
-        <label>Seleziona una o più regioni</label>
-        <select id="geoRegionSelect" multiple size="6"></select>
+        <label>Seleziona una o più regioni (tocca per selezionare/deselezionare)</label>
+        <div id="geoRegionChips" style="display:flex;flex-wrap:wrap;gap:7px;max-height:220px;overflow-y:auto;padding:2px;"></div>
       </div>
 
       <div id="geoProvincial" style="display:none;margin-top:10px;">
-        <label>Seleziona una o più province</label>
-        <select id="geoProvinceSelect" multiple size="6"></select>
+        <label>Seleziona una o più province (tocca per selezionare/deselezionare)</label>
+        <input type="text" id="geoProvinceFilter" placeholder="Cerca provincia..." style="margin-bottom:8px;">
+        <div id="geoProvinceChips" style="display:flex;flex-wrap:wrap;gap:7px;max-height:220px;overflow-y:auto;padding:2px;"></div>
       </div>
 
       <div id="geoRadius" style="display:none;margin-top:10px;">
@@ -231,14 +234,47 @@
     allComuni = all;
   }
 
+  let selectedRegioni = new Set();
+  let selectedProvince = new Set();
+
   async function initGeoTargeting(){
     await loadAllComuni(false);
-    // Popola i due menu a partire dai valori distinti reali (non un elenco scritto a
+    // Popola i riquadri a partire dai valori distinti reali (non un elenco scritto a
     // mano, che rischierebbe di non combaciare mai perfettamente con i dati veri).
     const regioni = [...new Set(allComuni.map(c => c.regione))].sort();
     const province = [...new Set(allComuni.map(c => c.provincia))].sort();
-    document.getElementById('geoRegionSelect').innerHTML = regioni.map(r => `<option value="${r}">${r}</option>`).join('');
-    document.getElementById('geoProvinceSelect').innerHTML = province.map(p => `<option value="${p}">${p}</option>`).join('');
+    document.getElementById('geoRegionChips').innerHTML = regioni.map(r =>
+      `<div class="geo-chip" data-regione="${r}" onclick="toggleRegione('${r.replace(/'/g, "\\'")}')">${r}</div>`).join('');
+    renderProvinceChips(province);
+  }
+
+  function renderProvinceChips(list){
+    document.getElementById('geoProvinceChips').innerHTML = list.map(p =>
+      `<div class="geo-chip ${selectedProvince.has(p) ? 'selected' : ''}" data-provincia="${p}" onclick="toggleProvincia('${p.replace(/'/g, "\\'")}')">${p}</div>`).join('');
+  }
+
+  document.getElementById('geoProvinceFilter').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    const all = [...new Set(allComuni.map(c => c.provincia))].sort();
+    renderProvinceChips(q ? all.filter(p => p.toLowerCase().includes(q)) : all);
+  });
+
+  function toggleRegione(r){
+    if (selectedRegioni.has(r)) selectedRegioni.delete(r); else selectedRegioni.add(r);
+    document.querySelectorAll('#geoRegionChips .geo-chip').forEach(el => {
+      el.classList.toggle('selected', selectedRegioni.has(el.dataset.regione));
+    });
+    const comuni = allComuni.filter(c => selectedRegioni.has(c.regione)).map(c => c.istat);
+    applyGeoTarget('regional', comuni, [...selectedRegioni].join(', ') || 'Nessuna regione selezionata');
+  }
+
+  function toggleProvincia(p){
+    if (selectedProvince.has(p)) selectedProvince.delete(p); else selectedProvince.add(p);
+    document.querySelectorAll('#geoProvinceChips .geo-chip').forEach(el => {
+      el.classList.toggle('selected', selectedProvince.has(el.dataset.provincia));
+    });
+    const comuni = allComuni.filter(c => selectedProvince.has(c.provincia)).map(c => c.istat);
+    applyGeoTarget('provincial', comuni, [...selectedProvince].map(p => 'Provincia di ' + p).join(', ') || 'Nessuna provincia selezionata');
   }
 
   document.getElementById('geoScope').addEventListener('change', (e) => {
@@ -247,19 +283,7 @@
     document.getElementById('geoProvincial').style.display = scope === 'provincial' ? 'block' : 'none';
     document.getElementById('geoRadius').style.display = scope === 'radius' ? 'block' : 'none';
     if (scope === 'national') applyGeoTarget('national', [], 'Tutta Italia');
-    else { geoTarget = { scope, comuni: [], label: '' }; updateGeoSummary(); updatePriceBox(); }
-  });
-
-  document.getElementById('geoRegionSelect').addEventListener('change', (e) => {
-    const selected = Array.from(e.target.selectedOptions).map(o => o.value);
-    const comuni = allComuni.filter(c => selected.includes(c.regione)).map(c => c.istat);
-    applyGeoTarget('regional', comuni, selected.join(', ') || 'Nessuna regione selezionata');
-  });
-
-  document.getElementById('geoProvinceSelect').addEventListener('change', (e) => {
-    const selected = Array.from(e.target.selectedOptions).map(o => o.value);
-    const comuni = allComuni.filter(c => selected.includes(c.provincia)).map(c => c.istat);
-    applyGeoTarget('provincial', comuni, selected.map(p => 'Provincia di ' + p).join(', ') || 'Nessuna provincia selezionata');
+    else { geoTarget = { scope, comuni: [], label: '', unitCount: 0 }; updateGeoSummary(); updatePriceBox(); }
   });
 
   function haversineKm(lat1, lon1, lat2, lon2){
@@ -298,7 +322,8 @@
   }
 
   function applyGeoTarget(scope, comuni, label){
-    geoTarget = { scope, comuni, label };
+    const unitCount = scope === 'regional' ? selectedRegioni.size : scope === 'provincial' ? selectedProvince.size : 0;
+    geoTarget = { scope, comuni, label, unitCount };
     updateGeoSummary();
     updatePriceBox();
   }
@@ -306,16 +331,30 @@
   function updateGeoSummary(){
     const el = document.getElementById('geoAreaSummary');
     if (geoTarget.scope === 'national') { el.textContent = 'Copertura: tutta Italia.'; return; }
-    el.textContent = `Copertura: ${geoTarget.comuni.length} comuni (${geoTarget.label}).`;
+    const unitLabel = geoTarget.scope === 'regional' ? `${geoTarget.unitCount} regioni` : geoTarget.scope === 'provincial' ? `${geoTarget.unitCount} province` : `${geoTarget.comuni.length} comuni`;
+    el.textContent = `Copertura: ${unitLabel} (${geoTarget.label}).`;
   }
 
   // Fascia di moltiplicatore corrispondente alla copertura scelta — STESSA regola usata
   // server-side (pickMultiplierKey in folium-create-ad-checkout.ts): qui serve solo per
   // mostrare un prezzo indicativo prima di pagare, il prezzo VERO lo ricalcola il server.
-  function pickMultiplierKey(scope, comuniCount){
+  // Regione/provincia scalano per QUANTE se ne scelgono, non un moltiplicatore fisso —
+  // altrimenti scegliere 1 regione o 8 costerebbe uguale, sbagliato.
+  function pickMultiplierKey(scope, comuniCount, unitCount){
     if (scope === 'national') return 'nazionale';
-    if (scope === 'regional') return 'regione';
-    if (scope === 'provincial') return 'provincia';
+    if (scope === 'regional') {
+      if (unitCount <= 1) return 'reg_1';
+      if (unitCount <= 4) return 'reg_2_4';
+      if (unitCount <= 9) return 'reg_5_9';
+      return 'reg_10_plus';
+    }
+    if (scope === 'provincial') {
+      if (unitCount <= 1) return 'prov_1';
+      if (unitCount <= 5) return 'prov_2_5';
+      if (unitCount <= 15) return 'prov_6_15';
+      if (unitCount <= 40) return 'prov_16_40';
+      return 'prov_41_plus';
+    }
     if (comuniCount <= 5) return 'tier_1_5';
     if (comuniCount <= 15) return 'tier_6_15';
     return 'tier_16_40';
@@ -539,7 +578,7 @@
     const tier = slotTier(selectedSlot.slot);
     const slotRow = pricingRows.find(r => r.category === 'ad_slot' && r.key === `${tier}_${format}`);
     const discountRow = pricingRows.find(r => r.category === 'ad_period_discount' && r.key === period);
-    const multiplierKey = pickMultiplierKey(geoTarget.scope, geoTarget.comuni.length);
+    const multiplierKey = pickMultiplierKey(geoTarget.scope, geoTarget.comuni.length, geoTarget.unitCount || 0);
     const multiplierRow = pricingRows.find(r => r.category === 'geo_multiplier' && r.key === multiplierKey);
     const box = document.getElementById('priceBox');
     if (!slotRow) { box.textContent = 'Prezzo non disponibile per questa combinazione.'; return; }
