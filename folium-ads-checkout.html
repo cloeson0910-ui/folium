@@ -67,6 +67,13 @@
   .avail-status.busy{color:#a33;}
   .pick-btn{padding:9px 18px;border:1px solid var(--gold4);border-radius:20px;background:transparent;color:var(--gold4);font-size:12px;cursor:pointer;white-space:nowrap;}
   .pick-btn.selected{background:var(--gold4);color:#fff;}
+  .competitors-wrap{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+  .competitor-card{flex:1;min-width:150px;border:1px solid rgba(166,127,52,.25);border-radius:10px;overflow:hidden;background:#fff;}
+  .competitor-card img{width:100%;height:120px;object-fit:cover;display:block;}
+  .competitor-info{padding:8px 10px;}
+  .competitor-badge{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#a4915c;margin-bottom:3px;}
+  .competitor-name{font-size:12.5px;font-weight:600;color:#2b2416;}
+  .competitor-headline{font-size:11px;color:#6b5314;margin-top:2px;}
 
   .form-page{background:#fff;}
   .form-page .section{margin-bottom:22px;}
@@ -275,7 +282,7 @@
   async function loadAvailabilityAndPricing(){
     const today = toLocalDateStr(new Date());
     const [{ data: adRows }, { data: prices }] = await Promise.all([
-      sb.from('folium_ad_pages').select('position_slot, ad_format, subscription_end, folium_advertisers(name)')
+      sb.from('folium_ad_pages').select('position_slot, ad_format, subscription_end, image_url, headline, subtext, folium_advertisers(name)')
         .eq('tenant_id', TENANT_ID).eq('active', true).gte('subscription_end', today),
       sb.from('folium_pricing').select('*').eq('tenant_id', TENANT_ID)
         .in('category', ['ad_slot', 'ad_period_discount']),
@@ -306,17 +313,42 @@
         fullInfo = { free: true, label: 'Completamente libero', nextFree: today };
         halfInfo = { free: true, label: 'Completamente libero', nextFree: today };
       }
-      slotAvailability[slot] = { full: fullInfo, half: halfInfo };
+      // Righe grezze conservate: servono per mostrare l'annuncio VERO di chi occupa lo
+      // slot — prova sociale concreta ("guarda chi ha già comprato qui"), non solo testo.
+      slotAvailability[slot] = { full: fullInfo, half: halfInfo, occ };
       renderSlotAvail(slot);
     }
     if (selectedSlot) updatePriceBox();
+  }
+
+  function competitorCardHTML(ad){
+    const advertiser = ad.folium_advertisers?.name || 'Inserzionista';
+    return `
+      <div class="competitor-card">
+        <img src="${ad.image_url}" alt="">
+        <div class="competitor-info">
+          <div class="competitor-badge">Attualmente in questo spazio</div>
+          <div class="competitor-name">${advertiser}</div>
+          ${ad.headline ? `<div class="competitor-headline">${ad.headline}</div>` : ''}
+        </div>
+      </div>`;
   }
 
   function renderSlotAvail(slot){
     const el = document.getElementById('adSlotAvail' + slot);
     if (!el) return;
     const avail = slotAvailability[slot];
+    const occ = avail.occ || [];
+
+    // Fino a 2 annunci reali da mostrare (una pagina intera, o le due metà) — è la prova
+    // sociale concreta richiesta: chi sta valutando l'acquisto vede DAVVERO chi ha già
+    // occupato quello slot, non solo una scritta "occupato".
+    const competitorsHTML = occ.length
+      ? `<div class="competitors-wrap">${occ.map(competitorCardHTML).join('')}</div>`
+      : '';
+
     el.innerHTML = `
+      ${competitorsHTML}
       <div class="avail-row">
         <div><div class="fmt">Pagina intera</div><div class="avail-status ${avail.full.free ? 'free' : 'busy'}">${avail.full.label}</div></div>
         <button class="pick-btn ${selectedSlot && selectedSlot.slot === slot && selectedSlot.format === 'full' ? 'selected' : ''}" onclick="pickSlot(${slot}, 'full')">Prenota</button>
