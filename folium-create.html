@@ -388,17 +388,38 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   const SAMPLE_DOSSIER_URL = "https://immonova-consulting.it/dossier/opportunity-25-it.html";
+  let sampleDossierOpenedAt = null;
 
   function openSampleDossier(){
     document.getElementById('sampleDossierFrame').src = SAMPLE_DOSSIER_URL;
     document.getElementById('sampleDossierModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
+    sampleDossierOpenedAt = Date.now();
   }
 
-  function closeSampleDossier(){
+  async function closeSampleDossier(){
     document.getElementById('sampleDossierModal').style.display = 'none';
     document.getElementById('sampleDossierFrame').src = ''; // scarica il contenuto, non lo tiene inutilmente in memoria
     document.body.style.overflow = '';
+
+    // Tracciamento per il cliente loggato: quante volte ha aperto il dossier di esempio e
+    // per quanto tempo (il MASSIMO tra le aperture, non la somma) — così in admin, tab
+    // Clienti, si distingue chi ha solo curiosato (pochi secondi) da chi ha approfondito
+    // davvero. Non tracciato per utenti Light anonimi (nessun client_id stabile da usare).
+    if (sampleDossierOpenedAt && currentUser && !currentUser.is_anonymous) {
+      const durationSeconds = Math.round((Date.now() - sampleDossierOpenedAt) / 1000);
+      sampleDossierOpenedAt = null;
+      try {
+        const { data: existing } = await sb.from('folium_client_dossier_views').select('*').eq('client_id', currentUser.id).maybeSingle();
+        await sb.from('folium_client_dossier_views').upsert({
+          client_id: currentUser.id,
+          tenant_id: TENANT_ID,
+          total_opens: (existing?.total_opens || 0) + 1,
+          max_duration_seconds: Math.max(existing?.max_duration_seconds || 0, durationSeconds),
+          last_opened_at: new Date().toISOString(),
+        });
+      } catch (e) { /* non bloccante: il tracciamento non deve mai rompere l'anteprima */ }
+    }
   }
 </script>
 <script>

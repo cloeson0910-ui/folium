@@ -538,6 +538,7 @@
     currentPageIndex = Math.min(dossierPages.length - 1, Math.max(0, currentPageIndex + dir));
     renderCurrentPage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    trackDossierEngagement(); // ogni pagina in più sfogliata aggiorna il conteggio della sessione
   }
 
   function backToDossier(){
@@ -682,6 +683,11 @@
   document.getElementById('adBillingPeriod').addEventListener('change', updatePriceBox);
   document.getElementById('adStartDate').addEventListener('input', () => { startDateManuallySet = true; });
 
+  document.getElementById('advertiserEmail').addEventListener('blur', (e) => {
+    const email = e.target.value.trim();
+    if (email && email.includes('@')) trackDossierEngagement(email);
+  });
+
   document.getElementById('adSubtext').addEventListener('input', (e) => {
     const words = e.target.value.trim().split(/\s+/).filter(Boolean);
     const el = document.getElementById('wordCount');
@@ -815,9 +821,25 @@
   renderDossier();
   loadAvailabilityAndPricing();
   initGeoTargeting();
-  // Tracciamento visualizzazione (silenzioso, non bloccante) — mostrato in admin come
-  // "Dossier esempio visto (30gg)", per capire quanto interesse genera prima di un acquisto.
-  sb.from('folium_sample_dossier_views').insert({ tenant_id: TENANT_ID }).then(() => {}, () => {});
+  // Tracciamento per sessione (non solo un conteggio anonimo): distingue chi ha solo
+  // curiosato da chi ha davvero approfondito, e cattura l'email se/quando la lascia nel
+  // modulo di acquisto — cosí in admin si vede sia QUANTO ha esplorato sia, se disponibile,
+  // CHI è. Una riga per sessione di navigazione, aggiornata via upsert man mano che sfoglia.
+  const DOSSIER_SESSION_KEY = 'folium_ads_session_id';
+  function getDossierSessionId(){
+    let id = sessionStorage.getItem(DOSSIER_SESSION_KEY);
+    if (!id) { id = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10); sessionStorage.setItem(DOSSIER_SESSION_KEY, id); }
+    return id;
+  }
+  let dossierPagesViewedCount = 1;
+  async function trackDossierEngagement(email){
+    dossierPagesViewedCount = Math.max(dossierPagesViewedCount, currentPageIndex + 1);
+    const payload = { tenant_id: TENANT_ID, session_id: getDossierSessionId(), pages_viewed: dossierPagesViewedCount, updated_at: new Date().toISOString() };
+    if (email) payload.advertiser_email = email;
+    try { await sb.from('folium_sample_dossier_views').upsert(payload, { onConflict: 'tenant_id,session_id' }); }
+    catch (e) { /* non bloccante: se il tracciamento fallisce, non deve rompere la navigazione */ }
+  }
+  trackDossierEngagement();
 </script>
 </body>
 </html>

@@ -79,7 +79,7 @@
   <div id="tab-clients" class="hidden">
     <div class="section-title">Clienti registrati</div>
     <table id="clientsTable">
-      <thead><tr><th>Nome</th><th>Contatti</th><th>Piano</th><th>Dossier creati</th><th>Ultima connessione</th><th>Zona</th></tr></thead>
+      <thead><tr><th>Nome</th><th>Contatti</th><th>Piano</th><th>Dossier creati</th><th>Ultima connessione</th><th>Zona</th><th>Dossier esempio</th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
@@ -355,12 +355,27 @@
       if (d.created_at && new Date(d.created_at) >= weekAgo) recentCounts[d.client_id] = (recentCounts[d.client_id] || 0) + 1;
     });
 
+    const { data: dossierViews } = await sb.from('folium_client_dossier_views').select('*').eq('tenant_id', TENANT_ID);
+    const dossierViewByClient = {};
+    (dossierViews || []).forEach(v => { dossierViewByClient[v.client_id] = v; });
+
     const tbody = document.querySelector('#clientsTable tbody');
     tbody.innerHTML = (clients || []).map(c => {
       const weekly = recentCounts[c.id] || 0;
       const planStatus = c.plan === 'light'
         ? `${weekly}/2 questa settimana${weekly >= 2 ? ' <b style="color:#c0392b;">— limite raggiunto</b>' : ''}`
         : (c.credits_remaining != null ? `${c.credits_remaining} crediti residui` : '—');
+      // Classificazione basata sul tempo massimo di apertura del dossier di esempio: sotto
+      // i 20 secondi è un'occhiata veloce, oltre è un'esplorazione vera — soglia scelta come
+      // ragionevole punto di partenza, non un dato scientifico.
+      const dv = dossierViewByClient[c.id];
+      let dossierCell = '<span style="color:#aaa;">mai visto</span>';
+      if (dv) {
+        const badge = dv.max_duration_seconds >= 20
+          ? '<span style="color:#2f7d3a;">🔥 Approfondito</span>'
+          : '<span style="color:#a77d31;">👀 Curiosato</span>';
+        dossierCell = `${badge}<br><span style="font-size:11px;color:#8a7a52;">${dv.total_opens}× · max ${dv.max_duration_seconds}s</span>`;
+      }
       return `
       <tr>
         <td>${c.company_name || c.full_name || '—'}</td>
@@ -369,8 +384,9 @@
         <td>${counts[c.id] || 0} totali<br><span style="font-size:11px;color:#8a7a52;">${planStatus}</span></td>
         <td>${c.last_seen_at ? new Date(c.last_seen_at).toLocaleString('it-IT') : '<span style="color:#aaa;">mai</span>'}</td>
         <td>${c.last_seen_location || '<span style="color:#aaa;">—</span>'}</td>
+        <td>${dossierCell}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="6" class="empty">Nessun cliente registrato</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="empty">Nessun cliente registrato</td></tr>';
   }
 
   async function createAdvertiser(){
