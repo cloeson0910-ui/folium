@@ -877,6 +877,24 @@
     // Dati generali del territorio + demografia — RAGGRUPPATI subito dopo "Posizione e
     // localizzazione" (stesso capitolo nel sommario, nessuna voce separata: su richiesta
     // esplicita "posizione e localizzazione CON dati del territorio e popolazione della zona").
+    // Pagina-divisorio a piena foto per l'apertura del capitolo "Territorio & Mercato" —
+    // usa la SECONDA foto caricata (la prima resta la copertina) se disponibile: rende il
+    // dossier più ricco visivamente, come nel report Immonova di riferimento. Se il cliente
+    // ha caricato una sola foto, questa pagina semplicemente non compare (nessun errore).
+    if (propertyPhotos[1]) {
+      pages.push(`<div class="page cover">
+        <img class="cover-bg" src="${esc(propertyPhotos[1].photo_url)}">
+        <div class="cover-inner">
+          <div></div>
+          <div>
+            <div class="cover-kicker">Editorial Overview</div>
+            <h1 class="cover-title" style="font-size:32px;">Territorio &amp; Mercato</h1>
+          </div>
+          <div></div>
+        </div>
+      </div>`);
+    }
+
     const { data: territory, error: territoryError } = await ensureTerritoryFacts(dossier);
     if (territory) {
       pages.push(pageWrapper(`
@@ -985,6 +1003,22 @@
     // Gold/Platinum: solo cliente), qui SOLO 1 foto per pagina, grande e MAI deformata
     // (background-image + background-size:contain, non <img object-fit> — html2canvas non
     // rispetta object-fit in modo affidabile e stirava le foto durante l'esportazione PDF).
+    // Pagina-divisorio a piena foto per l'apertura del capitolo "Immobile" — usa la TERZA
+    // foto caricata (prima = copertina, seconda = divisorio Territorio sopra) se disponibile.
+    if (propertyPhotos[2]) {
+      pages.push(`<div class="page cover">
+        <img class="cover-bg" src="${esc(propertyPhotos[2].photo_url)}">
+        <div class="cover-inner">
+          <div></div>
+          <div>
+            <div class="cover-kicker">Property Overview</div>
+            <h1 class="cover-title" style="font-size:32px;">L'Immobile</h1>
+          </div>
+          <div></div>
+        </div>
+      </div>`);
+    }
+
     if (propertyPhotos.length) {
       chunk(propertyPhotos, 1).forEach((pair, idx) => {
         pages.push(pageWrapper(`
