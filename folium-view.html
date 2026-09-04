@@ -68,7 +68,7 @@
 
   /* ---- Gallery foto: PAGINATA 2 per pagina, alta qualità, aspect-ratio fisso ---- */
   .gallery-photo-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:6px;}
-  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background-color:#fff;background-position:center;background-repeat:no-repeat;background-size:contain;overflow:hidden;height:560px;}
+  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);border-radius:6px;background-color:#f6f1e4;background-position:center;background-repeat:no-repeat;background-size:contain;overflow:hidden;height:640px;box-shadow:0 6px 18px rgba(90,70,20,.10);}
 
   .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
   .metric-card{border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:28px 22px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;}
@@ -192,6 +192,32 @@
   // testato dall'utente con richiesta diretta prima di essere cablato nel codice — CONFERMATO
   // funzionante 2026-09-02. Resta da confermare solo la cattura CORS dentro il PDF (html2canvas).
   const GEOAPIFY_KEY = "8ddfaf5a70914383939b99fa369a8dd5";
+
+  // Servizi nelle vicinanze (scuole/ospedali/farmacie/supermercati) — Geoapify Places API,
+  // GRATUITA (3.000 richieste/giorno sul piano free), stessa chiave già in uso per la mappa.
+  // Nessuna cache su dossier.* per ora: chiamata una volta per rendering, costo trascurabile.
+  async function ensureNearbyServices(lat, lng){
+    try {
+      const categories = 'education.school,healthcare.hospital,healthcare.pharmacy,commercial.supermarket';
+      const url = `https://api.geoapify.com/v2/places?categories=${categories}&filter=circle:${lng},${lat},1500&bias=proximity:${lng},${lat}&limit=20&apiKey=${GEOAPIFY_KEY}`;
+      const resp = await fetch(url);
+      const json = await resp.json();
+      if (!json.features) return null;
+      return json.features.map(f => {
+        const cats = f.properties.categories || [];
+        let type = null;
+        if (cats.includes('education.school')) type = 'school';
+        else if (cats.includes('healthcare.hospital')) type = 'hospital';
+        else if (cats.includes('healthcare.pharmacy')) type = 'pharmacy';
+        else if (cats.includes('commercial.supermarket')) type = 'supermarket';
+        if (!type) return null;
+        return { type, name: f.properties.name || LABELS_FALLBACK[type], distance: f.properties.distance || 0 };
+      }).filter(Boolean).sort((a, b) => a.distance - b.distance);
+    } catch (e) {
+      return null; // facoltativo: se Geoapify non risponde, il dossier si genera comunque senza questa sezione
+    }
+  }
+  const LABELS_FALLBACK = { school: 'Scuola', hospital: 'Ospedale', pharmacy: 'Farmacia', supermarket: 'Supermercato' };
 
   async function callImmonovaFunction(name, body){
     const resp = await fetch(`${IMMONOVA_URL}/functions/v1/${name}`, {
@@ -872,6 +898,33 @@
           ${mapHTML}
         </div>
       `, false, false, 'Posizione e localizzazione'));
+
+      // Servizi nelle vicinanze — GRATIS su tutti i piani (Geoapify Places API, stessa
+      // chiave già usata per la mappa, 3.000 richieste/giorno gratuite): scuole, ospedali,
+      // farmacie, supermercati entro 1,5 km, con distanza reale. Nessun costo aggiuntivo,
+      // nessun motore a pagamento coinvolto — solo dati utili che prima non c'erano.
+      if (Number.isFinite(dossier.property_lat) && Number.isFinite(dossier.property_lng)) {
+        const services = await ensureNearbyServices(dossier.property_lat, dossier.property_lng);
+        if (services && services.length) {
+          const ICONS = { school: '🏫', hospital: '🏥', pharmacy: '💊', supermarket: '🛒' };
+          const LABELS = { school: 'Scuole', hospital: 'Ospedali', pharmacy: 'Farmacie', supermarket: 'Supermercati' };
+          const byType = { school: [], hospital: [], pharmacy: [], supermarket: [] };
+          services.forEach(s => { if (byType[s.type]) byType[s.type].push(s); });
+          const blockHTML = Object.keys(byType).filter(k => byType[k].length).map(k => `
+            <div style="margin-bottom:18px;">
+              <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold4);margin-bottom:8px;">${ICONS[k]} ${LABELS[k]}</div>
+              ${byType[k].slice(0, 3).map(s => `<div class="addr-row"><strong>${esc(s.name)}</strong><span>${(s.distance / 1000).toFixed(1)} km</span></div>`).join('')}
+            </div>`).join('');
+          if (blockHTML) {
+            pages.push(pageWrapper(`
+              ${header}
+              ${sectionHead('Neighborhood Services', 'Servizi nelle vicinanze')}
+              <div class="verified-note" style="margin-bottom:16px;font-size:12px;">Scuole, ospedali, farmacie e supermercati entro 1,5 km dall'immobile — dati OpenStreetMap, aggiornati in tempo reale.</div>
+              ${blockHTML}
+            `, false, false, 'Servizi nelle vicinanze'));
+          }
+        }
+      }
     }
 
     // Dati generali del territorio + demografia — RAGGRUPPATI subito dopo "Posizione e
