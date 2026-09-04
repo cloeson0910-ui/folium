@@ -91,7 +91,7 @@
 
 <div class="toolbar">
   <span class="brand">FOLIUM</span>
-  Sfoglia il dossier ed esempio &mdash; scegli lo slot dove comparire
+  Sfoglia il dossier di esempio &mdash; scegli lo slot dove comparire
 </div>
 <div class="dossier-nav" id="dossierNav">
   <button id="prevBtn" onclick="flipPage(-1)">&lsaquo; Pagina precedente</button>
@@ -127,7 +127,7 @@
     </div>
 
     <div class="section">
-      <label>Nome azienda/attivita</label>
+      <label>Nome azienda/attività</label>
       <input type="text" id="advertiserName" required>
       <div class="row2">
         <div><label>Email</label><input type="email" id="advertiserEmail" required></div>
@@ -143,11 +143,11 @@
       <input type="text" id="adHeadline">
 
       <label>Piccolo editoriale (facoltativo, max 60 parole)</label>
-      <textarea id="adSubtext" placeholder="Racconta in poche righe la tua attivita, non un elenco di servizi."></textarea>
+      <textarea id="adSubtext" placeholder="Racconta in poche righe la tua attività, non un elenco di servizi."></textarea>
       <div class="wordcount" id="wordCount">0 / 60 parole</div>
 
       <div class="row2">
-        <div><label>Testo pulsante (facoltativo)</label><input type="text" id="adCtaText" placeholder="Es. Scopri di piu"></div>
+        <div><label>Testo pulsante (facoltativo)</label><input type="text" id="adCtaText" placeholder="Es. Scopri di più"></div>
         <div><label>Link sito (facoltativo)</label><input type="text" id="adCtaUrl" placeholder="tuosito.it"></div>
       </div>
 
@@ -432,7 +432,20 @@
           subscription_start: document.getElementById('adStartDate').value,
         }
       });
-      if (error) throw error;
+      if (error) {
+        // Il messaggio di default di Supabase ("Edge Function returned a non-2xx status
+        // code") è sempre generico — il dettaglio VERO scritto dal nostro codice sta nel
+        // corpo della risposta HTTP, raggiungibile da error.context. Lo leggiamo qui così
+        // compare direttamente in pagina, senza dover aprire gli strumenti sviluppatore.
+        let detail = error.message;
+        try {
+          if (error.context && typeof error.context.json === 'function') {
+            const body = await error.context.clone().json();
+            if (body && body.error) detail = body.error;
+          }
+        } catch (parseErr) { /* se non è JSON leggibile, resta il messaggio di default */ }
+        throw new Error(detail);
+      }
       if (!data || !data.url) throw new Error((data && data.error) || 'URL di pagamento non ricevuto');
       window.location.href = data.url;
     } catch (err) {
