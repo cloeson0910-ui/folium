@@ -457,6 +457,18 @@
     </div></div>`;
   }
 
+  // Pagina-divisorio a piena foto, stesso linguaggio visivo della copertina — è quello
+  // che rende un dossier vero (come i dossier Immonova reali) diverso da un semplice
+  // elenco di pagine di testo: ogni sezione si apre con una sua immagine, non solo dati.
+  function sectionDividerHTML(kicker, title, imageUrl, credit){
+    return `<div class="page cover cover-capri" style="background-image:linear-gradient(160deg, rgba(13,47,63,.30) 0%, rgba(7,29,40,.65) 100%), url('${imageUrl}');background-size:cover;background-position:center;">
+      <div class="cover-inner" style="justify-content:flex-end;">
+        <div class="cover-kicker">${kicker}</div>
+        <h1 class="cover-title" style="font-size:30px;">${title}</h1>
+        <div style="position:absolute;bottom:8px;right:14px;font-size:8px;color:rgba(255,255,255,.45);z-index:3;">${credit}</div>
+      </div></div>`;
+  }
+
   function adSlotPageHTML(slot){
     const tier = slotTier(slot);
     return `<div class="page ad-page" id="adPage${slot}"><div class="page-inner">
@@ -475,17 +487,24 @@
     dossierPages = [];
     dossierPages.push(coverPageHTML());
     dossierPages.push(adSlotPageHTML(1));
-    dossierPages.push(contentPageHTML('Editorial Overview', 'Presentazione della proposta',
-      '<div class="body-text">Villa panoramica scavata nella roccia sopra i Faraglioni, tra le proprietà più esclusive dell\'isola. Terrazze a picco sul Mediterraneo, accesso privato al mare e un giardino mediterraneo secolare rendono questa dimora un simbolo del lusso capovolgente per cui Capri è celebre in tutto il mondo — questo è il tipo di narrativa editoriale generata automaticamente per ogni dossier reale, non un testo generico.</div>'));
+    dossierPages.push(sectionDividerHTML('Editorial Overview', 'Territorio &amp; Mercato',
+      'https://images.unsplash.com/photo-1748033766479-fa6b0f9f6b33?fm=jpg&q=80&w=1200&auto=format&fit=crop', 'Foto: Adrien Olichon / Unsplash'));
+    dossierPages.push(contentPageHTML('Presentazione della proposta', 'Villa dei Faraglioni',
+      '<div class="body-text">Villa panoramica scavata nella roccia sopra i Faraglioni, tra le proprietà più esclusive dell\'isola. Terrazze a picco sul Mediterraneo, accesso privato al mare e un giardino mediterraneo secolare rendono questa dimora un simbolo del lusso per cui Capri è celebre in tutto il mondo — questo è il tipo di narrativa editoriale generata automaticamente per ogni dossier reale, non un testo generico.</div>'));
     dossierPages.push(adSlotPageHTML(2));
     dossierPages.push(contentPageHTML('Location Intelligence', 'Territorio e popolazione',
       '<div class="metric-grid"><div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">7.170</div></div><div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">10,4 km²</div></div><div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">142 m</div></div></div>'));
     dossierPages.push(adSlotPageHTML(3));
+    dossierPages.push(sectionDividerHTML('Property Overview', 'L\'Immobile',
+      'https://images.unsplash.com/photo-1758448756167-88dc934c58e4?fm=jpg&q=80&w=1200&auto=format&fit=crop', 'Foto: Aalo Lens / Unsplash'));
     dossierPages.push(contentPageHTML('Asset Highlights', 'Caratteristiche principali',
       pictogramRowHTML([['🌊','Vista mare'],['🏊','Piscina a sfioro'],['⚓','Accesso privato al mare'],['🌳','Giardino mediterraneo'],['🏛️','Terrazza panoramica']])));
     dossierPages.push(adSlotPageHTML(4));
     dossierPages.push(contentPageHTML('Media Gallery', 'Immagini dell\'immobile',
-      '<div class="gallery-photo-cell" style="background-image:linear-gradient(0deg, rgba(0,0,0,.35), rgba(0,0,0,0) 40%), url(\'https://images.unsplash.com/photo-1748033766479-fa6b0f9f6b33?fm=jpg&q=80&w=1200&auto=format&fit=crop\');background-size:cover;background-position:center;color:#fff;align-items:flex-end;justify-content:flex-start;padding:16px;box-sizing:border-box;">Vista sul Mediterraneo (esempio)<div style="position:absolute;bottom:6px;right:10px;font-size:8px;color:rgba(255,255,255,.55);">Foto: Adrien Olichon / Unsplash</div></div>'));
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+      '<div class="gallery-photo-cell" style="height:280px;background-image:url(\'https://images.unsplash.com/photo-1549026841-dc1939a05b67?fm=jpg&q=80&w=800&auto=format&fit=crop\');background-size:cover;background-position:center;"></div>' +
+      '<div class="gallery-photo-cell" style="height:280px;background-image:url(\'https://images.unsplash.com/photo-1758448756167-88dc934c58e4?fm=jpg&q=80&w=800&auto=format&fit=crop\');background-size:cover;background-position:center;"></div>' +
+      '</div><div class="hint" style="margin-top:8px;font-size:10px;color:#a4915c;">Foto: Andy Holmes, Aalo Lens / Unsplash</div>'));
     dossierPages.push(adSlotPageHTML(5));
     dossierPages.push(contentPageHTML('Real Estate Market', 'Analisi di mercato',
       '<table class="data-table"><tr><td>Valore di mercato</td><td>9.500 – 16.000 €/m²</td></tr><tr><td>Fonte</td><td>Analista verificato</td></tr></table>'));
