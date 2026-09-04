@@ -14,6 +14,11 @@
   .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#2f7d3a;margin-right:5px;animation:pulse 1.6s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
+  .dossier-nav{display:flex;align-items:center;justify-content:space-between;max-width:794px;margin:16px auto 0;padding:0 16px;}
+  .dossier-nav button{background:var(--bronze);color:var(--gold3);border:none;padding:10px 16px;border-radius:8px;font-size:12.5px;cursor:pointer;}
+  .dossier-nav button:disabled{opacity:.3;cursor:default;}
+  .dossier-nav .counter{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:#6b5314;}
+
   .page{width:100%;max-width:794px;min-height:1123px;background:#fff;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;color:#5c4a20;}
   .page-inner{position:relative;z-index:2;padding:44px 48px;}
   .cover{color:#fff;}
@@ -80,9 +85,6 @@
   .hint{font-size:11.5px;color:#8a7a52;margin-top:-2px;}
   .wordcount{font-size:11px;color:#a49470;text-align:right;margin-top:3px;}
   .wordcount.over{color:#a33;font-weight:600;}
-  #bookingCard{display:none;position:sticky;bottom:0;background:var(--bronze);color:var(--gold3);padding:14px 20px;box-shadow:0 -8px 24px rgba(0,0,0,.25);z-index:60;}
-  #bookingCard .row{display:flex;align-items:center;justify-content:space-between;max-width:794px;margin:0 auto;}
-  #bookingCard button{background:linear-gradient(120deg,var(--gold1),var(--gold2));border:none;color:#fff;padding:11px 20px;border-radius:8px;font-size:13px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -91,19 +93,17 @@
   <span class="brand">FOLIUM</span>
   Sfoglia il dossier ed esempio &mdash; scegli lo slot dove comparire
 </div>
-<div class="live-note"><span class="live-dot"></span>Disponibilita aggiornata in tempo reale mentre sfogli</div>
-
-<div id="pagesContainer">Caricamento dossier di esempio...</div>
-
-<div id="bookingCard">
-  <div class="row">
-    <span id="bookingCardLabel">Nessuno slot selezionato</span>
-    <button onclick="scrollToForm()">Vai al modulo &darr;</button>
-  </div>
+<div class="dossier-nav" id="dossierNav">
+  <button id="prevBtn" onclick="flipPage(-1)">&lsaquo; Pagina precedente</button>
+  <span class="counter" id="pageCounter">Pagina 1</span>
+  <button id="nextBtn" onclick="flipPage(1)">Pagina successiva &rsaquo;</button>
 </div>
+<div id="pagesContainer">Caricamento dossier di esempio...</div>
+<div class="live-note" id="liveNote"><span class="live-dot"></span>Disponibilità aggiornata in tempo reale mentre sfogli</div>
 
 <div class="page form-page" id="formPage" style="display:none;">
   <div class="page-inner">
+    <button type="button" onclick="backToDossier()" style="background:none;border:1px solid #ddd2b3;border-radius:20px;padding:8px 16px;font-size:12px;color:#6b5314;cursor:pointer;margin-bottom:18px;">&larr; Torna al dossier</button>
     <div class="section-kicker">Prenotazione</div>
     <div class="section-title" id="selectedSlotLabel">Il tuo annuncio</div>
     <div class="lux-rule"></div>
@@ -185,9 +185,6 @@
   let selectedSlot = null;
   let startDateManuallySet = false;
 
-  // ---- Pagine di CONTENUTO di esempio (fittizie, chiaramente etichettate come tali) —
-  // stessa struttura/CSS del dossier reale, cosi l'inserzionista vede DAVVERO accanto a
-  // cosa comparira il suo annuncio, non un elenco astratto di slot.
   function contentPageHTML(kicker, title, bodyHTML){
     return `<div class="page pattern"><div class="page-inner">
       <div class="page-header"><span class="brand-mark">FOLIUM</span></div>
@@ -222,30 +219,58 @@
     </div></div>`;
   }
 
+  let dossierPages = []; // array di HTML, una "pagina" per elemento — sfogliata una alla volta
+  let currentPageIndex = 0;
+
   function renderDossier(){
-    const parts = [];
-    parts.push(coverPageHTML());
-    parts.push(adSlotPageHTML(1));
-    parts.push(contentPageHTML('Editorial Overview', 'Presentazione della proposta',
+    dossierPages = [];
+    dossierPages.push(coverPageHTML());
+    dossierPages.push(adSlotPageHTML(1));
+    dossierPages.push(contentPageHTML('Editorial Overview', 'Presentazione della proposta',
       '<div class="body-text">Masseria fortificata con terreno annesso, in posizione strategica tra i borghi della Valle d\'Itria. Un recupero architettonico che unisce storia, posizione e potenziale di valorizzazione — questo è il tipo di narrativa editoriale generata automaticamente per ogni dossier reale, non un testo generico.</div>'));
-    parts.push(adSlotPageHTML(2));
-    parts.push(contentPageHTML('Location Intelligence', 'Territorio e popolazione',
+    dossierPages.push(adSlotPageHTML(2));
+    dossierPages.push(contentPageHTML('Location Intelligence', 'Territorio e popolazione',
       '<div class="metric-grid"><div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">47.800</div></div><div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">295 km²</div></div><div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">431 m</div></div></div>'));
-    parts.push(adSlotPageHTML(3));
-    parts.push(contentPageHTML('Media Gallery', 'Immagini dell\'immobile',
+    dossierPages.push(adSlotPageHTML(3));
+    dossierPages.push(contentPageHTML('Media Gallery', 'Immagini dell\'immobile',
       '<div class="gallery-photo-cell">FOTO IMMOBILE (ESEMPIO)</div>'));
-    parts.push(adSlotPageHTML(4));
-    parts.push(contentPageHTML('Asset Characteristics', 'Caratteristiche dell\'immobile',
+    dossierPages.push(adSlotPageHTML(4));
+    dossierPages.push(contentPageHTML('Asset Characteristics', 'Caratteristiche dell\'immobile',
       '<div class="addr-row"><strong>Superficie</strong><span>600 mq</span></div><div class="addr-row"><strong>Locali</strong><span>5</span></div><div class="addr-row"><strong>Bagni</strong><span>2</span></div><div class="addr-row"><strong>Anno costruzione</strong><span>1840</span></div>'));
-    parts.push(adSlotPageHTML(5));
-    parts.push(contentPageHTML('Real Estate Market', 'Analisi di mercato',
+    dossierPages.push(adSlotPageHTML(5));
+    dossierPages.push(contentPageHTML('Real Estate Market', 'Analisi di mercato',
       '<table class="data-table"><tr><td>Valore di mercato</td><td>1.160 – 1.380 €/m²</td></tr><tr><td>Fonte</td><td>Analista verificato</td></tr></table>'));
-    parts.push(adSlotPageHTML(6));
-    parts.push(contentPageHTML('Agency Contact', 'Riepilogo agenzia',
+    dossierPages.push(adSlotPageHTML(6));
+    dossierPages.push(contentPageHTML('Agency Contact', 'Riepilogo agenzia',
       '<div class="body-text">Ultima pagina del dossier: contatti dell\'agenzia che lo ha generato. Il tuo spazio pubblicitario resta visibile per tutta la durata dell\'abbonamento, su ogni dossier generato in questo periodo.</div>'));
 
-    document.getElementById('pagesContainer').innerHTML = parts.join('');
+    renderCurrentPage();
   }
+
+  function renderCurrentPage(){
+    document.getElementById('pagesContainer').innerHTML = dossierPages[currentPageIndex];
+    document.getElementById('pageCounter').textContent = `Pagina ${currentPageIndex + 1} di ${dossierPages.length}`;
+    document.getElementById('prevBtn').disabled = currentPageIndex === 0;
+    document.getElementById('nextBtn').disabled = currentPageIndex === dossierPages.length - 1;
+    // Se la pagina corrente è uno slot pubblicitario, la sua disponibilità va ridisegnata
+    // subito (l'elemento #adSlotAvail{N} è appena stato ricreato nel DOM).
+    for (let s = 1; s <= 6; s++) renderSlotAvail(s);
+  }
+
+  function flipPage(dir){
+    currentPageIndex = Math.min(dossierPages.length - 1, Math.max(0, currentPageIndex + dir));
+    renderCurrentPage();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function backToDossier(){
+    document.getElementById('formPage').style.display = 'none';
+    document.getElementById('dossierNav').style.display = 'flex';
+    document.getElementById('pagesContainer').style.display = 'block';
+    document.getElementById('liveNote').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
 
   async function loadAvailabilityAndPricing(){
     const today = toLocalDateStr(new Date());
@@ -307,16 +332,15 @@
     startDateManuallySet = false;
     document.getElementById('adFormat').value = format;
     document.getElementById('selectedSlotLabel').textContent = `Il tuo annuncio — Slot ${slot} · ${TIER_LABEL[slotTier(slot)]}`;
-    document.getElementById('formPage').style.display = 'block';
-    document.getElementById('bookingCard').style.display = 'block';
-    document.getElementById('bookingCardLabel').textContent = `Slot ${slot} selezionato — ${format === 'full' ? 'Pagina intera' : 'Mezza pagina'}`;
     suggestStartDate();
     updatePriceBox();
-    for (let s = 1; s <= 6; s++) renderSlotAvail(s);
-  }
-
-  function scrollToForm(){
-    document.getElementById('formPage').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Passa dalla vista "sfoglia il dossier" alla vista "modulo di prenotazione" —
+    // sostituisce completamente, non si accumula sotto (niente scroll infinito).
+    document.getElementById('dossierNav').style.display = 'none';
+    document.getElementById('pagesContainer').style.display = 'none';
+    document.getElementById('liveNote').style.display = 'none';
+    document.getElementById('formPage').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function suggestStartDate(){
