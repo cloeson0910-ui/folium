@@ -3,20 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FOLIUM — Acquista uno spazio pubblicitario</title>
+<title>FOLIUM — Scegli il tuo spazio pubblicitario</title>
 <style>
   :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;}
   *{box-sizing:border-box;}
-  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:var(--cream);color:#2b2416;}
-  header{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:26px 18px;text-align:center;color:var(--gold3);}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:#efe9dc;color:#2b2416;}
+  header{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:22px 18px;text-align:center;color:var(--gold3);}
   header .brand{font-weight:300;letter-spacing:4px;font-size:20px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
   header p{font-size:12.5px;color:#e8dcb8;margin-top:6px;}
-  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 80px;}
+
+  .dossier-wrap{max-width:640px;margin:22px auto 0;padding:0 16px;}
+  .dossier-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .dossier-nav button{background:var(--bronze);color:var(--gold3);border:none;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;}
+  .dossier-nav button:disabled{opacity:.3;cursor:default;}
+  .dossier-nav .counter{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#6b5314;}
+  .page{background:var(--cream);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.16);padding:38px 34px 30px;min-height:420px;position:relative;}
+  .page-kicker{font-size:10px;letter-spacing:.30em;text-transform:uppercase;color:var(--gold4);margin-bottom:8px;}
+  .page-title{font-size:24px;font-weight:300;letter-spacing:.10em;text-transform:uppercase;color:var(--gold4);margin:0 0 14px;}
+  .lux-rule{height:1px;background:linear-gradient(to right,var(--gold2),transparent);margin:0 0 22px;}
+  .avail-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #e5dcc0;}
+  .avail-row:last-of-type{border-bottom:none;}
+  .avail-row .fmt{font-size:13px;color:#2b2416;font-weight:600;}
+  .avail-status{font-size:12px;}
+  .avail-status.free{color:#2f7d3a;}
+  .avail-status.busy{color:#a33;}
+  .pick-btn{margin-top:8px;padding:8px 16px;border:1px solid var(--gold4);border-radius:20px;background:transparent;color:var(--gold4);font-size:12px;cursor:pointer;}
+  .pick-btn.selected{background:var(--gold4);color:#fff;}
+  .page-folio{position:absolute;left:34px;right:34px;bottom:16px;display:flex;justify-content:space-between;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(166,127,52,.6);}
+  .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#2f7d3a;margin-right:5px;animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .live-note{text-align:center;font-size:10.5px;color:#8a7a52;margin:8px 0 0;}
+
+  .wrap{max-width:520px;margin:26px auto 0;padding:0 16px 80px;}
   .section{background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.08);padding:20px;margin-bottom:16px;}
   .section h2{font-size:13px;letter-spacing:1px;color:var(--gold4);margin:0 0 14px;text-transform:uppercase;}
   label{display:block;font-size:12px;color:#8a7a52;margin:12px 0 5px;font-weight:600;}
   input,select,textarea{width:100%;padding:11px 12px;border:1px solid #ddd2b3;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;}
-  textarea{min-height:70px;resize:vertical;}
+  textarea{min-height:80px;resize:vertical;}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .upload-box{border:2px dashed #ddd2b3;border-radius:10px;padding:24px;text-align:center;color:#8a7a52;font-size:13px;cursor:pointer;margin-top:6px;}
   .thumbs img{width:100%;max-height:220px;object-fit:contain;border-radius:8px;margin-top:10px;background:#f6f2ea;}
@@ -27,68 +50,78 @@
   .msg{font-size:13px;margin-top:14px;padding:10px;border-radius:8px;display:none;}
   .msg.err{background:#fbe4e4;color:#a33;display:block;}
   .hint{font-size:11.5px;color:#8a7a52;margin-top:-2px;}
+  .wordcount{font-size:11px;color:#a49470;text-align:right;margin-top:3px;}
+  .wordcount.over{color:#a33;font-weight:600;}
+  #formSection{display:none;}
 </style>
 </head>
 <body>
 
 <header>
   <div class="brand">FOLIUM</div>
-  <p>Il tuo spazio pubblicitario dentro i dossier immobiliari</p>
+  <p>Sfoglia gli spazi disponibili e scegli dove comparire</p>
 </header>
 
+<div class="dossier-wrap">
+  <div class="dossier-nav">
+    <button id="prevBtn" onclick="flipPage(-1)">&lsaquo;</button>
+    <span class="counter" id="pageCounter">SLOT 1 / 6</span>
+    <button id="nextBtn" onclick="flipPage(1)">&rsaquo;</button>
+  </div>
+  <div class="page" id="pageView">Caricamento disponibilita...</div>
+  <div class="live-note"><span class="live-dot"></span>Disponibilita aggiornata in tempo reale</div>
+</div>
+
 <div class="wrap">
-  <form id="adCheckoutForm">
-    <div class="section">
-      <h2>La tua attività</h2>
-      <label>Nome azienda/attività</label>
-      <input type="text" id="advertiserName" required>
-      <div class="row2">
-        <div><label>Email</label><input type="email" id="advertiserEmail" required></div>
-        <div><label>Telefono</label><input type="tel" id="advertiserPhone"></div>
-      </div>
+  <div class="section" id="formSection">
+    <h2>Il tuo annuncio &mdash; <span id="selectedSlotLabel"></span></h2>
+
+    <label>Formato</label>
+    <select id="adFormat">
+      <option value="full">Pagina intera</option>
+      <option value="half">Mezza pagina</option>
+    </select>
+    <label>Periodo</label>
+    <select id="adBillingPeriod">
+      <option value="quarterly">Trimestrale &mdash; nessuno sconto</option>
+      <option value="semestral">Semestrale &mdash; sconto</option>
+      <option value="annual">Annuale &mdash; sconto maggiore</option>
+    </select>
+    <label>Data di inizio</label>
+    <input type="date" id="adStartDate">
+    <div class="hint" id="startDateHint"></div>
+    <div class="price-box" id="priceBox">Prezzo: &mdash;</div>
+  </div>
+
+  <div class="section" id="advertiserSection" style="display:none;">
+    <h2>La tua attivita</h2>
+    <label>Nome azienda/attivita</label>
+    <input type="text" id="advertiserName" required>
+    <div class="row2">
+      <div><label>Email</label><input type="email" id="advertiserEmail" required></div>
+      <div><label>Telefono</label><input type="tel" id="advertiserPhone"></div>
     </div>
 
-    <div class="section">
-      <h2>Il tuo annuncio</h2>
-      <label>Immagine annuncio (verticale, formato dossier)</label>
-      <div class="upload-box" onclick="document.getElementById('adImageInput').click()">Tocca per caricare l'immagine</div>
-      <input type="file" id="adImageInput" accept="image/*" style="display:none">
-      <div class="thumbs" id="adImagePreview"></div>
-      <label>Titolo (facoltativo)</label>
-      <input type="text" id="adHeadline">
-      <label>Testo breve (facoltativo)</label>
-      <textarea id="adSubtext"></textarea>
-      <div class="row2">
-        <div><label>Testo pulsante (facoltativo)</label><input type="text" id="adCtaText" placeholder="Es. Scopri di più"></div>
-        <div><label>Link sito (facoltativo)</label><input type="text" id="adCtaUrl" placeholder="tuosito.it"></div>
-      </div>
+    <label style="margin-top:20px;">Immagine annuncio (verticale, formato dossier)</label>
+    <div class="upload-box" onclick="document.getElementById('adImageInput').click()">Tocca per caricare l'immagine</div>
+    <input type="file" id="adImageInput" accept="image/*" style="display:none">
+    <div class="thumbs" id="adImagePreview"></div>
+
+    <label>Titolo (facoltativo)</label>
+    <input type="text" id="adHeadline">
+
+    <label>Piccolo editoriale (facoltativo, max 60 parole)</label>
+    <textarea id="adSubtext" placeholder="Racconta in poche righe la tua attivita, non un elenco di servizi."></textarea>
+    <div class="wordcount" id="wordCount">0 / 60 parole</div>
+
+    <div class="row2">
+      <div><label>Testo pulsante (facoltativo)</label><input type="text" id="adCtaText" placeholder="Es. Scopri di piu"></div>
+      <div><label>Link sito (facoltativo)</label><input type="text" id="adCtaUrl" placeholder="tuosito.it"></div>
     </div>
 
-    <div class="section">
-      <h2>Posizione, formato e periodo</h2>
-      <label>Slot</label>
-      <select id="adPosition"></select>
-      <label>Formato</label>
-      <select id="adFormat">
-        <option value="full">Pagina intera</option>
-        <option value="half">Mezza pagina</option>
-      </select>
-      <label>Periodo</label>
-      <select id="adBillingPeriod">
-        <option value="quarterly">Trimestrale — nessuno sconto</option>
-        <option value="semestral">Semestrale — sconto</option>
-        <option value="annual">Annuale — sconto maggiore</option>
-      </select>
-      <label>Data di inizio</label>
-      <input type="date" id="adStartDate">
-      <div class="hint" id="startDateHint"></div>
-
-      <div class="price-box" id="priceBox">Prezzo: —</div>
-    </div>
-
-    <button type="submit" class="btn" id="btnSubmit">Vai al pagamento</button>
+    <button type="button" class="btn" id="btnSubmit" onclick="submitCheckout()">Vai al pagamento — l'annuncio si attiva subito</button>
     <div id="msg" class="msg"></div>
-  </form>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -97,6 +130,8 @@
   const SUPABASE_ANON_KEY = "sb_publishable_ToGgNAX4tIn6O7gb6hMa4A_kRi1yztz";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const TENANT_ID = "724f71d8-b499-46c1-9047-021280e913c9";
+  const TIER_LABEL = { premium: 'Premium', high: 'Alta visibilita', standard: 'Standard' };
+  const MAX_EDITORIAL_WORDS = 60;
 
   function toLocalDateStr(d){
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -107,7 +142,6 @@
     return toLocalDateStr(d);
   }
   function slotTier(slot){
-    slot = Number(slot);
     if (slot === 1) return 'premium';
     if (slot === 2 || slot === 3) return 'high';
     return 'standard';
@@ -115,12 +149,14 @@
 
   let slotAvailability = {};
   let pricingRows = [];
+  let currentPage = 1;
+  let selectedSlot = null;
   let startDateManuallySet = false;
 
   async function loadAvailabilityAndPricing(){
     const today = toLocalDateStr(new Date());
     const [{ data: adRows }, { data: prices }] = await Promise.all([
-      sb.from('folium_ad_pages').select('position_slot, ad_format, subscription_end')
+      sb.from('folium_ad_pages').select('position_slot, ad_format, subscription_end, folium_advertisers(name)')
         .eq('tenant_id', TENANT_ID).eq('active', true).gte('subscription_end', today),
       sb.from('folium_pricing').select('*').eq('tenant_id', TENANT_ID)
         .in('category', ['ad_slot', 'ad_period_discount']),
@@ -129,75 +165,118 @@
 
     const bySlot = {};
     (adRows || []).forEach(r => (bySlot[r.position_slot] = bySlot[r.position_slot] || []).push(r));
-    const tierLabel = { premium: 'Premium', high: 'Alta visibilità', standard: 'Standard' };
 
-    const sel = document.getElementById('adPosition');
-    sel.innerHTML = '';
     slotAvailability = {};
     for (let slot = 1; slot <= 6; slot++) {
       const occ = bySlot[slot] || [];
       const full = occ.find(r => r.ad_format === 'full');
-      let statusLabel, nextFullAvailable, nextHalfAvailable;
+      let fullInfo, halfInfo;
       if (full) {
-        nextFullAvailable = addDaysStr(full.subscription_end, 1);
-        nextHalfAvailable = addDaysStr(full.subscription_end, 1);
-        statusLabel = `occupato fino al ${full.subscription_end}`;
+        const advertiser = full.folium_advertisers?.name || 'un inserzionista';
+        fullInfo = { free: false, label: `Occupato fino al ${full.subscription_end} (${advertiser})`, nextFree: addDaysStr(full.subscription_end, 1) };
+        halfInfo = { free: false, label: `Occupato (pagina intera venduta) fino al ${full.subscription_end}`, nextFree: addDaysStr(full.subscription_end, 1) };
       } else if (occ.length >= 2) {
         const maxEnd = occ.reduce((m, r) => (r.subscription_end > m ? r.subscription_end : m), occ[0].subscription_end);
         const minEnd = occ.reduce((m, r) => (r.subscription_end < m ? r.subscription_end : m), occ[0].subscription_end);
-        nextFullAvailable = addDaysStr(maxEnd, 1);
-        nextHalfAvailable = addDaysStr(minEnd, 1);
-        statusLabel = `entrambe le metà occupate fino al ${maxEnd}`;
+        fullInfo = { free: false, label: `Entrambe le meta occupate fino al ${maxEnd}`, nextFree: addDaysStr(maxEnd, 1) };
+        halfInfo = { free: false, label: `Entrambe le meta occupate, la prima libera dal ${addDaysStr(minEnd, 1)}`, nextFree: addDaysStr(minEnd, 1) };
       } else if (occ.length === 1) {
-        nextFullAvailable = addDaysStr(occ[0].subscription_end, 1);
-        nextHalfAvailable = today;
-        statusLabel = `1 metà libera ora`;
+        fullInfo = { free: false, label: `1 meta occupata fino al ${occ[0].subscription_end}`, nextFree: addDaysStr(occ[0].subscription_end, 1) };
+        halfInfo = { free: true, label: `1 meta libera subito`, nextFree: today };
       } else {
-        nextFullAvailable = today;
-        nextHalfAvailable = today;
-        statusLabel = 'completamente libero';
+        fullInfo = { free: true, label: 'Completamente libero', nextFree: today };
+        halfInfo = { free: true, label: 'Completamente libero', nextFree: today };
       }
-      slotAvailability[slot] = { nextFullAvailable, nextHalfAvailable };
-      const opt = document.createElement('option');
-      opt.value = slot;
-      opt.textContent = `Slot ${slot} · ${tierLabel[slotTier(slot)]} — ${statusLabel}`;
-      sel.appendChild(opt);
+      slotAvailability[slot] = { full: fullInfo, half: halfInfo };
     }
+    renderPage();
+    if (selectedSlot) { updatePriceBox(); }
+  }
+
+  function renderPage(){
+    const slot = currentPage;
+    const avail = slotAvailability[slot];
+    const tier = slotTier(slot);
+    const box = document.getElementById('pageView');
+    box.innerHTML = `
+      <div class="page-kicker">Spazio pubblicitario &middot; ${TIER_LABEL[tier]}</div>
+      <div class="page-title">Slot ${slot}</div>
+      <div class="lux-rule"></div>
+
+      <div class="avail-row">
+        <div>
+          <div class="fmt">Pagina intera</div>
+          <div class="avail-status ${avail.full.free ? 'free' : 'busy'}">${avail.full.label}</div>
+        </div>
+        <button class="pick-btn ${selectedSlot && selectedSlot.slot === slot && selectedSlot.format === 'full' ? 'selected' : ''}" onclick="pickSlot(${slot}, 'full')">Scegli questo</button>
+      </div>
+      <div class="avail-row">
+        <div>
+          <div class="fmt">Mezza pagina</div>
+          <div class="avail-status ${avail.half.free ? 'free' : 'busy'}">${avail.half.label}</div>
+        </div>
+        <button class="pick-btn ${selectedSlot && selectedSlot.slot === slot && selectedSlot.format === 'half' ? 'selected' : ''}" onclick="pickSlot(${slot}, 'half')">Scegli questo</button>
+      </div>
+
+      <div class="page-folio"><span>FOLIUM &middot; Spazi pubblicitari</span><span>SLOT ${slot} / 6</span></div>
+    `;
+    document.getElementById('pageCounter').textContent = `SLOT ${slot} / 6`;
+    document.getElementById('prevBtn').disabled = slot === 1;
+    document.getElementById('nextBtn').disabled = slot === 6;
+  }
+
+  function flipPage(dir){
+    currentPage = Math.min(6, Math.max(1, currentPage + dir));
+    renderPage();
+  }
+
+  function pickSlot(slot, format){
+    selectedSlot = { slot, format };
+    startDateManuallySet = false;
+    document.getElementById('adFormat').value = format;
+    document.getElementById('selectedSlotLabel').textContent = `Slot ${slot} - ${TIER_LABEL[slotTier(slot)]}`;
+    document.getElementById('formSection').style.display = 'block';
+    document.getElementById('advertiserSection').style.display = 'block';
     suggestStartDate();
     updatePriceBox();
+    renderPage();
+    document.getElementById('formSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function suggestStartDate(){
-    if (startDateManuallySet) return;
-    const slot = Number(document.getElementById('adPosition').value);
+    if (startDateManuallySet || !selectedSlot) return;
     const format = document.getElementById('adFormat').value;
-    const avail = slotAvailability[slot];
-    if (!avail) return;
-    const date = format === 'full' ? avail.nextFullAvailable : avail.nextHalfAvailable;
-    document.getElementById('adStartDate').value = date;
-    document.getElementById('startDateHint').textContent = `Prima data disponibile per questo slot/formato: ${date} (modificabile).`;
+    const avail = slotAvailability[selectedSlot.slot][format];
+    document.getElementById('adStartDate').value = avail.nextFree;
+    document.getElementById('startDateHint').textContent = `Prima data disponibile per questa scelta: ${avail.nextFree} (modificabile).`;
   }
 
   function updatePriceBox(){
-    const slot = Number(document.getElementById('adPosition').value);
+    if (!selectedSlot) return;
     const format = document.getElementById('adFormat').value;
     const period = document.getElementById('adBillingPeriod').value;
-    const tier = slotTier(slot);
+    const tier = slotTier(selectedSlot.slot);
     const slotRow = pricingRows.find(r => r.category === 'ad_slot' && r.key === `${tier}_${format}`);
     const discountRow = pricingRows.find(r => r.category === 'ad_period_discount' && r.key === period);
     const box = document.getElementById('priceBox');
     if (!slotRow) { box.textContent = 'Prezzo non disponibile per questa combinazione.'; return; }
     const months = { quarterly: 3, semestral: 6, annual: 12 }[period];
     const monthly = slotRow.price_cents / 100;
-    const discount = (discountRow?.discount_percent || 0) / 100;
+    const discount = (discountRow && discountRow.discount_percent || 0) / 100;
     const total = Math.round(monthly * months * (1 - discount) * 100) / 100;
-    box.innerHTML = `<span class="amount">${total.toLocaleString('it-IT', { minimumFractionDigits: 2 })}€</span> totali per il periodo scelto (${monthly.toLocaleString('it-IT')}€/mese${discount ? `, sconto ${Math.round(discount*100)}%` : ''})`;
+    box.innerHTML = `<span class="amount">${total.toLocaleString('it-IT', { minimumFractionDigits: 2 })}&euro;</span> totali per il periodo scelto (${monthly.toLocaleString('it-IT')}&euro;/mese${discount ? `, sconto ${Math.round(discount*100)}%` : ''})`;
   }
 
-  document.getElementById('adPosition').addEventListener('change', () => { suggestStartDate(); updatePriceBox(); });
   document.getElementById('adFormat').addEventListener('change', () => { suggestStartDate(); updatePriceBox(); });
   document.getElementById('adBillingPeriod').addEventListener('change', updatePriceBox);
   document.getElementById('adStartDate').addEventListener('input', () => { startDateManuallySet = true; });
+
+  document.getElementById('adSubtext').addEventListener('input', (e) => {
+    const words = e.target.value.trim().split(/\s+/).filter(Boolean);
+    const el = document.getElementById('wordCount');
+    el.textContent = `${words.length} / ${MAX_EDITORIAL_WORDS} parole`;
+    el.className = 'wordcount' + (words.length > MAX_EDITORIAL_WORDS ? ' over' : '');
+  });
 
   let adImageFile = null;
   document.getElementById('adImageInput').addEventListener('change', (e) => {
@@ -216,11 +295,14 @@
     el.textContent = text; el.className = 'msg err';
   }
 
-  document.getElementById('adCheckoutForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  async function submitCheckout(){
     const btn = document.getElementById('btnSubmit');
     try {
-      if (!adImageFile) throw new Error('Carica l\'immagine dell\'annuncio.');
+      if (!selectedSlot) throw new Error('Scegli prima uno slot sfogliando il dossier qui sopra.');
+      if (!adImageFile) throw new Error("Carica l'immagine dell'annuncio.");
+      const subtext = document.getElementById('adSubtext').value.trim();
+      const wordCount = subtext.split(/\s+/).filter(Boolean).length;
+      if (wordCount > MAX_EDITORIAL_WORDS) throw new Error(`L'editoriale supera il limite di ${MAX_EDITORIAL_WORDS} parole (attualmente ${wordCount}).`);
 
       btn.disabled = true;
       btn.textContent = 'Caricamento immagine...';
@@ -241,24 +323,29 @@
           advertiser_phone: document.getElementById('advertiserPhone').value.trim() || null,
           image_url: urlData.publicUrl,
           headline: document.getElementById('adHeadline').value.trim() || null,
-          subtext: document.getElementById('adSubtext').value.trim() || null,
+          subtext: subtext || null,
           cta_text: document.getElementById('adCtaText').value.trim() || null,
           cta_url: document.getElementById('adCtaUrl').value.trim() || null,
-          position_slot: Number(document.getElementById('adPosition').value),
+          position_slot: selectedSlot.slot,
           ad_format: document.getElementById('adFormat').value,
           billing_period: document.getElementById('adBillingPeriod').value,
           subscription_start: document.getElementById('adStartDate').value,
         }
       });
       if (error) throw error;
-      if (!data?.url) throw new Error(data?.error || 'URL di pagamento non ricevuto');
+      if (!data || !data.url) throw new Error((data && data.error) || 'URL di pagamento non ricevuto');
       window.location.href = data.url;
     } catch (err) {
       showMsg('Errore: ' + (err.message || err));
       btn.disabled = false;
-      btn.textContent = 'Vai al pagamento';
+      btn.textContent = "Vai al pagamento — l'annuncio si attiva subito";
     }
-  });
+  }
+
+  sb.channel('folium-ads-availability')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'folium_ad_pages', filter: `tenant_id=eq.${TENANT_ID}` },
+      () => loadAvailabilityAndPricing())
+    .subscribe();
 
   loadAvailabilityAndPricing();
 </script>
