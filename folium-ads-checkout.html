@@ -3,46 +3,74 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FOLIUM — Scegli il tuo spazio pubblicitario</title>
+<title>FOLIUM — Scegli dove comparire nel dossier</title>
 <style>
   :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;}
   *{box-sizing:border-box;}
-  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:#efe9dc;color:#2b2416;}
-  header{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:22px 18px;text-align:center;color:var(--gold3);}
-  header .brand{font-weight:300;letter-spacing:4px;font-size:20px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
-  header p{font-size:12.5px;color:#e8dcb8;margin-top:6px;}
-
-  .dossier-wrap{max-width:640px;margin:22px auto 0;padding:0 16px;}
-  .dossier-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .dossier-nav button{background:var(--bronze);color:var(--gold3);border:none;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;}
-  .dossier-nav button:disabled{opacity:.3;cursor:default;}
-  .dossier-nav .counter{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#6b5314;}
-  .page{background:var(--cream);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.16);padding:38px 34px 30px;min-height:420px;position:relative;}
-  .page-kicker{font-size:10px;letter-spacing:.30em;text-transform:uppercase;color:var(--gold4);margin-bottom:8px;}
-  .page-title{font-size:24px;font-weight:300;letter-spacing:.10em;text-transform:uppercase;color:var(--gold4);margin:0 0 14px;}
-  .lux-rule{height:1px;background:linear-gradient(to right,var(--gold2),transparent);margin:0 0 22px;}
-  .avail-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #e5dcc0;}
-  .avail-row:last-of-type{border-bottom:none;}
-  .avail-row .fmt{font-size:13px;color:#2b2416;font-weight:600;}
-  .avail-status{font-size:12px;}
-  .avail-status.free{color:#2f7d3a;}
-  .avail-status.busy{color:#a33;}
-  .pick-btn{margin-top:8px;padding:8px 16px;border:1px solid var(--gold4);border-radius:20px;background:transparent;color:var(--gold4);font-size:12px;cursor:pointer;}
-  .pick-btn.selected{background:var(--gold4);color:#fff;}
-  .page-folio{position:absolute;left:34px;right:34px;bottom:16px;display:flex;justify-content:space-between;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(166,127,52,.6);}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:#e8e2d2;color:#2b2416;}
+  .toolbar{position:sticky;top:0;background:var(--bronze);color:var(--gold3);padding:12px 16px;text-align:center;z-index:50;font-size:12px;letter-spacing:.15em;text-transform:uppercase;}
+  .toolbar .brand{font-weight:300;letter-spacing:4px;font-size:16px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;display:block;margin-bottom:4px;}
+  .live-note{text-align:center;font-size:10.5px;color:#8a7a52;padding:6px 0 0;}
   .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#2f7d3a;margin-right:5px;animation:pulse 1.6s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-  .live-note{text-align:center;font-size:10.5px;color:#8a7a52;margin:8px 0 0;}
 
-  .wrap{max-width:520px;margin:26px auto 0;padding:0 16px 80px;}
-  .section{background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.08);padding:20px;margin-bottom:16px;}
-  .section h2{font-size:13px;letter-spacing:1px;color:var(--gold4);margin:0 0 14px;text-transform:uppercase;}
-  label{display:block;font-size:12px;color:#8a7a52;margin:12px 0 5px;font-weight:600;}
-  input,select,textarea{width:100%;padding:11px 12px;border:1px solid #ddd2b3;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;}
-  textarea{min-height:80px;resize:vertical;}
+  .page{width:100%;max-width:794px;min-height:1123px;background:#fff;margin:20px auto;box-shadow:0 6px 24px rgba(0,0,0,.15);position:relative;overflow:hidden;color:#5c4a20;}
+  .page-inner{position:relative;z-index:2;padding:44px 48px;}
+  .cover{color:#fff;}
+  .cover .cover-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;gap:24px;padding:38px 48px 96px;}
+  .cover::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(31,22,8,.80),rgba(31,22,8,.50),rgba(31,22,8,.12));z-index:1;}
+  .cover-bg{position:absolute;inset:0;width:100%;height:100%;background:linear-gradient(160deg,#4a3a1c,#20180a);z-index:0;}
+  .brand{font-size:26px;letter-spacing:.20em;color:var(--gold3);font-weight:300;}
+  .brand-sub{margin-top:6px;font-size:9px;letter-spacing:.22em;color:var(--gold3);text-transform:uppercase;}
+  .cover-kicker{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold3);margin-bottom:18px;}
+  .cover-title{max-width:640px;font-size:38px;line-height:1.12;font-weight:200;letter-spacing:.06em;text-transform:uppercase;color:#fdfbf5;margin:0;}
+  .cover-meta{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold3);line-height:1.9;}
+
+  .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+  .brand-mark{font-size:10px;letter-spacing:.20em;color:var(--gold4);text-transform:uppercase;}
+  .page-folio{position:absolute;left:48px;right:48px;bottom:18px;z-index:3;display:flex;justify-content:space-between;align-items:center;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(166,127,52,.6);}
+  h1.title{font-weight:200;font-size:24px;letter-spacing:.06em;color:#2b2416;margin:0 0 6px;}
+  .subtitle{font-size:12px;color:#8a7a52;margin-bottom:18px;letter-spacing:.03em;}
+  .section-kicker{font-size:10px;letter-spacing:.30em;text-transform:uppercase;color:var(--gold4);margin-bottom:8px;}
+  .section-title{font-size:22px;font-weight:300;letter-spacing:.12em;text-transform:uppercase;color:var(--gold4);margin:0 0 14px;}
+  .lux-rule{height:1px;background:linear-gradient(to right,var(--gold2),transparent);margin:0 0 20px;}
+  .body-text{font-size:13.5px;line-height:1.9;color:#5c4a20;}
+  .sample-tag{display:inline-block;font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:#a4915c;background:rgba(166,127,52,.08);border:1px solid rgba(166,127,52,.2);padding:4px 10px;border-radius:12px;margin-bottom:14px;}
+
+  .gallery-photo-cell{border:1px solid rgba(166,127,52,.18);background:linear-gradient(160deg,#f6ecd2,#e9dcbb);display:flex;align-items:center;justify-content:center;height:420px;color:#a4915c;font-size:12px;letter-spacing:.15em;text-transform:uppercase;}
+
+  .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
+  .metric-card{border:1px solid rgba(166,127,52,.18);background:rgba(255,255,255,.5);padding:28px 22px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;}
+  .metric-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold4);line-height:1.35;}
+  .metric-value{font-size:30px;font-weight:200;color:var(--gold4);line-height:1.05;margin-top:12px;}
+
+  .data-table{width:100%;font-size:13px;border-collapse:collapse;}
+  .data-table td{padding:9px 0;border-bottom:1px solid rgba(166,127,52,.12);}
+  .data-table td:first-child{color:var(--gold4);width:40%;font-size:10.5px;letter-spacing:.10em;text-transform:uppercase;}
+  .addr-row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(166,127,52,.12);padding:9px 0;font-size:12.5px;color:var(--gold4);}
+  .addr-row strong{color:var(--gold4);min-width:100px;text-transform:uppercase;font-size:10.5px;letter-spacing:.06em;}
+
+  /* ---- Pagina slot pubblicitario: stessa base .ad-page del dossier reale ---- */
+  .ad-page{background:linear-gradient(160deg,#fdf9ef,#f6ecd2);}
+  .ad-page .tag{font-size:9px;letter-spacing:.20em;color:#a4915c;margin-bottom:10px;text-transform:uppercase;text-align:center;}
+  .ad-page .slot-title{font-weight:200;font-size:26px;letter-spacing:.06em;color:#2b2416;margin:0 0 4px;text-align:center;text-transform:uppercase;}
+  .ad-page .slot-tier{text-align:center;font-size:12px;color:var(--gold4);letter-spacing:.1em;text-transform:uppercase;margin-bottom:26px;}
+  .avail-row{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border:1px solid rgba(166,127,52,.25);border-radius:10px;background:rgba(255,255,255,.55);margin-bottom:12px;}
+  .avail-row .fmt{font-size:13.5px;color:#2b2416;font-weight:600;}
+  .avail-status{font-size:12px;margin-top:3px;}
+  .avail-status.free{color:#2f7d3a;}
+  .avail-status.busy{color:#a33;}
+  .pick-btn{padding:9px 18px;border:1px solid var(--gold4);border-radius:20px;background:transparent;color:var(--gold4);font-size:12px;cursor:pointer;white-space:nowrap;}
+  .pick-btn.selected{background:var(--gold4);color:#fff;}
+
+  .form-page{background:#fff;}
+  .form-page .section{margin-bottom:22px;}
+  .form-page label{display:block;font-size:11.5px;color:#8a7a52;margin:12px 0 5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+  .form-page input,.form-page select,.form-page textarea{width:100%;padding:11px 12px;border:1px solid #ddd2b3;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;}
+  .form-page textarea{min-height:80px;resize:vertical;}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .upload-box{border:2px dashed #ddd2b3;border-radius:10px;padding:24px;text-align:center;color:#8a7a52;font-size:13px;cursor:pointer;margin-top:6px;}
-  .thumbs img{width:100%;max-height:220px;object-fit:contain;border-radius:8px;margin-top:10px;background:#f6f2ea;}
+  .thumbs img{width:100%;max-height:200px;object-fit:contain;border-radius:8px;margin-top:10px;background:#f6f2ea;}
   .price-box{background:#fdf9ef;border:1px solid #eee0bd;border-radius:10px;padding:14px 16px;margin-top:16px;font-size:13px;color:#6b5314;}
   .price-box .amount{font-size:24px;font-weight:600;color:var(--gold4);}
   .btn{width:100%;margin-top:16px;padding:15px;border:none;border-radius:9px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold4));color:#fff;font-size:14px;letter-spacing:1px;cursor:pointer;}
@@ -52,75 +80,80 @@
   .hint{font-size:11.5px;color:#8a7a52;margin-top:-2px;}
   .wordcount{font-size:11px;color:#a49470;text-align:right;margin-top:3px;}
   .wordcount.over{color:#a33;font-weight:600;}
-  #formSection{display:none;}
+  #bookingCard{display:none;position:sticky;bottom:0;background:var(--bronze);color:var(--gold3);padding:14px 20px;box-shadow:0 -8px 24px rgba(0,0,0,.25);z-index:60;}
+  #bookingCard .row{display:flex;align-items:center;justify-content:space-between;max-width:794px;margin:0 auto;}
+  #bookingCard button{background:linear-gradient(120deg,var(--gold1),var(--gold2));border:none;color:#fff;padding:11px 20px;border-radius:8px;font-size:13px;cursor:pointer;}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="brand">FOLIUM</div>
-  <p>Sfoglia gli spazi disponibili e scegli dove comparire</p>
-</header>
+<div class="toolbar">
+  <span class="brand">FOLIUM</span>
+  Sfoglia il dossier ed esempio &mdash; scegli lo slot dove comparire
+</div>
+<div class="live-note"><span class="live-dot"></span>Disponibilita aggiornata in tempo reale mentre sfogli</div>
 
-<div class="dossier-wrap">
-  <div class="dossier-nav">
-    <button id="prevBtn" onclick="flipPage(-1)">&lsaquo;</button>
-    <span class="counter" id="pageCounter">SLOT 1 / 6</span>
-    <button id="nextBtn" onclick="flipPage(1)">&rsaquo;</button>
+<div id="pagesContainer">Caricamento dossier di esempio...</div>
+
+<div id="bookingCard">
+  <div class="row">
+    <span id="bookingCardLabel">Nessuno slot selezionato</span>
+    <button onclick="scrollToForm()">Vai al modulo &darr;</button>
   </div>
-  <div class="page" id="pageView">Caricamento disponibilita...</div>
-  <div class="live-note"><span class="live-dot"></span>Disponibilita aggiornata in tempo reale</div>
 </div>
 
-<div class="wrap">
-  <div class="section" id="formSection">
-    <h2>Il tuo annuncio &mdash; <span id="selectedSlotLabel"></span></h2>
+<div class="page form-page" id="formPage" style="display:none;">
+  <div class="page-inner">
+    <div class="section-kicker">Prenotazione</div>
+    <div class="section-title" id="selectedSlotLabel">Il tuo annuncio</div>
+    <div class="lux-rule"></div>
 
-    <label>Formato</label>
-    <select id="adFormat">
-      <option value="full">Pagina intera</option>
-      <option value="half">Mezza pagina</option>
-    </select>
-    <label>Periodo</label>
-    <select id="adBillingPeriod">
-      <option value="quarterly">Trimestrale &mdash; nessuno sconto</option>
-      <option value="semestral">Semestrale &mdash; sconto</option>
-      <option value="annual">Annuale &mdash; sconto maggiore</option>
-    </select>
-    <label>Data di inizio</label>
-    <input type="date" id="adStartDate">
-    <div class="hint" id="startDateHint"></div>
-    <div class="price-box" id="priceBox">Prezzo: &mdash;</div>
-  </div>
-
-  <div class="section" id="advertiserSection" style="display:none;">
-    <h2>La tua attivita</h2>
-    <label>Nome azienda/attivita</label>
-    <input type="text" id="advertiserName" required>
-    <div class="row2">
-      <div><label>Email</label><input type="email" id="advertiserEmail" required></div>
-      <div><label>Telefono</label><input type="tel" id="advertiserPhone"></div>
+    <div class="section">
+      <label>Formato</label>
+      <select id="adFormat">
+        <option value="full">Pagina intera</option>
+        <option value="half">Mezza pagina</option>
+      </select>
+      <label>Periodo</label>
+      <select id="adBillingPeriod">
+        <option value="quarterly">Trimestrale &mdash; nessuno sconto</option>
+        <option value="semestral">Semestrale &mdash; sconto</option>
+        <option value="annual">Annuale &mdash; sconto maggiore</option>
+      </select>
+      <label>Data di inizio</label>
+      <input type="date" id="adStartDate">
+      <div class="hint" id="startDateHint"></div>
+      <div class="price-box" id="priceBox">Prezzo: &mdash;</div>
     </div>
 
-    <label style="margin-top:20px;">Immagine annuncio (verticale, formato dossier)</label>
-    <div class="upload-box" onclick="document.getElementById('adImageInput').click()">Tocca per caricare l'immagine</div>
-    <input type="file" id="adImageInput" accept="image/*" style="display:none">
-    <div class="thumbs" id="adImagePreview"></div>
+    <div class="section">
+      <label>Nome azienda/attivita</label>
+      <input type="text" id="advertiserName" required>
+      <div class="row2">
+        <div><label>Email</label><input type="email" id="advertiserEmail" required></div>
+        <div><label>Telefono</label><input type="tel" id="advertiserPhone"></div>
+      </div>
 
-    <label>Titolo (facoltativo)</label>
-    <input type="text" id="adHeadline">
+      <label style="margin-top:18px;">Immagine annuncio (verticale, formato dossier)</label>
+      <div class="upload-box" onclick="document.getElementById('adImageInput').click()">Tocca per caricare l'immagine</div>
+      <input type="file" id="adImageInput" accept="image/*" style="display:none">
+      <div class="thumbs" id="adImagePreview"></div>
 
-    <label>Piccolo editoriale (facoltativo, max 60 parole)</label>
-    <textarea id="adSubtext" placeholder="Racconta in poche righe la tua attivita, non un elenco di servizi."></textarea>
-    <div class="wordcount" id="wordCount">0 / 60 parole</div>
+      <label>Titolo (facoltativo)</label>
+      <input type="text" id="adHeadline">
 
-    <div class="row2">
-      <div><label>Testo pulsante (facoltativo)</label><input type="text" id="adCtaText" placeholder="Es. Scopri di piu"></div>
-      <div><label>Link sito (facoltativo)</label><input type="text" id="adCtaUrl" placeholder="tuosito.it"></div>
+      <label>Piccolo editoriale (facoltativo, max 60 parole)</label>
+      <textarea id="adSubtext" placeholder="Racconta in poche righe la tua attivita, non un elenco di servizi."></textarea>
+      <div class="wordcount" id="wordCount">0 / 60 parole</div>
+
+      <div class="row2">
+        <div><label>Testo pulsante (facoltativo)</label><input type="text" id="adCtaText" placeholder="Es. Scopri di piu"></div>
+        <div><label>Link sito (facoltativo)</label><input type="text" id="adCtaUrl" placeholder="tuosito.it"></div>
+      </div>
+
+      <button type="button" class="btn" id="btnSubmit" onclick="submitCheckout()">Vai al pagamento — l'annuncio si attiva subito</button>
+      <div id="msg" class="msg"></div>
     </div>
-
-    <button type="button" class="btn" id="btnSubmit" onclick="submitCheckout()">Vai al pagamento — l'annuncio si attiva subito</button>
-    <div id="msg" class="msg"></div>
   </div>
 </div>
 
@@ -149,9 +182,70 @@
 
   let slotAvailability = {};
   let pricingRows = [];
-  let currentPage = 1;
   let selectedSlot = null;
   let startDateManuallySet = false;
+
+  // ---- Pagine di CONTENUTO di esempio (fittizie, chiaramente etichettate come tali) —
+  // stessa struttura/CSS del dossier reale, cosi l'inserzionista vede DAVVERO accanto a
+  // cosa comparira il suo annuncio, non un elenco astratto di slot.
+  function contentPageHTML(kicker, title, bodyHTML){
+    return `<div class="page pattern"><div class="page-inner">
+      <div class="page-header"><span class="brand-mark">FOLIUM</span></div>
+      <span class="sample-tag">Pagina di esempio — il tuo dossier reale avra contenuti veri</span>
+      <div class="section-kicker">${kicker}</div>
+      <div class="section-title">${title}</div>
+      <div class="lux-rule"></div>
+      ${bodyHTML}
+      <div class="page-folio"><span>FOLIUM · ESEMPIO</span><span>&nbsp;</span></div>
+    </div></div>`;
+  }
+
+  function coverPageHTML(){
+    return `<div class="page cover"><div class="cover-bg"></div><div class="cover-inner">
+      <div><div class="brand">FOLIUM</div><div class="brand-sub">Dossier Immobiliare</div></div>
+      <div>
+        <div class="cover-kicker">Esempio — così apparirà un dossier reale</div>
+        <h1 class="cover-title">Villa Esempio</h1>
+      </div>
+      <div class="cover-meta">Tuglie (LE) · Dossier di esempio</div>
+    </div></div>`;
+  }
+
+  function adSlotPageHTML(slot){
+    const tier = slotTier(slot);
+    return `<div class="page ad-page" id="adPage${slot}"><div class="page-inner">
+      <div class="tag">Spazio pubblicitario dedicato</div>
+      <div class="slot-title">Slot ${slot}</div>
+      <div class="slot-tier">${TIER_LABEL[tier]}</div>
+      <div id="adSlotAvail${slot}">Caricamento disponibilità...</div>
+      <div class="page-folio"><span>FOLIUM · ESEMPIO</span><span>SLOT ${slot}</span></div>
+    </div></div>`;
+  }
+
+  function renderDossier(){
+    const parts = [];
+    parts.push(coverPageHTML());
+    parts.push(adSlotPageHTML(1));
+    parts.push(contentPageHTML('Editorial Overview', 'Presentazione della proposta',
+      '<div class="body-text">Masseria fortificata con terreno annesso, in posizione strategica tra i borghi della Valle d\'Itria. Un recupero architettonico che unisce storia, posizione e potenziale di valorizzazione — questo è il tipo di narrativa editoriale generata automaticamente per ogni dossier reale, non un testo generico.</div>'));
+    parts.push(adSlotPageHTML(2));
+    parts.push(contentPageHTML('Location Intelligence', 'Territorio e popolazione',
+      '<div class="metric-grid"><div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">47.800</div></div><div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">295 km²</div></div><div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">431 m</div></div></div>'));
+    parts.push(adSlotPageHTML(3));
+    parts.push(contentPageHTML('Media Gallery', 'Immagini dell\'immobile',
+      '<div class="gallery-photo-cell">FOTO IMMOBILE (ESEMPIO)</div>'));
+    parts.push(adSlotPageHTML(4));
+    parts.push(contentPageHTML('Asset Characteristics', 'Caratteristiche dell\'immobile',
+      '<div class="addr-row"><strong>Superficie</strong><span>600 mq</span></div><div class="addr-row"><strong>Locali</strong><span>5</span></div><div class="addr-row"><strong>Bagni</strong><span>2</span></div><div class="addr-row"><strong>Anno costruzione</strong><span>1840</span></div>'));
+    parts.push(adSlotPageHTML(5));
+    parts.push(contentPageHTML('Real Estate Market', 'Analisi di mercato',
+      '<table class="data-table"><tr><td>Valore di mercato</td><td>1.160 – 1.380 €/m²</td></tr><tr><td>Fonte</td><td>Analista verificato</td></tr></table>'));
+    parts.push(adSlotPageHTML(6));
+    parts.push(contentPageHTML('Agency Contact', 'Riepilogo agenzia',
+      '<div class="body-text">Ultima pagina del dossier: contatti dell\'agenzia che lo ha generato. Il tuo spazio pubblicitario resta visibile per tutta la durata dell\'abbonamento, su ogni dossier generato in questo periodo.</div>'));
+
+    document.getElementById('pagesContainer').innerHTML = parts.join('');
+  }
 
   async function loadAvailabilityAndPricing(){
     const today = toLocalDateStr(new Date());
@@ -178,69 +272,51 @@
       } else if (occ.length >= 2) {
         const maxEnd = occ.reduce((m, r) => (r.subscription_end > m ? r.subscription_end : m), occ[0].subscription_end);
         const minEnd = occ.reduce((m, r) => (r.subscription_end < m ? r.subscription_end : m), occ[0].subscription_end);
-        fullInfo = { free: false, label: `Entrambe le meta occupate fino al ${maxEnd}`, nextFree: addDaysStr(maxEnd, 1) };
-        halfInfo = { free: false, label: `Entrambe le meta occupate, la prima libera dal ${addDaysStr(minEnd, 1)}`, nextFree: addDaysStr(minEnd, 1) };
+        fullInfo = { free: false, label: `Entrambe le metà occupate fino al ${maxEnd}`, nextFree: addDaysStr(maxEnd, 1) };
+        halfInfo = { free: false, label: `Entrambe le metà occupate, la prima libera dal ${addDaysStr(minEnd, 1)}`, nextFree: addDaysStr(minEnd, 1) };
       } else if (occ.length === 1) {
-        fullInfo = { free: false, label: `1 meta occupata fino al ${occ[0].subscription_end}`, nextFree: addDaysStr(occ[0].subscription_end, 1) };
-        halfInfo = { free: true, label: `1 meta libera subito`, nextFree: today };
+        fullInfo = { free: false, label: `1 metà occupata fino al ${occ[0].subscription_end}`, nextFree: addDaysStr(occ[0].subscription_end, 1) };
+        halfInfo = { free: true, label: `1 metà libera subito`, nextFree: today };
       } else {
         fullInfo = { free: true, label: 'Completamente libero', nextFree: today };
         halfInfo = { free: true, label: 'Completamente libero', nextFree: today };
       }
       slotAvailability[slot] = { full: fullInfo, half: halfInfo };
+      renderSlotAvail(slot);
     }
-    renderPage();
-    if (selectedSlot) { updatePriceBox(); }
+    if (selectedSlot) updatePriceBox();
   }
 
-  function renderPage(){
-    const slot = currentPage;
+  function renderSlotAvail(slot){
+    const el = document.getElementById('adSlotAvail' + slot);
+    if (!el) return;
     const avail = slotAvailability[slot];
-    const tier = slotTier(slot);
-    const box = document.getElementById('pageView');
-    box.innerHTML = `
-      <div class="page-kicker">Spazio pubblicitario &middot; ${TIER_LABEL[tier]}</div>
-      <div class="page-title">Slot ${slot}</div>
-      <div class="lux-rule"></div>
-
+    el.innerHTML = `
       <div class="avail-row">
-        <div>
-          <div class="fmt">Pagina intera</div>
-          <div class="avail-status ${avail.full.free ? 'free' : 'busy'}">${avail.full.label}</div>
-        </div>
-        <button class="pick-btn ${selectedSlot && selectedSlot.slot === slot && selectedSlot.format === 'full' ? 'selected' : ''}" onclick="pickSlot(${slot}, 'full')">Scegli questo</button>
+        <div><div class="fmt">Pagina intera</div><div class="avail-status ${avail.full.free ? 'free' : 'busy'}">${avail.full.label}</div></div>
+        <button class="pick-btn ${selectedSlot && selectedSlot.slot === slot && selectedSlot.format === 'full' ? 'selected' : ''}" onclick="pickSlot(${slot}, 'full')">Prenota</button>
       </div>
       <div class="avail-row">
-        <div>
-          <div class="fmt">Mezza pagina</div>
-          <div class="avail-status ${avail.half.free ? 'free' : 'busy'}">${avail.half.label}</div>
-        </div>
-        <button class="pick-btn ${selectedSlot && selectedSlot.slot === slot && selectedSlot.format === 'half' ? 'selected' : ''}" onclick="pickSlot(${slot}, 'half')">Scegli questo</button>
-      </div>
-
-      <div class="page-folio"><span>FOLIUM &middot; Spazi pubblicitari</span><span>SLOT ${slot} / 6</span></div>
-    `;
-    document.getElementById('pageCounter').textContent = `SLOT ${slot} / 6`;
-    document.getElementById('prevBtn').disabled = slot === 1;
-    document.getElementById('nextBtn').disabled = slot === 6;
-  }
-
-  function flipPage(dir){
-    currentPage = Math.min(6, Math.max(1, currentPage + dir));
-    renderPage();
+        <div><div class="fmt">Mezza pagina</div><div class="avail-status ${avail.half.free ? 'free' : 'busy'}">${avail.half.label}</div></div>
+        <button class="pick-btn ${selectedSlot && selectedSlot.slot === slot && selectedSlot.format === 'half' ? 'selected' : ''}" onclick="pickSlot(${slot}, 'half')">Prenota</button>
+      </div>`;
   }
 
   function pickSlot(slot, format){
     selectedSlot = { slot, format };
     startDateManuallySet = false;
     document.getElementById('adFormat').value = format;
-    document.getElementById('selectedSlotLabel').textContent = `Slot ${slot} - ${TIER_LABEL[slotTier(slot)]}`;
-    document.getElementById('formSection').style.display = 'block';
-    document.getElementById('advertiserSection').style.display = 'block';
+    document.getElementById('selectedSlotLabel').textContent = `Il tuo annuncio — Slot ${slot} · ${TIER_LABEL[slotTier(slot)]}`;
+    document.getElementById('formPage').style.display = 'block';
+    document.getElementById('bookingCard').style.display = 'block';
+    document.getElementById('bookingCardLabel').textContent = `Slot ${slot} selezionato — ${format === 'full' ? 'Pagina intera' : 'Mezza pagina'}`;
     suggestStartDate();
     updatePriceBox();
-    renderPage();
-    document.getElementById('formSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    for (let s = 1; s <= 6; s++) renderSlotAvail(s);
+  }
+
+  function scrollToForm(){
+    document.getElementById('formPage').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function suggestStartDate(){
@@ -342,11 +418,14 @@
     }
   }
 
+  // ---- Aggiornamento in tempo reale mentre si sfoglia (Realtime, richiede la tabella
+  // aggiunta alla pubblicazione supabase_realtime — vedi folium_ads_realtime_enable.sql).
   sb.channel('folium-ads-availability')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'folium_ad_pages', filter: `tenant_id=eq.${TENANT_ID}` },
       () => loadAvailabilityAndPricing())
     .subscribe();
 
+  renderDossier();
   loadAvailabilityAndPricing();
 </script>
 </body>
