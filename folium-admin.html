@@ -30,6 +30,8 @@
   .card .meta{font-size:11.5px;color:#8a7a52;margin-bottom:8px;}
   input,select{padding:9px 10px;border:1px solid #ddd2b3;border-radius:7px;font-size:13px;width:100%;margin-bottom:8px;}
   .btn-sm{padding:8px 14px;border:none;border-radius:7px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;font-size:12px;cursor:pointer;}
+  .geo-chip{padding:6px 12px;border:1px solid #ddd2b3;border-radius:16px;background:#fff;color:#5c4f30;font-size:12px;cursor:pointer;user-select:none;}
+  .geo-chip.selected{background:var(--gold-strong,#a77d31);color:#fff;border-color:var(--gold-strong,#a77d31);}
   .btn-sm.danger{background:#c0392b;}
   .hidden{display:none;}
   .empty{text-align:center;color:#a49470;font-size:13px;padding:30px 0;}
@@ -65,6 +67,7 @@
       <div class="stat"><div class="n" id="statClients">–</div><div class="l">CLIENTI REGISTRATI</div></div>
       <div class="stat"><div class="n" id="statDossiers">–</div><div class="l">DOSSIER CREATI</div></div>
       <div class="stat"><div class="n" id="statRevenue">–</div><div class="l">INCASSATO (€)</div></div>
+      <div class="stat"><div class="n" id="statSampleViews">–</div><div class="l">DOSSIER ESEMPIO VISTO (30GG)</div></div>
     </div>
     <div class="section-title">Utilizzo recente</div>
     <table id="usageTable">
@@ -114,6 +117,31 @@
 
       <label class="field-label">Posizione</label>
       <select id="adPosition"></select>
+
+      <label class="field-label">Dove deve comparire</label>
+      <select id="geoScope">
+        <option value="national">Tutta Italia</option>
+        <option value="regional">Regioni specifiche</option>
+        <option value="provincial">Province specifiche</option>
+        <option value="radius">Raggio da un indirizzo</option>
+      </select>
+      <div id="geoRegional" style="display:none;margin-top:8px;">
+        <div style="font-size:11px;color:#8a7a52;margin-bottom:4px;">Tocca per selezionare/deselezionare</div>
+        <div id="geoRegionChips" style="display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;"></div>
+      </div>
+      <div id="geoProvincial" style="display:none;margin-top:8px;">
+        <input type="text" id="geoProvinceFilter" placeholder="Cerca provincia..." style="margin-bottom:6px;width:100%;padding:8px;border:1px solid #ddd2b3;border-radius:7px;">
+        <div id="geoProvinceChips" style="display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;"></div>
+      </div>
+      <div id="geoRadius" style="display:none;margin-top:8px;">
+        <input type="text" id="geoAddress" placeholder="Indirizzo di riferimento" style="width:100%;padding:8px;border:1px solid #ddd2b3;border-radius:7px;margin-bottom:6px;">
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="geoRadiusKm" value="20" min="1" max="300" style="width:90px;padding:8px;border:1px solid #ddd2b3;border-radius:7px;">
+          <button type="button" class="btn-sm" onclick="searchRadiusAdmin()">Cerca comuni</button>
+        </div>
+        <div id="geoRadiusResult" style="font-size:11px;color:#8a7a52;margin-top:6px;"></div>
+      </div>
+      <div id="geoAreaSummary" style="font-size:11.5px;color:#6b5314;font-weight:600;margin:8px 0;"></div>
 
       <label class="field-label">Formato</label>
       <select id="adFormat">
@@ -230,6 +258,7 @@
     TENANT_ID = client?.tenant_id || '724f71d8-b499-46c1-9047-021280e913c9'; // stesso UUID scelto in folium-register.html
 
     await loadAllPricing(); // PRIMA degli altri: computeAdPrice ne dipende
+    initGeoTargetingAdmin(); // non bloccante: la form può aprirsi anche mentre i comuni finiscono di caricare
     loadOverview();
     loadClients();
     loadAdvertisers();
@@ -289,6 +318,14 @@
     document.getElementById('statClients').textContent = clientsCount ?? 0;
     document.getElementById('statDossiers').textContent = dossiersCount ?? 0;
     document.getElementById('statRevenue').textContent = revenue.toLocaleString('it-IT', { minimumFractionDigits: 2 });
+
+    // Quante volte è stato sfogliato il dossier di esempio (checkout inserzionisti) negli
+    // ultimi 30 giorni — richiesto esplicitamente per capire quanto interesse genera prima
+    // di un acquisto vero.
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { count: sampleViewsCount } = await sb.from('folium_sample_dossier_views')
+      .select('*', { count: 'exact', head: true }).eq('tenant_id', TENANT_ID).gte('created_at', thirtyDaysAgo);
+    document.getElementById('statSampleViews').textContent = sampleViewsCount ?? 0;
 
     const { data: usage } = await sb.from('folium_usage_log')
       .select('*, folium_clients(full_name, company_name)')
@@ -395,6 +432,7 @@
   };
   const AD_PERIOD_MONTHS = { quarterly: 3, semestral: 6, annual: 12 }; // durata fissa, non un prezzo — resta hardcoded
   let AD_PERIOD_DISCOUNT = { quarterly: 0, semestral: 0.10, annual: 0.20 };
+  let AD_GEO_MULTIPLIER = {}; // popolato da loadAllPricing() con le chiavi geo_multiplier (reg_1, prov_2_5, nazionale, ecc.)
   let dossierPricingRows = []; // righe grezze da folium_pricing, category='dossier_package' — usate solo dalla tab Prezzi
 
   async function loadAllPricing(){
@@ -406,6 +444,9 @@
     });
     data.filter(r => r.category === 'ad_period_discount').forEach(r => {
       AD_PERIOD_DISCOUNT[r.key] = r.discount_percent / 100;
+    });
+    data.filter(r => r.category === 'geo_multiplier').forEach(r => {
+      AD_GEO_MULTIPLIER[r.key] = Number(r.multiplier) || 1;
     });
     dossierPricingRows = data.filter(r => r.category === 'dossier_package');
     renderPricingTab(data);
@@ -605,9 +646,11 @@
     const monthly = AD_BASE_MONTHLY_PRICE[format][slotTier(slot)];
     const months = AD_PERIOD_MONTHS[period];
     const discount = AD_PERIOD_DISCOUNT[period];
-    const gross = monthly * months;
+    const multiplierKey = pickMultiplierKey(geoTarget.scope, geoTarget.comuni.length, geoTarget.unitCount || 0);
+    const multiplier = AD_GEO_MULTIPLIER[multiplierKey] || 1;
+    const gross = monthly * months * multiplier;
     const net = gross * (1 - discount);
-    return { monthly, months, discount, gross, net: Math.round(net * 100) / 100 };
+    return { monthly, months, discount, multiplier, gross, net: Math.round(net * 100) / 100 };
   }
 
   function updateAdPriceBox(){
@@ -617,7 +660,152 @@
     const p = computeAdPrice(slot, format, period);
     const periodLabel = { quarterly: 'trimestre', semestral: 'semestre', annual: 'anno' }[period];
     document.getElementById('adPriceBox').innerHTML =
-      `${p.monthly}€/mese base × ${p.months} mesi = ${p.gross}€ − sconto ${Math.round(p.discount*100)}% → <b>${p.net}€</b> per l'intero ${periodLabel}`;
+      `${p.monthly}€/mese base × ${p.months} mesi${p.multiplier !== 1 ? ` × ${p.multiplier} per l'area` : ''} = ${Math.round(p.gross)}€ − sconto ${Math.round(p.discount*100)}% → <b>${p.net}€</b> per l'intero ${periodLabel}`;
+  }
+
+  // ---- Targeting geografico (stessa logica di folium-ads-checkout.html — DEVE restare
+  // identica: prezzi e conflitti calcolati qui devono combaciare esattamente con quelli
+  // usati dal checkout self-service, altrimenti un'inserzione creata da admin potrebbe
+  // avere un prezzo diverso da una equivalente creata da un inserzionista). ----
+  let allComuniAdmin = [];
+  let selectedRegioniAdmin = new Set();
+  let selectedProvinceAdmin = new Set();
+  let geoTarget = { scope: 'national', comuni: [], label: 'Tutta Italia', unitCount: 0 };
+  const GEOAPIFY_KEY_ADMIN = "8ddfaf5a70914383939b99fa369a8dd5"; // stessa chiave usata ovunque in Folium
+
+  function slotTierGeo(slot){ return slotTier(slot); } // riusa la funzione già esistente in questo file
+
+  function pickMultiplierKey(scope, comuniCount, unitCount){
+    if (scope === 'national') return 'nazionale';
+    if (scope === 'regional') {
+      if (unitCount <= 1) return 'reg_1';
+      if (unitCount <= 4) return 'reg_2_4';
+      if (unitCount <= 9) return 'reg_5_9';
+      return 'reg_10_plus';
+    }
+    if (scope === 'provincial') {
+      if (unitCount <= 1) return 'prov_1';
+      if (unitCount <= 5) return 'prov_2_5';
+      if (unitCount <= 15) return 'prov_6_15';
+      if (unitCount <= 40) return 'prov_16_40';
+      return 'prov_41_plus';
+    }
+    if (comuniCount <= 5) return 'tier_1_5';
+    if (comuniCount <= 15) return 'tier_6_15';
+    return 'tier_16_40';
+  }
+
+  async function loadAllComuniAdmin(withCoords){
+    const cols = withCoords ? 'istat, comune, provincia, sigla_provincia, regione, lat, long' : 'istat, comune, provincia, sigla_provincia, regione';
+    let all = [], from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data, error } = await sb.from('folium_italy_comuni').select(cols).range(from, from + pageSize - 1);
+      if (error || !data || !data.length) break;
+      all = all.concat(data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+    allComuniAdmin = all;
+  }
+
+  async function initGeoTargetingAdmin(){
+    await loadAllComuniAdmin(false);
+    const regioni = [...new Set(allComuniAdmin.map(c => c.regione))].sort();
+    const province = [...new Set(allComuniAdmin.map(c => c.provincia))].sort();
+    document.getElementById('geoRegionChips').innerHTML = regioni.map(r =>
+      `<div class="geo-chip" data-regione="${r}" onclick="toggleRegioneAdmin('${r.replace(/'/g, "\\'")}')">${r}</div>`).join('');
+    renderProvinceChipsAdmin(province);
+  }
+
+  function renderProvinceChipsAdmin(list){
+    document.getElementById('geoProvinceChips').innerHTML = list.map(p =>
+      `<div class="geo-chip ${selectedProvinceAdmin.has(p) ? 'selected' : ''}" data-provincia="${p}" onclick="toggleProvinciaAdmin('${p.replace(/'/g, "\\'")}')">${p}</div>`).join('');
+  }
+
+  function toggleRegioneAdmin(r){
+    if (selectedRegioniAdmin.has(r)) selectedRegioniAdmin.delete(r); else selectedRegioniAdmin.add(r);
+    document.querySelectorAll('#geoRegionChips .geo-chip').forEach(el => el.classList.toggle('selected', selectedRegioniAdmin.has(el.dataset.regione)));
+    const comuni = allComuniAdmin.filter(c => selectedRegioniAdmin.has(c.regione)).map(c => c.istat);
+    applyGeoTargetAdmin('regional', comuni, [...selectedRegioniAdmin].join(', ') || 'Nessuna regione selezionata', selectedRegioniAdmin.size);
+  }
+
+  function toggleProvinciaAdmin(p){
+    if (selectedProvinceAdmin.has(p)) selectedProvinceAdmin.delete(p); else selectedProvinceAdmin.add(p);
+    document.querySelectorAll('#geoProvinceChips .geo-chip').forEach(el => el.classList.toggle('selected', selectedProvinceAdmin.has(el.dataset.provincia)));
+    const comuni = allComuniAdmin.filter(c => selectedProvinceAdmin.has(c.provincia)).map(c => c.istat);
+    applyGeoTargetAdmin('provincial', comuni, [...selectedProvinceAdmin].map(p => 'Provincia di ' + p).join(', ') || 'Nessuna provincia selezionata', selectedProvinceAdmin.size);
+  }
+
+  document.getElementById('geoProvinceFilter').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    const all = [...new Set(allComuniAdmin.map(c => c.provincia))].sort();
+    renderProvinceChipsAdmin(q ? all.filter(p => p.toLowerCase().includes(q)) : all);
+  });
+
+  document.getElementById('geoScope').addEventListener('change', (e) => {
+    const scope = e.target.value;
+    document.getElementById('geoRegional').style.display = scope === 'regional' ? 'block' : 'none';
+    document.getElementById('geoProvincial').style.display = scope === 'provincial' ? 'block' : 'none';
+    document.getElementById('geoRadius').style.display = scope === 'radius' ? 'block' : 'none';
+    if (scope === 'national') applyGeoTargetAdmin('national', [], 'Tutta Italia', 0);
+    else { geoTarget = { scope, comuni: [], label: '', unitCount: 0 }; updateGeoSummaryAdmin(); updateAdPriceBox(); }
+  });
+
+  function haversineKmAdmin(lat1, lon1, lat2, lon2){
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  async function searchRadiusAdmin(){
+    const address = document.getElementById('geoAddress').value.trim();
+    const km = Number(document.getElementById('geoRadiusKm').value) || 20;
+    const resultEl = document.getElementById('geoRadiusResult');
+    if (!address) { resultEl.textContent = 'Inserisci un indirizzo.'; return; }
+    resultEl.textContent = 'Ricerca indirizzo...';
+    try {
+      const resp = await fetch(`https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&filter=countrycode:it&limit=1&apiKey=${GEOAPIFY_KEY_ADMIN}`);
+      const data = await resp.json();
+      const feature = data && data.features && data.features[0];
+      if (!feature) { resultEl.textContent = 'Indirizzo non trovato.'; return; }
+      const lon = feature.geometry.coordinates[0], lat = feature.geometry.coordinates[1];
+      if (!allComuniAdmin.length || allComuniAdmin[0].lat === undefined) await loadAllComuniAdmin(true);
+      const withinRadius = allComuniAdmin.filter(c => haversineKmAdmin(lat, lon, Number(c.lat), Number(c.long)) <= km);
+      if (!withinRadius.length) { resultEl.textContent = 'Nessun comune trovato in questo raggio.'; return; }
+      resultEl.textContent = `${withinRadius.length} comuni trovati entro ${km} km da "${feature.properties.formatted}".`;
+      applyGeoTargetAdmin('radius', withinRadius.map(c => c.istat), `${km}km da ${feature.properties.city || address}`, 0);
+    } catch (e) {
+      resultEl.textContent = 'Errore: ' + (e.message || e);
+    }
+  }
+
+  function applyGeoTargetAdmin(scope, comuni, label, unitCount){
+    geoTarget = { scope, comuni, label, unitCount };
+    updateGeoSummaryAdmin();
+    updateAdPriceBox();
+  }
+
+  function updateGeoSummaryAdmin(){
+    const el = document.getElementById('geoAreaSummary');
+    if (geoTarget.scope === 'national') { el.textContent = 'Copertura: tutta Italia.'; return; }
+    const unitLabel = geoTarget.scope === 'regional' ? `${geoTarget.unitCount} regioni` : geoTarget.scope === 'provincial' ? `${geoTarget.unitCount} province` : `${geoTarget.comuni.length} comuni`;
+    el.textContent = `Copertura: ${unitLabel} (${geoTarget.label}).`;
+  }
+
+  function resetGeoTargetingAdmin(){
+    geoTarget = { scope: 'national', comuni: [], label: 'Tutta Italia', unitCount: 0 };
+    selectedRegioniAdmin = new Set();
+    selectedProvinceAdmin = new Set();
+    document.getElementById('geoScope').value = 'national';
+    document.getElementById('geoRegional').style.display = 'none';
+    document.getElementById('geoProvincial').style.display = 'none';
+    document.getElementById('geoRadius').style.display = 'none';
+    document.getElementById('geoAreaSummary').textContent = 'Copertura: tutta Italia.';
+    document.getElementById('geoAddress').value = '';
+    document.getElementById('geoRadiusResult').textContent = '';
+    document.querySelectorAll('#geoRegionChips .geo-chip, #geoProvinceChips .geo-chip').forEach(el => el.classList.remove('selected'));
   }
 
   let adImageFile = null;
@@ -646,12 +834,36 @@
     }
   }
 
+  // Ripristina la scelta geografica di un'inserzione esistente (modifica/rinnovo) — senza
+  // questo, aprire "Modifica" resetterebbe sempre a "Tutta Italia" e il prezzo ricalcolato
+  // al salvataggio risulterebbe sbagliato rispetto a quanto realmente pagato.
+  async function loadGeoTargetIntoForm(p){
+    resetGeoTargetingAdmin();
+    if (!p.target_scope || p.target_scope === 'national' || !p.target_comuni || !p.target_comuni.length) return;
+    document.getElementById('geoScope').value = p.target_scope;
+    document.getElementById('geoRegional').style.display = p.target_scope === 'regional' ? 'block' : 'none';
+    document.getElementById('geoProvincial').style.display = p.target_scope === 'provincial' ? 'block' : 'none';
+    document.getElementById('geoRadius').style.display = p.target_scope === 'radius' ? 'block' : 'none';
+    if (!allComuniAdmin.length) await loadAllComuniAdmin(false);
+    const col = p.target_scope === 'regional' ? 'regione' : 'provincia';
+    if (p.target_scope === 'regional' || p.target_scope === 'provincial') {
+      const units = [...new Set(allComuniAdmin.filter(c => p.target_comuni.includes(c.istat)).map(c => c[col]))];
+      if (p.target_scope === 'regional') { selectedRegioniAdmin = new Set(units); document.querySelectorAll('#geoRegionChips .geo-chip').forEach(el => el.classList.toggle('selected', selectedRegioniAdmin.has(el.dataset.regione))); }
+      else { selectedProvinceAdmin = new Set(units); document.querySelectorAll('#geoProvinceChips .geo-chip').forEach(el => el.classList.toggle('selected', selectedProvinceAdmin.has(el.dataset.provincia))); }
+      geoTarget = { scope: p.target_scope, comuni: p.target_comuni, label: p.target_label || units.join(', '), unitCount: units.length };
+    } else {
+      geoTarget = { scope: p.target_scope, comuni: p.target_comuni, label: p.target_label || `${p.target_comuni.length} comuni`, unitCount: 0 };
+    }
+    updateGeoSummaryAdmin();
+  }
+
   function cancelFormMode(){
     renewalImageUrl = null;
     editingAdPageId = null;
     adImageFile = null;
     document.getElementById('adImagePreview').innerHTML = '';
     startDateManuallySet = false;
+    resetGeoTargetingAdmin();
     suggestStartDate();
     setFormBanner('none');
   }
@@ -698,7 +910,7 @@
     const { data: existingRows } = await sb.from('folium_ad_pages')
       .select('id, position_slot, ad_format, subscription_start, subscription_end, active, target_comuni, folium_advertisers(name)')
       .eq('tenant_id', TENANT_ID);
-    const conflicts = findSlotConflicts(existingRows || [], slot, format, startStr, endStr, editingAdPageId, null); // ad create da admin restano "tutta Italia" (null) finché non c'è una UI di targeting anche qui
+    const conflicts = findSlotConflicts(existingRows || [], slot, format, startStr, endStr, editingAdPageId, geoTarget.scope === 'national' ? null : geoTarget.comuni);
     if (conflicts.length) {
       const details = conflicts.map(c => `"${c.folium_advertisers?.name || '—'}" (dal ${c.subscription_start} al ${c.subscription_end})`).join('; ');
       alert(`Impossibile salvare: lo slot ${slot} in queste date è già occupato da ${details}. Scegli un'altra data (guarda il suggerimento sotto il campo data) o un altro slot.`);
@@ -733,6 +945,9 @@
       position_slot: slot,
       ad_format: format,
       billing_period: period,
+      target_scope: geoTarget.scope,
+      target_comuni: geoTarget.scope === 'national' ? null : geoTarget.comuni,
+      target_label: geoTarget.scope === 'national' ? 'Tutta Italia' : geoTarget.label,
       price_paid_cents: Math.round(price.net * 100),
       subscription_start: startStr,
       subscription_end: endStr
@@ -767,6 +982,7 @@
     document.getElementById('adSubtext').value = p.subtext || '';
     document.getElementById('adCtaText').value = p.cta_text || '';
     document.getElementById('adCtaUrl').value = p.cta_url || '';
+    await loadGeoTargetIntoForm(p);
     updateAdPriceBox();
 
     adImageFile = null;
@@ -804,6 +1020,7 @@
     document.getElementById('adSubtext').value = p.subtext || '';
     document.getElementById('adCtaText').value = p.cta_text || '';
     document.getElementById('adCtaUrl').value = p.cta_url || '';
+    await loadGeoTargetIntoForm(p);
     updateAdPriceBox();
 
     adImageFile = null;

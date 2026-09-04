@@ -23,8 +23,8 @@
   .page-inner{position:relative;z-index:2;padding:44px 48px;}
   .cover{color:#fff;}
   .cover .cover-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;gap:24px;padding:38px 48px 96px;}
-  .cover::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(31,22,8,.80),rgba(31,22,8,.50),rgba(31,22,8,.12));z-index:1;}
-  .cover-capri::before{background:linear-gradient(90deg,rgba(4,20,28,.82),rgba(4,20,28,.50),rgba(4,20,28,.10));}
+  .cover::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(31,22,8,.58),rgba(31,22,8,.32),rgba(31,22,8,.08));z-index:1;}
+  .cover-capri::before{background:linear-gradient(90deg,rgba(4,20,28,.60),rgba(4,20,28,.32),rgba(4,20,28,.06));}
   .cover-bg{position:absolute;inset:0;width:100%;height:100%;background:linear-gradient(160deg,#4a3a1c,#20180a);z-index:0;}
   .brand{font-size:26px;letter-spacing:.20em;color:var(--gold3);font-weight:300;}
   .brand-sub{margin-top:6px;font-size:9px;letter-spacing:.22em;color:var(--gold3);text-transform:uppercase;}
@@ -426,7 +426,7 @@
       <div class="section-title">${title}</div>
       <div class="lux-rule"></div>
       ${bodyHTML}
-      <div class="page-folio"><span>FOLIUM · ESEMPIO</span><span>&nbsp;</span></div>
+      <div class="page-folio"><span>FOLIUM · ESEMPIO{{SPONSORS}}</span><span>&nbsp;</span></div>
     </div></div>`;
   }
 
@@ -445,7 +445,7 @@
   function coverPageHTML(){
     // Foto reale, licenza libera per uso commerciale (Unsplash License) — scattata a
     // Capri (Giardini di Augusto), di Andy Holmes: https://unsplash.com/photos/oi3UuspyK4k
-    return `<div class="page cover cover-capri" style="background-image:linear-gradient(160deg, rgba(13,47,63,.18) 0%, rgba(7,29,40,.25) 100%), url('https://images.unsplash.com/photo-1549026841-dc1939a05b67?fm=jpg&q=80&w=1200&auto=format&fit=crop');background-size:cover;background-position:center;">
+    return `<div class="page cover cover-capri" style="background-image:linear-gradient(160deg, rgba(13,47,63,.35) 0%, rgba(7,29,40,.55) 100%), url('https://images.unsplash.com/photo-1549026841-dc1939a05b67?fm=jpg&q=80&w=1200&auto=format&fit=crop');background-size:cover;background-position:center;">
       <div class="cover-inner">
       <div><div class="brand">FOLIUM</div><div class="brand-sub">Dossier Immobiliare</div></div>
       <div>
@@ -453,7 +453,7 @@
         <h1 class="cover-title">Villa dei Faraglioni</h1>
       </div>
       <div class="cover-meta">Capri (NA) · Dossier di esempio</div>
-      <div style="position:absolute;bottom:8px;right:14px;font-size:8px;color:rgba(255,255,255,.75);z-index:3;">Foto: Andy Holmes / Unsplash</div>
+      <div style="position:absolute;bottom:8px;right:14px;font-size:8px;color:rgba(255,255,255,.45);z-index:3;">Foto: Andy Holmes / Unsplash</div>
     </div></div>`;
   }
 
@@ -461,7 +461,7 @@
   // che rende un dossier vero (come i dossier Immonova reali) diverso da un semplice
   // elenco di pagine di testo: ogni sezione si apre con una sua immagine, non solo dati.
   function sectionDividerHTML(kicker, title, imageUrl, credit){
-    return `<div class="page cover cover-capri" style="background-image:linear-gradient(160deg, rgba(13,47,63,.18) 0%, rgba(7,29,40,.25) 100%), url('${imageUrl}');background-size:cover;background-position:center;">
+    return `<div class="page cover cover-capri" style="background-image:linear-gradient(160deg, rgba(13,47,63,.30) 0%, rgba(7,29,40,.65) 100%), url('${imageUrl}');background-size:cover;background-position:center;">
       <div class="cover-inner" style="justify-content:flex-end;">
         <div class="cover-kicker">${kicker}</div>
         <h1 class="cover-title" style="font-size:30px;">${title}</h1>
@@ -476,7 +476,7 @@
       <div class="slot-title">Slot ${slot}</div>
       <div class="slot-tier">${TIER_LABEL[tier]}</div>
       <div id="adSlotAvail${slot}">Caricamento disponibilità...</div>
-      <div class="page-folio"><span>FOLIUM · ESEMPIO</span><span>SLOT ${slot}</span></div>
+      <div class="page-folio"><span>FOLIUM · ESEMPIO{{SPONSORS}}</span><span>SLOT ${slot}</span></div>
     </div></div>`;
   }
 
@@ -494,6 +494,13 @@
     dossierPages.push(adSlotPageHTML(2));
     dossierPages.push(contentPageHTML('Location Intelligence', 'Territorio e popolazione',
       '<div class="metric-grid"><div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">7.170</div></div><div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">10,4 km²</div></div><div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">142 m</div></div></div>'));
+    dossierPages.push(contentPageHTML('Destination Access', 'Aeroporti e collegamenti',
+      '<div class="addr-row"><strong>Aeroporto Napoli Capodichino</strong><span>28 km + traghetto (50 min)</span></div>' +
+      '<div class="addr-row"><strong>Porto di Marina Grande</strong><span>3 km · funicolare per il centro</span></div>' +
+      '<div class="addr-row"><strong>Sorrento (traghetto)</strong><span>20 min</span></div>' +
+      '<div class="addr-row"><strong>Napoli (aliscafo)</strong><span>50 min</span></div>'));
+    dossierPages.push(contentPageHTML('Local Life', 'Città vicine e vita locale',
+      pictogramRowHTML([['🍸','La Piazzetta'],['🏖️','Marina Piccola'],['⛲','Certosa di San Giacomo'],['🚡','Funicolare'],['🌅','Anacapri']])));
     dossierPages.push(adSlotPageHTML(3));
     dossierPages.push(sectionDividerHTML('Property Overview', 'L\'Immobile',
       'https://images.unsplash.com/photo-1758448756167-88dc934c58e4?fm=jpg&q=80&w=1200&auto=format&fit=crop', 'Foto: Aalo Lens / Unsplash'));
@@ -515,8 +522,10 @@
     renderCurrentPage();
   }
 
+  let sponsorFooterText = '';
+
   function renderCurrentPage(){
-    document.getElementById('pagesContainer').innerHTML = dossierPages[currentPageIndex];
+    document.getElementById('pagesContainer').innerHTML = dossierPages[currentPageIndex].replaceAll('{{SPONSORS}}', sponsorFooterText);
     document.getElementById('pageCounter').textContent = `Pagina ${currentPageIndex + 1} di ${dossierPages.length}`;
     document.getElementById('prevBtn').disabled = currentPageIndex === 0;
     document.getElementById('nextBtn').disabled = currentPageIndex === dossierPages.length - 1;
@@ -550,6 +559,11 @@
     ]);
     pricingRows = prices || [];
 
+    // Lista inserzionisti attivi nel piè di pagina (max 6, nessuna pagina a sé) — nessuna
+    // chiamata in più: gli stessi dati arrivano già da adRows sopra.
+    const sponsorNames = [...new Set((adRows || []).map(r => r.folium_advertisers?.name).filter(Boolean))].slice(0, 6);
+    sponsorFooterText = sponsorNames.length ? ` · Con il supporto di: ${sponsorNames.join(', ')}` : '';
+
     const bySlot = {};
     (adRows || []).forEach(r => (bySlot[r.position_slot] = bySlot[r.position_slot] || []).push(r));
 
@@ -579,6 +593,7 @@
       slotAvailability[slot] = { full: fullInfo, half: halfInfo, occ };
       renderSlotAvail(slot);
     }
+    renderCurrentPage(); // aggiorna subito il piè di pagina con la lista sponsor sulla pagina visibile ora
     if (selectedSlot) updatePriceBox();
   }
 
@@ -800,6 +815,9 @@
   renderDossier();
   loadAvailabilityAndPricing();
   initGeoTargeting();
+  // Tracciamento visualizzazione (silenzioso, non bloccante) — mostrato in admin come
+  // "Dossier esempio visto (30gg)", per capire quanto interesse genera prima di un acquisto.
+  sb.from('folium_sample_dossier_views').insert({ tenant_id: TENANT_ID }).then(() => {}, () => {});
 </script>
 </body>
 </html>
