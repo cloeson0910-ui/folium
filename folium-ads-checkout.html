@@ -24,6 +24,7 @@
   .cover{color:#fff;}
   .cover .cover-inner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:flex-end;gap:24px;padding:38px 48px 96px;}
   .cover::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(31,22,8,.80),rgba(31,22,8,.50),rgba(31,22,8,.12));z-index:1;}
+  .cover-capri::before{background:linear-gradient(90deg,rgba(4,20,28,.82),rgba(4,20,28,.50),rgba(4,20,28,.10));}
   .cover-bg{position:absolute;inset:0;width:100%;height:100%;background:linear-gradient(160deg,#4a3a1c,#20180a);z-index:0;}
   .brand{font-size:26px;letter-spacing:.20em;color:var(--gold3);font-weight:300;}
   .brand-sub{margin-top:6px;font-size:9px;letter-spacing:.22em;color:var(--gold3);text-transform:uppercase;}
@@ -60,6 +61,17 @@
   .ad-page .tag{font-size:9px;letter-spacing:.20em;color:#a4915c;margin-bottom:10px;text-transform:uppercase;text-align:center;}
   .ad-page .slot-title{font-weight:200;font-size:26px;letter-spacing:.06em;color:#2b2416;margin:0 0 4px;text-align:center;text-transform:uppercase;}
   .ad-page .slot-tier{text-align:center;font-size:12px;color:var(--gold4);letter-spacing:.1em;text-transform:uppercase;margin-bottom:26px;}
+  /* ---- Anteprima REALE dell'inserzione (stessa identica resa del dossier vero,
+     folium-view.html) — non un'approssimazione, esattamente cosa vedrà il cliente finale. */
+  .ad-page.preview{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:520px;}
+  .ad-page img.ad-img{max-width:100%;max-height:420px;box-shadow:0 8px 24px rgba(0,0,0,.1);border-radius:2px;}
+  .ad-page .preview-headline{font-weight:200;font-size:22px;letter-spacing:.04em;color:#2b2416;margin:16px 0 8px;}
+  .ad-page .preview-subtext{font-size:13px;color:#5c4f30;max-width:440px;}
+  .ad-page .preview-cta{margin-top:14px;display:inline-block;padding:10px 24px;background:linear-gradient(120deg,var(--gold1),var(--gold2));color:#fff;border-radius:24px;text-decoration:none;font-size:12px;letter-spacing:1px;}
+  .preview-actions{display:flex;gap:10px;margin-top:20px;}
+  .preview-actions button{flex:1;padding:13px;border-radius:9px;font-size:13px;cursor:pointer;}
+  .btn-edit{background:#fff;border:1px solid #ddd2b3;color:#6b5314;}
+  .btn-confirm{background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold4));border:none;color:#fff;}
   .avail-row{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border:1px solid rgba(166,127,52,.25);border-radius:10px;background:rgba(255,255,255,.55);margin-bottom:12px;}
   .avail-row .fmt{font-size:13.5px;color:#2b2416;font-weight:600;}
   .avail-status{font-size:12px;margin-top:3px;}
@@ -117,6 +129,7 @@
     <div class="section-title" id="selectedSlotLabel">Il tuo annuncio</div>
     <div class="lux-rule"></div>
 
+    <div id="formFieldsWrap">
     <div class="section">
       <label>Formato</label>
       <select id="adFormat">
@@ -193,8 +206,21 @@
         <div><label>Link sito (facoltativo)</label><input type="text" id="adCtaUrl" placeholder="tuosito.it"></div>
       </div>
 
-      <button type="button" class="btn" id="btnSubmit" onclick="submitCheckout()">Vai al pagamento — l'annuncio si attiva subito</button>
+      <button type="button" class="btn" id="btnSubmit" onclick="showAdPreview()">Vedi anteprima prima di pagare</button>
       <div id="msg" class="msg"></div>
+    </div>
+    </div>
+
+    <div class="page ad-page preview" id="adPreviewCard" style="display:none;">
+      <div class="tag" id="previewTag">Spazio pubblicitario dedicato</div>
+      <img class="ad-img" id="previewImg" src="">
+      <div class="preview-headline" id="previewHeadline"></div>
+      <div class="preview-subtext" id="previewSubtext"></div>
+      <a class="preview-cta" id="previewCta" style="display:none;"></a>
+      <div class="preview-actions">
+        <button class="btn-edit" onclick="backToEdit()">&larr; Modifica inserzione</button>
+        <button class="btn-confirm" onclick="submitCheckout()">Conferma e vai al pagamento</button>
+      </div>
     </div>
   </div>
 </div>
@@ -395,7 +421,7 @@
   function contentPageHTML(kicker, title, bodyHTML){
     return `<div class="page pattern"><div class="page-inner">
       <div class="page-header"><span class="brand-mark">FOLIUM</span></div>
-      <span class="sample-tag">Pagina di esempio — il tuo dossier reale avra contenuti veri</span>
+      <span class="sample-tag">Pagina di esempio — il tuo dossier reale avrà contenuti veri</span>
       <div class="section-kicker">${kicker}</div>
       <div class="section-title">${title}</div>
       <div class="lux-rule"></div>
@@ -404,14 +430,27 @@
     </div></div>`;
   }
 
+  // Riquadro pittogrammi — stessa idea grafica del vero dossier (icona + etichetta),
+  // qui usata per rendere il dossier di esempio davvero attraente da sfogliare.
+  function pictogramRowHTML(items){
+    return `<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;">` +
+      items.map(([icon, label]) => `
+        <div style="flex:1;min-width:100px;text-align:center;background:rgba(255,255,255,.55);border:1px solid rgba(166,127,52,.18);border-radius:10px;padding:16px 8px;">
+          <div style="font-size:26px;margin-bottom:6px;">${icon}</div>
+          <div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold4);">${label}</div>
+        </div>`).join('') +
+      `</div>`;
+  }
+
   function coverPageHTML(){
-    return `<div class="page cover"><div class="cover-bg"></div><div class="cover-inner">
+    return `<div class="page cover cover-capri" style="background:linear-gradient(160deg, #1c4f63 0%, #0d2f3f 45%, #071d28 100%);">
+      <div class="cover-inner">
       <div><div class="brand">FOLIUM</div><div class="brand-sub">Dossier Immobiliare</div></div>
       <div>
         <div class="cover-kicker">Esempio — così apparirà un dossier reale</div>
-        <h1 class="cover-title">Villa Esempio</h1>
+        <h1 class="cover-title">Villa dei Faraglioni</h1>
       </div>
-      <div class="cover-meta">Tuglie (LE) · Dossier di esempio</div>
+      <div class="cover-meta">Capri (NA) · Dossier di esempio</div>
     </div></div>`;
   }
 
@@ -434,19 +473,19 @@
     dossierPages.push(coverPageHTML());
     dossierPages.push(adSlotPageHTML(1));
     dossierPages.push(contentPageHTML('Editorial Overview', 'Presentazione della proposta',
-      '<div class="body-text">Masseria fortificata con terreno annesso, in posizione strategica tra i borghi della Valle d\'Itria. Un recupero architettonico che unisce storia, posizione e potenziale di valorizzazione — questo è il tipo di narrativa editoriale generata automaticamente per ogni dossier reale, non un testo generico.</div>'));
+      '<div class="body-text">Villa panoramica scavata nella roccia sopra i Faraglioni, tra le proprietà più esclusive dell\'isola. Terrazze a picco sul Mediterraneo, accesso privato al mare e un giardino mediterraneo secolare rendono questa dimora un simbolo del lusso capovolgente per cui Capri è celebre in tutto il mondo — questo è il tipo di narrativa editoriale generata automaticamente per ogni dossier reale, non un testo generico.</div>'));
     dossierPages.push(adSlotPageHTML(2));
     dossierPages.push(contentPageHTML('Location Intelligence', 'Territorio e popolazione',
-      '<div class="metric-grid"><div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">47.800</div></div><div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">295 km²</div></div><div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">431 m</div></div></div>'));
+      '<div class="metric-grid"><div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">7.170</div></div><div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">10,4 km²</div></div><div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">142 m</div></div></div>'));
     dossierPages.push(adSlotPageHTML(3));
-    dossierPages.push(contentPageHTML('Media Gallery', 'Immagini dell\'immobile',
-      '<div class="gallery-photo-cell">FOTO IMMOBILE (ESEMPIO)</div>'));
+    dossierPages.push(contentPageHTML('Asset Highlights', 'Caratteristiche principali',
+      pictogramRowHTML([['🌊','Vista mare'],['🏊','Piscina a sfioro'],['⚓','Accesso privato al mare'],['🌳','Giardino mediterraneo'],['🏛️','Terrazza panoramica']])));
     dossierPages.push(adSlotPageHTML(4));
-    dossierPages.push(contentPageHTML('Asset Characteristics', 'Caratteristiche dell\'immobile',
-      '<div class="addr-row"><strong>Superficie</strong><span>600 mq</span></div><div class="addr-row"><strong>Locali</strong><span>5</span></div><div class="addr-row"><strong>Bagni</strong><span>2</span></div><div class="addr-row"><strong>Anno costruzione</strong><span>1840</span></div>'));
+    dossierPages.push(contentPageHTML('Media Gallery', 'Immagini dell\'immobile',
+      '<div class="gallery-photo-cell" style="background:linear-gradient(160deg,#a7c9d6,#3d6f82);color:#fff;">VISTA SUI FARAGLIONI (ESEMPIO)</div>'));
     dossierPages.push(adSlotPageHTML(5));
     dossierPages.push(contentPageHTML('Real Estate Market', 'Analisi di mercato',
-      '<table class="data-table"><tr><td>Valore di mercato</td><td>1.160 – 1.380 €/m²</td></tr><tr><td>Fonte</td><td>Analista verificato</td></tr></table>'));
+      '<table class="data-table"><tr><td>Valore di mercato</td><td>9.500 – 16.000 €/m²</td></tr><tr><td>Fonte</td><td>Analista verificato</td></tr></table>'));
     dossierPages.push(adSlotPageHTML(6));
     dossierPages.push(contentPageHTML('Agency Contact', 'Riepilogo agenzia',
       '<div class="body-text">Ultima pagina del dossier: contatti dell\'agenzia che lo ha generato. Il tuo spazio pubblicitario resta visibile per tutta la durata dell\'abbonamento, su ogni dossier generato in questo periodo.</div>'));
@@ -628,6 +667,41 @@
   function showMsg(text){
     const el = document.getElementById('msg');
     el.textContent = text; el.className = 'msg err';
+  }
+
+  // Anteprima REALE prima di pagare — richiesta esplicitamente per ridurre le richieste
+  // di rimborso per insoddisfazione: il cliente vede esattamente come apparirà il suo
+  // annuncio (stessa resa .ad-page del dossier vero) e può tornare a modificare foto/testi
+  // senza perdere nulla, prima di procedere al pagamento.
+  function showAdPreview(){
+    if (!selectedSlot) { showMsg('Scegli prima uno slot sfogliando il dossier.'); return; }
+    if (!adImageFile) { showMsg("Carica l'immagine dell'annuncio prima di vedere l'anteprima."); return; }
+    const subtext = document.getElementById('adSubtext').value.trim();
+    const wordCount = subtext.split(/\s+/).filter(Boolean).length;
+    if (wordCount > MAX_EDITORIAL_WORDS) { showMsg(`L'editoriale supera il limite di ${MAX_EDITORIAL_WORDS} parole (attualmente ${wordCount}).`); return; }
+    if (geoTarget.scope !== 'national' && geoTarget.comuni.length === 0) { showMsg("Seleziona un'area geografica prima di continuare."); return; }
+
+    document.getElementById('previewImg').src = URL.createObjectURL(adImageFile);
+    const headline = document.getElementById('adHeadline').value.trim();
+    document.getElementById('previewHeadline').textContent = headline;
+    document.getElementById('previewHeadline').style.display = headline ? 'block' : 'none';
+    document.getElementById('previewSubtext').textContent = subtext;
+    document.getElementById('previewSubtext').style.display = subtext ? 'block' : 'none';
+    const ctaText = document.getElementById('adCtaText').value.trim();
+    const ctaEl = document.getElementById('previewCta');
+    if (ctaText) { ctaEl.textContent = ctaText; ctaEl.style.display = 'inline-block'; }
+    else { ctaEl.style.display = 'none'; }
+    document.getElementById('previewTag').textContent = `Slot ${selectedSlot.slot} · ${TIER_LABEL[slotTier(selectedSlot.slot)]} — così apparirà nel dossier`;
+
+    document.getElementById('formFieldsWrap').style.display = 'none';
+    document.getElementById('adPreviewCard').style.display = 'flex';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function backToEdit(){
+    document.getElementById('adPreviewCard').style.display = 'none';
+    document.getElementById('formFieldsWrap').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function submitCheckout(){
