@@ -768,6 +768,11 @@
 
   async function render(lang, forcedTier){
     lang = lang || 'it';
+    // Tracciata a livello globale: serve a getOrGenerateShareablePdfUrl() per
+    // generare un PDF/link SEPARATO per ogni lingua (prima un solo file/link
+    // esisteva per l'intero dossier, e passare a un'altra lingua sovrascriveva
+    // silenziosamente il link già condiviso in precedenza in un'altra lingua).
+    currentLang = lang;
     const el = document.getElementById('content');
     const { data: dossier, error } = await sb.from('folium_dossiers').select('*').eq('id', dossierId).single();
     if (error || !dossier) { el.textContent = 'Dossier non trovato.'; return; }
@@ -1317,17 +1322,23 @@
   // è proprietario), ma un vero file PDF caricato su Storage con URL pubblico diretto:
   // si apre ovunque all'istante, mostra un'anteprima vera su WhatsApp, nessun login.
   // Riusa generateDossierPdfBlob() già esistente (stessa funzione di "Scarica PDF").
-  let cachedShareUrl = null;
+  let cachedShareUrl = {}; // una entry per lingua: {it: '...', en: '...', ...}
+  let currentLang = 'it';
 
   function escHtml(s){
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   async function getOrGenerateShareablePdfUrl(statusEl){
-    if (cachedShareUrl) return cachedShareUrl;
+    // Un dossier tradotto ha lingue diverse mostrate a persone diverse — ognuna deve
+    // avere il proprio PDF e il proprio link, mai condividere lo stesso file/URL tra
+    // lingue diverse (altrimenti l'ultima lingua generata sovrascrive le precedenti).
+    const lang = currentLang;
+    if (cachedShareUrl[lang]) return cachedShareUrl[lang];
     if (statusEl) statusEl.textContent = 'Generazione PDF in corso…';
     const blob = await generateDossierPdfBlob();
-    const filename = `${currentFooterText.replace('FOLIUM · ', '') || 'dossier'}.pdf`;
+    const langSuffix = lang !== 'it' ? `-${lang}` : ''; // 'it' resta senza suffisso per compatibilità con i link italiani già condivisi in passato
+    const filename = `${(currentFooterText.replace('FOLIUM · ', '') || 'dossier')}${langSuffix}.pdf`;
     const path = `dossier-${dossierId}/${filename}`;
     const { error } = await sb.storage.from('folium-dossier-pdfs').upload(path, blob, { contentType: 'application/pdf', upsert: true });
     if (error) throw error;
@@ -1376,7 +1387,7 @@
     const publishRes = await fetch(`${SUPABASE_URL}/functions/v1/folium-publish-share`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dossierId, address, pdfUrl, coverImageBase64 }),
+      body: JSON.stringify({ dossierId, address, pdfUrl, coverImageBase64, lang }),
     });
     const publishData = await publishRes.json();
     if (!publishRes.ok || !publishData.url) throw new Error(publishData.error || 'Pubblicazione della pagina di condivisione fallita');
@@ -1386,8 +1397,8 @@
     // Facebook e senza uno strumento pubblico per svuotarla — un link "mai visto
     // prima" evita di restare bloccati su un'anteprima vecchia salvata durante i
     // test precedenti.
-    cachedShareUrl = `${publishData.url}?v=${Date.now()}`;
-    return cachedShareUrl;
+    cachedShareUrl[lang] = `${publishData.url}?v=${Date.now()}`;
+    return cachedShareUrl[lang];
   }
 
   async function shareDossierLink(){
