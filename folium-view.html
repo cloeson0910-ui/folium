@@ -728,12 +728,30 @@
 
   async function ensureDynamicTranslation(dossier, lang){
     if (lang === 'it') return null;
+    // Il vecchio formato di cache (solo verified_notes/ai_narrative/discovery_summary)
+    // non copriva la narrativa editoriale (presentazione/zona/turismo) — quelle 3
+    // sezioni restavano SEMPRE in italiano, bug segnalato dall'utente (verificato
+    // confrontando col PDF generato: solo le intestazioni di sezione cambiavano
+    // lingua, i paragrafi veri no). Una cache vecchia (senza "full_description") va
+    // quindi ignorata e rigenerata con tutti i testi.
     const cached = dossier.translations && dossier.translations[lang];
-    if (cached) return cached;
+    if (cached && 'full_description' in cached) return cached;
+
+    // Editorial/Discovery richiesti anche qui (non solo più avanti in render()) per
+    // avere i testi SORGENTE da tradurre — ensureEditorialAnalysis/ensureDiscoveryData
+    // sono già scritte per essere sicure da richiamare più volte (controllano la
+    // cache sul dossier stesso prima di richiamare il motore), quindi non c'è doppio
+    // costo reale: la seconda chiamata più avanti in render() userà il valore già
+    // presente su dossier.editorial_analysis_result/discovery_result.
+    const { data: editorial } = await ensureEditorialAnalysis(dossier);
+    const disc = await ensureDiscoveryData(dossier);
 
     const verifiedNotes = dossier.verified_data?.notes || '';
-    const discoverySummary = dossier.discovery_result?.summary || dossier.discovery_result?.narrative || '';
-    const texts = [verifiedNotes, '', discoverySummary]; // indice 1 lasciato vuoto: era ai_narrative, motore non più usato in Folium — mantengo gli indici 0/2 stabili per non rompere la cache traduzioni già salvata
+    const fullDescription = editorial?.full_description || editorial?.short_description || '';
+    const locationSummary = editorial?.location_summary || '';
+    const tourismSummary = editorial?.tourism_summary || '';
+    const discoverySummary = disc?.summary || disc?.narrative || '';
+    const texts = [verifiedNotes, fullDescription, locationSummary, tourismSummary, discoverySummary];
     if (!texts.some(x => x)) return null;
 
     try {
@@ -743,7 +761,13 @@
         texts
       });
       if (!data?.success || !Array.isArray(data.translations)) return null;
-      const result = { verified_notes: data.translations[0] || '', ai_narrative: data.translations[1] || '', discovery_summary: data.translations[2] || '' };
+      const result = {
+        verified_notes: data.translations[0] || '',
+        full_description: data.translations[1] || '',
+        location_summary: data.translations[2] || '',
+        tourism_summary: data.translations[3] || '',
+        discovery_summary: data.translations[4] || '',
+      };
       const updatedTranslations = { ...(dossier.translations || {}), [lang]: result };
       await sb.from('folium_dossiers').update({ translations: updatedTranslations }).eq('id', dossier.id);
       dossier.translations = updatedTranslations;
@@ -783,7 +807,6 @@
     applyTheme(dossier);
     currentPageOrientation = dossier.page_orientation === 'landscape' ? 'landscape' : 'portrait'; // letto qui per la generazione PDF client-side (jsPDF), stesso valore usato da applyTheme
     renderLanguageSwitcher(dossier, lang);
-    const translated = await ensureDynamicTranslation(dossier, lang);
 
     // Gate lato viewer: le sezioni a costo (AI valuation/Discovery) si generano SOLO se
     // il piano effettivo al momento della visualizzazione le include, anche se il dossier
@@ -809,6 +832,14 @@
     // esplicito resta SOLO per il Discovery Engine (dossier._isPlatinum), l'unico ancora
     // davvero riservato/facoltativo per Gold/Platinum.
     dossier._editorialAllowed = true;
+    // Spostata QUI (prima era chiamata subito dopo renderLanguageSwitcher, troppo
+    // presto): ensureDynamicTranslation deve girare DOPO che dossier._editorialAllowed
+    // e dossier._isPlatinum sono impostati, altrimenti ensureEditorialAnalysis/
+    // ensureDiscoveryData (richiamate al suo interno per avere i testi da tradurre)
+    // si bloccherebbero subito trovando quei flag ancora non impostati, e le sezioni
+    // editoriali (presentazione/zona/turismo) non verrebbero mai tradotte — bug
+    // segnalato dall'utente, confermato dal PDF generato in tedesco.
+    const translated = await ensureDynamicTranslation(dossier, lang);
     const showAds = (tier !== 'platinum'); // Light e Gold hanno pubblicità, solo Platinum no
     // Se il dossier ha pubblicità, il pulsante "Stampa dal browser" resta nascosto: quel
     // dialogo permette di scegliere un intervallo di pagine e saltare quelle pubblicitarie
@@ -1078,9 +1109,9 @@
             `, false, false, idx === 0 ? title : null));
           });
         };
-        addTextPages('Editorial Overview', 'Presentazione della proposta', editorial.full_description || editorial.short_description || '');
-        if (editorial.location_summary) addTextPages('Editorial Overview', 'Attrattività della zona', editorial.location_summary);
-        if (editorial.tourism_summary) addTextPages('Editorial Overview', 'Contesto turistico', editorial.tourism_summary);
+        addTextPages('Editorial Overview', 'Presentazione della proposta', (lang !== 'it' && translated?.full_description) || editorial.full_description || editorial.short_description || '');
+        if (editorial.location_summary) addTextPages('Editorial Overview', 'Attrattività della zona', (lang !== 'it' && translated?.location_summary) || editorial.location_summary);
+        if (editorial.tourism_summary) addTextPages('Editorial Overview', 'Contesto turistico', (lang !== 'it' && translated?.tourism_summary) || editorial.tourism_summary);
       } else if (isOwnerViewing && editorialError) {
         pages.push(pageWrapper(`
           ${header}
