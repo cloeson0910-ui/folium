@@ -726,23 +726,18 @@
   };
   function t(key, lang){ return (UI_LABELS[lang] && UI_LABELS[lang][key]) || UI_LABELS.it[key] || key; }
 
-  async function ensureDynamicTranslation(dossier, lang){
-    if (lang === 'it') return null;
-    // Il vecchio formato di cache (solo verified_notes/ai_narrative/discovery_summary)
-    // non copriva la narrativa editoriale (presentazione/zona/turismo) — quelle 3
-    // sezioni restavano SEMPRE in italiano, bug segnalato dall'utente (verificato
-    // confrontando col PDF generato: solo le intestazioni di sezione cambiavano
-    // lingua, i paragrafi veri no). Una cache vecchia (senza "full_description") va
-    // quindi ignorata e rigenerata con tutti i testi.
-    const cached = dossier.translations && dossier.translations[lang];
-    if (cached && 'full_description' in cached) return cached;
+  // Messaggio di diagnosi mostrato DIRETTAMENTE nella pagina (non solo in console,
+  // troppo scomoda da usare) quando la traduzione non riesce — sotto il selettore
+  // lingua, ben visibile, per non dover più usare gli strumenti sviluppatore.
+  let lastTranslationDebugInfo = null;
 
-    // Editorial/Discovery richiesti anche qui (non solo più avanti in render()) per
-    // avere i testi SORGENTE da tradurre — ensureEditorialAnalysis/ensureDiscoveryData
-    // sono già scritte per essere sicure da richiamare più volte (controllano la
-    // cache sul dossier stesso prima di richiamare il motore), quindi non c'è doppio
-    // costo reale: la seconda chiamata più avanti in render() userà il valore già
-    // presente su dossier.editorial_analysis_result/discovery_result.
+  async function ensureDynamicTranslation(dossier, lang){
+    lastTranslationDebugInfo = null;
+    if (lang === 'it') return null;
+    const cached = dossier.translations && dossier.translations[lang];
+    const REQUIRED_KEYS = ['verified_notes', 'full_description', 'location_summary', 'tourism_summary', 'discovery_summary'];
+    if (cached && REQUIRED_KEYS.every(k => k in cached)) return cached;
+
     const { data: editorial } = await ensureEditorialAnalysis(dossier);
     const disc = await ensureDiscoveryData(dossier);
 
@@ -752,7 +747,10 @@
     const tourismSummary = editorial?.tourism_summary || '';
     const discoverySummary = disc?.summary || disc?.narrative || '';
     const texts = [verifiedNotes, fullDescription, locationSummary, tourismSummary, discoverySummary];
-    if (!texts.some(x => x)) return null;
+    if (!texts.some(x => x)) {
+      lastTranslationDebugInfo = 'Nessun testo sorgente da tradurre trovato (narrativa editoriale non ancora generata su questo dossier — editorial: ' + JSON.stringify(editorial) + ').';
+      return null;
+    }
 
     try {
       const data = await callImmonovaFunction('translate-public-content', {
@@ -760,7 +758,13 @@
         context: 'Dossier immobiliare FOLIUM per investitori privati.',
         texts
       });
-      if (!data?.success || !Array.isArray(data.translations)) return null;
+      if (!data?.success || !Array.isArray(data.translations)) {
+        lastTranslationDebugInfo = 'Il motore di traduzione ha risposto in modo inatteso: ' + JSON.stringify(data);
+        return null;
+      }
+      if (data.translations.length < texts.length) {
+        lastTranslationDebugInfo = `Traduzione parziale: attesi ${texts.length} testi, ricevuti ${data.translations.length}.`;
+      }
       const result = {
         verified_notes: data.translations[0] || '',
         full_description: data.translations[1] || '',
@@ -773,7 +777,7 @@
       dossier.translations = updatedTranslations;
       return result;
     } catch (e) {
-      console.error('Traduzione non disponibile:', e);
+      lastTranslationDebugInfo = 'Errore durante la chiamata al motore di traduzione: ' + (e.message || String(e));
       return null;
     }
   }
@@ -840,6 +844,19 @@
     // editoriali (presentazione/zona/turismo) non verrebbero mai tradotte — bug
     // segnalato dall'utente, confermato dal PDF generato in tedesco.
     const translated = await ensureDynamicTranslation(dossier, lang);
+    // Box di diagnosi VISIBILE sulla pagina (non solo in console) quando la
+    // traduzione fallisce — così non serve più usare gli strumenti sviluppatore per
+    // capire cosa non ha funzionato: basta uno screenshot della pagina stessa.
+    const langSwitcherBox = document.getElementById('langSwitcher');
+    let debugBox = document.getElementById('translationDebugBox');
+    if (debugBox) debugBox.remove();
+    if (lang !== 'it' && lastTranslationDebugInfo && langSwitcherBox) {
+      debugBox = document.createElement('div');
+      debugBox.id = 'translationDebugBox';
+      debugBox.style.cssText = 'background:#fdeaea;border:1px solid #e0a0a0;color:#a33;font-size:12px;padding:10px 14px;margin:8px 0;border-radius:8px;max-width:700px;';
+      debugBox.textContent = 'Diagnosi traduzione: ' + lastTranslationDebugInfo;
+      langSwitcherBox.insertAdjacentElement('afterend', debugBox);
+    }
     const showAds = (tier !== 'platinum'); // Light e Gold hanno pubblicità, solo Platinum no
     // Se il dossier ha pubblicità, il pulsante "Stampa dal browser" resta nascosto: quel
     // dialogo permette di scegliere un intervallo di pagine e saltare quelle pubblicitarie
