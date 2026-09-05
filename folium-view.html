@@ -146,8 +146,7 @@
   <div style="display:flex;gap:10px;">
     <button id="adminBtnView" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="location.href='folium-admin.html'">Dashboard admin</button>
     <button id="editBtn" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);" onclick="goToEdit()">Modifica dossier</button>
-    <button id="pdfBtn" onclick="generateServerPdf()" style="display:none;">Scarica PDF</button>
-    <button id="shareBtn" onclick="shareDossierLink()" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);">Copia link</button>
+    <button id="shareBtn" onclick="generateShareLink()" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);">Genera link</button>
     <button id="whatsappBtn" onclick="shareDossierWhatsapp()" style="display:none;background:#25D366;">Invia su WhatsApp</button>
     <button id="printBtn" onclick="window.print()" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);">Stampa dal browser</button>
   </div>
@@ -156,15 +155,14 @@
   <span class="share-status-spinner" style="width:14px;height:14px;border:2px solid #c9a75c;border-top-color:transparent;border-radius:50%;display:inline-block;animation:shareStatusSpin .8s linear infinite;flex:none;"></span>
   <span id="shareStatusText"></span>
 </div>
-<div id="manualCopyBox" style="display:none;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;padding:12px 24px;font-size:13px;color:#5c4a1f;background:#fbf3de;border-bottom:1px solid #e6d5a8;">
-  <span style="flex:none;">Link pronto — copialo qui:</span>
-  <input type="text" readonly id="manualCopyInput" style="flex:1 1 240px;max-width:440px;padding:7px 10px;border:1px solid #e6d5a8;border-radius:5px;font-size:12.5px;background:#fff;">
-  <button id="manualCopyBtn" style="flex:none;padding:7px 16px;border-radius:20px;border:none;background:#8a6d1f;color:#fff;font-size:12.5px;cursor:pointer;">Copia</button>
-</div>
 <style>@keyframes shareStatusSpin{to{transform:rotate(360deg);}}</style>
 
 <div id="devTierSimulatorView" style="display:none;align-items:center;gap:8px;padding:8px 16px;background:#eef4ff;border-bottom:1px solid #c9d9f5;"></div>
 <div id="langSwitcher" class="lang-switcher" style="display:none;"></div>
+<div id="generatedLinksBox" style="display:none;padding:16px 24px;background:#fbf8f0;border-bottom:1px solid #e6d5a8;">
+  <div style="font-size:11px;color:#8a7a52;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">Link generati</div>
+  <div id="generatedLinksList" style="display:flex;flex-direction:column;gap:8px;"></div>
+</div>
 
 <div id="leadGate" class="lead-gate" style="display:none;">
   <div class="lead-gate-card">
@@ -873,22 +871,22 @@
   }
 
   function switchLanguage(lang){
-    // Rete di sicurezza aggiuntiva rispetto all'await in getOrGenerateShareablePdfUrl/
-    // generateServerPdf: disabilita subito i pulsanti di export mentre la nuova lingua
-    // sta ancora caricando, così anche un click fisico rapidissimo non può partire.
+    // Rete di sicurezza aggiuntiva rispetto all'await in getOrGenerateShareablePdfUrl:
+    // disabilita subito i pulsanti di export mentre la nuova lingua sta ancora
+    // caricando, così anche un click fisico rapidissimo non può partire.
     // NUOVO 2026-09-06: i pulsanti disabilitati sembravano IDENTICI a quelli attivi
     // (nessuno stile :disabled prima d'ora) — un click sopra non faceva letteralmente
     // nulla e sembrava un pulsante rotto, non "spento". Ora anche lo stile lo rende
     // visibile, e qui si spiega SUBITO perché, non solo se poi si clicca "Condividi".
     const statusEl = document.getElementById('shareStatusMsg');
     if (lang !== 'it') showShareStatus(statusEl, `Caricamento della versione in ${(({en:'inglese',fr:'francese',de:'tedesco',es:'spagnolo',ar:'arabo',zh:'cinese'})[lang] || lang)} in corso…`);
-    ['pdfBtn', 'shareBtn', 'whatsappBtn', 'printBtn'].forEach(id => {
+    ['shareBtn', 'whatsappBtn', 'printBtn'].forEach(id => {
       const b = document.getElementById(id);
       if (b) b.disabled = true;
     });
     renderInFlight = render(lang);
     renderInFlight.finally(() => {
-      ['pdfBtn', 'shareBtn', 'whatsappBtn', 'printBtn'].forEach(id => {
+      ['shareBtn', 'whatsappBtn', 'printBtn'].forEach(id => {
         const b = document.getElementById(id);
         if (b) b.disabled = false;
       });
@@ -1478,6 +1476,10 @@
   // si apre ovunque all'istante, mostra un'anteprima vera su WhatsApp, nessun login.
   // Riusa generateDossierPdfBlob() già esistente (stessa funzione di "Scarica PDF").
   let cachedShareUrl = {}; // una entry per lingua: {it: '...', en: '...', ...}
+  // Collegamento diretto al file PDF (non alla pagina ponte di condivisione) per
+  // lingua — serve al link "Scarica" nel box del link generato, così scaricare non
+  // passa dalla pagina ponte HTML ma va dritto al file.
+  let cachedPdfDirectUrl = {};
   let currentLang = 'it';
   // Traccia il render() in corso: switchLanguage() NON lo aspettava (fire-and-forget),
   // quindi un click veloce su una lingua seguito subito da "Condividi"/"Scarica PDF"
@@ -1513,36 +1515,12 @@
   function hideShareStatus(statusEl){
     if (statusEl) statusEl.style.display = 'none';
   }
-  // Mostra il link pronto in una casella copiabile a mano — usata quando
-  // navigator.clipboard.writeText() fallisce perché il documento ha perso il focus
-  // nel frattempo (molto comune ora che l'attesa può durare fino a un minuto: basta
-  // che l'utente cambi tab o clicchi altrove mentre aspetta). Il link ESISTE ed è
-  // valido in ogni caso — non è un errore da far ripetere daccapo con un secondo
-  // click sullo stesso pulsante, va solo consegnato in un modo che non richieda il
-  // focus automatico. Il pulsante "Copia" qui dentro è un gesto utente fresco, quindi
-  // la clipboard funziona sempre quando viene cliccato.
-  function showManualCopyLink(url){
-    const box = document.getElementById('manualCopyBox');
-    const input = document.getElementById('manualCopyInput');
-    const btn = document.getElementById('manualCopyBtn');
-    if (!box || !input || !btn) { prompt('Copia questo link:', url); return; }
-    box.style.display = 'flex';
-    input.value = url;
-    input.onclick = () => input.select();
-    const originalBtnText = 'Copia';
-    btn.textContent = originalBtnText;
-    btn.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(url);
-      } catch (e) {
-        input.select();
-        document.execCommand('copy'); // fallback per browser/contesti dove anche questo click non basta
-      }
-      btn.textContent = 'Copiato ✓';
-      setTimeout(() => { btn.textContent = originalBtnText; }, 2000);
-    };
-    input.focus(); input.select();
-  }
+  // showManualCopyLink() rimossa (2026-09-06): sostituita dai box persistenti in
+  // #generatedLinksBox, che hanno SEMPRE un pulsante "Copia" dedicato per ogni lingua
+  // — non serve più un meccanismo di fallback separato per quando la copia
+  // automatica falliva subito dopo la generazione (il problema del focus perso
+  // durante l'attesa non si pone più: ora "Genera link" e "Copia" sono due azioni
+  // distinte e separate nel tempo, la seconda sempre un click fresco dell'utente).
 
   async function getOrGenerateShareablePdfUrl(statusEl){
     // Aspetta un eventuale switchLanguage() ancora in corso PRIMA di leggere currentLang
@@ -1583,6 +1561,7 @@
     // che ogni nuova generazione sia raggiungibile con un URL "mai visto prima" dalla
     // CDN, invece di sperare che l'invalidazione post-upsert sia già propagata.
     const pdfUrl = `${pdfPub.publicUrl}?v=${Date.now()}`;
+    cachedPdfDirectUrl[lang] = pdfUrl;
     showShareStatus(statusEl, 'Pubblicazione della pagina di condivisione… può richiedere fino a un minuto la prima volta, così il link che riceverai sarà già attivo.');
 
     // dossier/coverPhoto NON sono visibili qui (sono locali a render()) — query
@@ -1642,31 +1621,70 @@
     return cachedShareUrl[lang];
   }
 
-  async function shareDossierLink(){
+  // Nomi lingua per le etichette dei box "Link generati" — stesso dizionario già
+  // usato altrove per i messaggi di stato, centralizzato qui una volta sola.
+  const LANG_NAMES_FULL = { it:'Italiano', en:'English', fr:'Français', de:'Deutsch', es:'Español', ar:'العربية', zh:'中文' };
+
+  // Crea o aggiorna la riga del link generato per una lingua in #generatedLinksBox —
+  // una riga per lingua, mai duplicata: rigenerare la stessa lingua aggiorna quella
+  // già presente invece di aggiungerne un'altra identica sotto.
+  function renderGeneratedLinkRow(lang, shareUrl, pdfUrl){
+    const container = document.getElementById('generatedLinksBox');
+    const list = document.getElementById('generatedLinksList');
+    if (!container || !list) return;
+    container.style.display = 'block';
+    let row = document.getElementById('generatedLinkRow-' + lang);
+    if (!row) {
+      row = document.createElement('div');
+      row.id = 'generatedLinkRow-' + lang;
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+      list.appendChild(row);
+    }
+    row.innerHTML = `
+      <span style="flex:none;font-size:12px;font-weight:600;color:#8a6d1f;min-width:72px;">${esc(LANG_NAMES_FULL[lang] || lang)}</span>
+      <input type="text" readonly value="${esc(shareUrl)}" style="flex:1 1 220px;min-width:180px;max-width:420px;padding:6px 9px;border:1px solid #e6d5a8;border-radius:5px;font-size:12px;background:#fff;" onclick="this.select()">
+      <button type="button" style="flex:none;padding:6px 14px;border-radius:16px;border:none;background:#8a6d1f;color:#fff;font-size:12px;cursor:pointer;" onclick="copyGeneratedLink('${lang}', this)">Copia</button>
+      <a href="${esc(pdfUrl)}" target="_blank" rel="noopener" style="flex:none;padding:6px 14px;border-radius:16px;border:1px solid #8a6d1f;color:#8a6d1f;font-size:12px;text-decoration:none;">Scarica</a>
+    `;
+  }
+
+  // Click "Copia" dentro un box già generato: SEMPRE un gesto utente fresco (a
+  // differenza del vecchio tentativo di copia automatica subito dopo un'attesa fino a
+  // un minuto), quindi navigator.clipboard.writeText() qui non fallisce mai per
+  // perdita di focus — il fallback execCommand resta solo per i rari contesti dove
+  // manca proprio il supporto Clipboard API.
+  async function copyGeneratedLink(lang, btn){
+    const url = cachedShareUrl[lang];
+    if (!url) return;
+    const original = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch (e) {
+      const row = document.getElementById('generatedLinkRow-' + lang);
+      const input = row ? row.querySelector('input') : null;
+      if (input) { input.focus(); input.select(); document.execCommand('copy'); }
+    }
+    btn.textContent = 'Copiato ✓';
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  }
+
+  // Sostituisce sia la vecchia "Copia link" sia "Scarica PDF": un solo pulsante
+  // "Genera link" che produce il link di condivisione E il collegamento diretto al
+  // PDF, mostrati insieme nel box della lingua corrente — copia e scarica agiscono
+  // entrambi sullo STESSO link appena generato, mai una generazione separata.
+  async function generateShareLink(){
     const btn = document.getElementById('shareBtn');
     const statusEl = document.getElementById('shareStatusMsg');
     const original = btn.textContent;
-    document.getElementById('manualCopyBox').style.display = 'none'; // nasconde un eventuale box rimasto da un tentativo precedente
-    btn.disabled = true; btn.textContent = 'Preparazione link…';
-    let url;
+    btn.disabled = true; btn.textContent = 'Generazione link…';
     try {
-      url = await getOrGenerateShareablePdfUrl(statusEl);
+      const shareUrl = await getOrGenerateShareablePdfUrl(statusEl);
+      renderGeneratedLinkRow(currentLang, shareUrl, cachedPdfDirectUrl[currentLang] || shareUrl);
     } catch (e) {
       hideShareStatus(statusEl);
-      alert('Non è stato possibile preparare il link: ' + (e.message || e));
-      btn.textContent = original; btn.disabled = false;
-      return;
-    }
-    btn.textContent = original; btn.disabled = false;
-    try {
-      await navigator.clipboard.writeText(url);
-      btn.textContent = 'Link copiato ✓';
-      setTimeout(() => { btn.textContent = original; }, 2000);
-    } catch (e) {
-      // Il link è pronto e valido — il fallimento riguarda SOLO la copia automatica
-      // (quasi sempre perché la pagina ha perso il focus durante l'attesa), quindi non
-      // è un errore da segnalare con un alert: si mostra il link per la copia manuale.
-      showManualCopyLink(url);
+      alert('Non è stato possibile generare il link: ' + (e.message || e));
+    } finally {
+      btn.disabled = false; btn.textContent = original;
     }
   }
 
@@ -1676,9 +1694,10 @@
     const original = btn.textContent;
     btn.disabled = true; btn.textContent = 'Preparazione…';
     try {
-      const url = await getOrGenerateShareablePdfUrl(statusEl);
+      const shareUrl = await getOrGenerateShareablePdfUrl(statusEl);
+      renderGeneratedLinkRow(currentLang, shareUrl, cachedPdfDirectUrl[currentLang] || shareUrl);
       const address = currentFooterText.replace('FOLIUM · ', '') || 'questo immobile';
-      const message = `Ecco il dossier di ${address}:\n${url}`;
+      const message = `Ecco il dossier di ${address}:\n${shareUrl}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     } catch (e) {
       hideShareStatus(statusEl);
@@ -1688,34 +1707,12 @@
     }
   }
 
-  async function generateServerPdf(){
-    const btn = document.getElementById('pdfBtn');
-    const statusEl = document.getElementById('shareStatusMsg');
-    const original = btn.textContent;
-    btn.disabled = true; btn.textContent = 'Generazione PDF in corso…';
-    try {
-      // Stesso motivo di getOrGenerateShareablePdfUrl(): non fotografare il DOM se un
-      // cambio lingua è ancora in corso, altrimenti "Scarica PDF" può catturare la
-      // lingua precedente anche se il pulsante lingua attivo è già quello nuovo.
-      if (renderInFlight) {
-        showShareStatus(statusEl, `Stiamo traducendo i contenuti in ${(({it:'italiano',en:'inglese',fr:'francese',de:'tedesco',es:'spagnolo',ar:'arabo',zh:'cinese'})[currentLang] || currentLang)} — succede solo la prima volta che si apre questa lingua, può richiedere fino a 20-30 secondi.`);
-        try { await renderInFlight; } catch (e) { /* già gestito dentro render() */ }
-      }
-      hideShareStatus(statusEl);
-      const langSuffix = currentLang !== 'it' ? ` (${currentLang.toUpperCase()})` : '';
-      const blob = await generateDossierPdfBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `Folium - ${currentFooterText.replace('FOLIUM · ', '') || 'dossier'}${langSuffix}.pdf`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    } catch (e) {
-      hideShareStatus(statusEl);
-      alert('Generazione PDF non riuscita: ' + (e.message || e) + '\n\nPuoi comunque usare "Stampa dal browser" nel frattempo.');
-    } finally {
-      btn.disabled = false; btn.textContent = original;
-    }
-  }
+  // generateServerPdf() rimossa (2026-09-06): "Scarica PDF" come pulsante/flusso
+  // separato non esiste più — lo scaricamento ora avviene dal link "Scarica" nel box
+  // del link generato in #generatedLinksBox, che punta DIRETTAMENTE al PDF già
+  // caricato su Storage da getOrGenerateShareablePdfUrl() (stesso file del link di
+  // condivisione, mai una seconda generazione client-side separata).
+
 
   async function checkAccessAndRender(){
     const { data: dossier } = await sb.from('folium_dossiers').select('id, client_id, is_shared').eq('id', dossierId).single();
@@ -1727,7 +1724,6 @@
 
     if (isOwnerAccount || isDossierOwner) {
       document.getElementById('printBtn').style.display = '';
-      document.getElementById('pdfBtn').style.display = '';
       document.getElementById('shareBtn').style.display = '';
       document.getElementById('whatsappBtn').style.display = '';
       // Link alla dashboard admin: SOLO per l'account sviluppatore, mai per il
