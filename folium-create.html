@@ -437,6 +437,12 @@
   let logoFile = null;
   let propertyFiles = [];
   let destinationFiles = [];
+  // Foto GIÀ salvate sul dossier (popolate solo in modalità modifica) — mostrate come
+  // anteprima reale invece di un banner testuale, con possibilità di rimuoverle.
+  // removedExistingPhotoIds raccoglie gli id da cancellare davvero al salvataggio.
+  let existingPropertyPhotos = [];
+  let existingDestinationPhotos = [];
+  let removedExistingPhotoIds = [];
   let currentUser = null;
   let currentClient = null;
 
@@ -556,7 +562,16 @@
           const btn = document.getElementById('btnSubmit');
           if (btn) btn.textContent = 'Salva modifiche';
           const banner = document.getElementById('planBanner');
-          if (banner) banner.insertAdjacentHTML('afterend', `<div style="background:#eef4ff;border:1px solid #c9d9f5;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#3a5a9c;">Stai modificando un dossier già generato. Le foto già caricate restano; qualsiasi nuova foto scelta qui sotto verrà aggiunta.</div>`);
+          if (banner) banner.insertAdjacentHTML('afterend', `<div style="background:#eef4ff;border:1px solid #c9d9f5;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#3a5a9c;">Stai modificando un dossier già generato. Le foto già caricate sono mostrate qui sotto: tocca ✕ per rimuoverne una, oppure aggiungine di nuove.</div>`);
+
+          // Precarico le foto già salvate come vere anteprime (non solo un avviso a
+          // parole) — segnalato dall'utente: aprendo "Modifica" le foto già caricate
+          // devono ripresentarsi, non solo essere menzionate genericamente.
+          const { data: existingPhotoRows } = await sb.from('folium_dossier_photos').select('id, photo_url, photo_kind').eq('dossier_id', editDossierId).order('sort_order');
+          existingPropertyPhotos = (existingPhotoRows || []).filter(p => p.photo_kind === 'property');
+          existingDestinationPhotos = (existingPhotoRows || []).filter(p => p.photo_kind === 'destination');
+          renderPropPreview();
+          renderDestPreview();
         }
       }
     } catch (err) {
@@ -875,6 +890,20 @@
     container.appendChild(div);
   }
 
+  // Come renderThumb, ma per una foto GIÀ salvata (URL reale, non un File locale) —
+  // usata per mostrare le foto esistenti quando si modifica un dossier.
+  function renderThumbFromUrl(container, url, onRemove){
+    const div = document.createElement('div');
+    div.className = 'thumb';
+    const img = document.createElement('img');
+    img.src = url;
+    const rm = document.createElement('div');
+    rm.className = 'rm'; rm.textContent = '✕';
+    rm.onclick = onRemove;
+    div.appendChild(img); div.appendChild(rm);
+    container.appendChild(div);
+  }
+
   document.getElementById('logoInput').addEventListener('change', (e)=>{
     logoFile = e.target.files[0] || null;
     const box = document.getElementById('logoPreview');
@@ -885,7 +914,7 @@
   document.getElementById('propPhotos').addEventListener('change', (e)=>{
     const files = Array.from(e.target.files);
     for (const f of files) {
-      if (propertyFiles.length >= MAX_PROPERTY_PHOTOS) break;
+      if (existingPropertyPhotos.length + propertyFiles.length >= MAX_PROPERTY_PHOTOS) break;
       propertyFiles.push(f);
     }
     e.target.value = '';
@@ -895,10 +924,20 @@
   function renderPropPreview(){
     const box = document.getElementById('propPreview');
     box.innerHTML = '';
+    // Prima le foto già salvate (modalità modifica), poi quelle nuove appena scelte —
+    // stesso ordine in cui compariranno nel dossier.
+    existingPropertyPhotos.forEach((p, idx) => {
+      renderThumbFromUrl(box, p.photo_url, ()=>{
+        removedExistingPhotoIds.push(p.id);
+        existingPropertyPhotos.splice(idx, 1);
+        renderPropPreview();
+      });
+    });
     propertyFiles.forEach((f, idx) => {
       renderThumb(box, f, ()=>{ propertyFiles.splice(idx,1); renderPropPreview(); });
     });
-    document.getElementById('propCount').textContent = `${propertyFiles.length} / ${MAX_PROPERTY_PHOTOS} foto`;
+    const total = existingPropertyPhotos.length + propertyFiles.length;
+    document.getElementById('propCount').textContent = `${total} / ${MAX_PROPERTY_PHOTOS} foto`;
   }
 
   document.getElementById('destPhotos').addEventListener('change', (e)=>{
@@ -911,6 +950,13 @@
   function renderDestPreview(){
     const box = document.getElementById('destPreview');
     box.innerHTML = '';
+    existingDestinationPhotos.forEach((p, idx) => {
+      renderThumbFromUrl(box, p.photo_url, ()=>{
+        removedExistingPhotoIds.push(p.id);
+        existingDestinationPhotos.splice(idx, 1);
+        renderDestPreview();
+      });
+    });
     destinationFiles.forEach((f, idx) => {
       renderThumb(box, f, ()=>{ destinationFiles.splice(idx,1); renderDestPreview(); });
     });
@@ -1444,6 +1490,27 @@
         }).select().single();
         if (dossierError) throw dossierError;
         dossier = created;
+      }
+
+      // Foto esistenti rimosse dall'utente in modalità modifica: cancellate DAVVERO
+      // ora (riga DB + file su Storage), prima di calcolare l'offset per le nuove.
+      if (removedExistingPhotoIds.length) {
+        const { data: rowsToDelete } = await sb.from('folium_dossier_photos').select('id, photo_url').in('id', removedExistingPhotoIds);
+        await sb.from('folium_dossier_photos').delete().in('id', removedExistingPhotoIds);
+        // Rimozione del file fisico su Storage: best-effort, mai blocca il salvataggio
+        // se fallisce (es. path non riconosciuto) — la riga DB è comunque già sparita.
+        for (const row of (rowsToDelete || [])) {
+          try {
+            const marker = '/folium-photos/';
+            const idx = row.photo_url.indexOf(marker);
+            if (idx >= 0) {
+              const path = row.photo_url.slice(idx + marker.length);
+              await sb.storage.from('folium-photos').remove([path]);
+            }
+          } catch (e) {
+            console.error('Rimozione file foto da Storage fallita (non bloccante):', e);
+          }
+        }
       }
 
       btn.textContent = `Caricamento foto (0/${propertyFiles.length + destinationFiles.length})…`;
