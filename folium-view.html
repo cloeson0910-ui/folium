@@ -1387,6 +1387,10 @@
     const title = `Dossier FOLIUM - ${address}`;
     const description = `Scopri il dossier completo di ${address}, realizzato con FOLIUM.`;
     const sharePagePath = `${dossierId}.html`;
+    // URL pubblico prevedibile (deterministico su path+bucket): lo componiamo PRIMA
+    // dell'upload così può comparire come og:url dentro l'HTML stesso, senza dover
+    // fare un giro extra di upload→lettura URL→riscrittura del file.
+    const predictedShareUrl = `${SUPABASE_URL}/storage/v1/object/public/folium-share-pages/${sharePagePath}`;
     const shareHtml = `<!DOCTYPE html>
 <html lang="it">
 <head>
@@ -1396,6 +1400,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="${escHtml(title)}">
 <meta property="og:description" content="${escHtml(description)}">
+<meta property="og:url" content="${escHtml(predictedShareUrl)}">
 ${coverPhoto ? `<meta property="og:image" content="${escHtml(coverPhoto)}">
 <meta property="og:image:secure_url" content="${escHtml(coverPhoto)}">
 <meta property="og:image:type" content="image/jpeg">` : ''}
