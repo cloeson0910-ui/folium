@@ -155,6 +155,11 @@
   <span class="share-status-spinner" style="width:14px;height:14px;border:2px solid #c9a75c;border-top-color:transparent;border-radius:50%;display:inline-block;animation:shareStatusSpin .8s linear infinite;flex:none;"></span>
   <span id="shareStatusText"></span>
 </div>
+<div id="manualCopyBox" style="display:none;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;padding:12px 24px;font-size:13px;color:#5c4a1f;background:#fbf3de;border-bottom:1px solid #e6d5a8;">
+  <span style="flex:none;">Link pronto — copialo qui:</span>
+  <input type="text" readonly id="manualCopyInput" style="flex:1 1 240px;max-width:440px;padding:7px 10px;border:1px solid #e6d5a8;border-radius:5px;font-size:12.5px;background:#fff;">
+  <button id="manualCopyBtn" style="flex:none;padding:7px 16px;border-radius:20px;border:none;background:#8a6d1f;color:#fff;font-size:12.5px;cursor:pointer;">Copia</button>
+</div>
 <style>@keyframes shareStatusSpin{to{transform:rotate(360deg);}}</style>
 
 <div id="devTierSimulatorView" style="display:none;align-items:center;gap:8px;padding:8px 16px;background:#eef4ff;border-bottom:1px solid #c9d9f5;"></div>
@@ -1500,6 +1505,36 @@
   function hideShareStatus(statusEl){
     if (statusEl) statusEl.style.display = 'none';
   }
+  // Mostra il link pronto in una casella copiabile a mano — usata quando
+  // navigator.clipboard.writeText() fallisce perché il documento ha perso il focus
+  // nel frattempo (molto comune ora che l'attesa può durare fino a un minuto: basta
+  // che l'utente cambi tab o clicchi altrove mentre aspetta). Il link ESISTE ed è
+  // valido in ogni caso — non è un errore da far ripetere daccapo con un secondo
+  // click sullo stesso pulsante, va solo consegnato in un modo che non richieda il
+  // focus automatico. Il pulsante "Copia" qui dentro è un gesto utente fresco, quindi
+  // la clipboard funziona sempre quando viene cliccato.
+  function showManualCopyLink(url){
+    const box = document.getElementById('manualCopyBox');
+    const input = document.getElementById('manualCopyInput');
+    const btn = document.getElementById('manualCopyBtn');
+    if (!box || !input || !btn) { prompt('Copia questo link:', url); return; }
+    box.style.display = 'flex';
+    input.value = url;
+    input.onclick = () => input.select();
+    const originalBtnText = 'Copia';
+    btn.textContent = originalBtnText;
+    btn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch (e) {
+        input.select();
+        document.execCommand('copy'); // fallback per browser/contesti dove anche questo click non basta
+      }
+      btn.textContent = 'Copiato ✓';
+      setTimeout(() => { btn.textContent = originalBtnText; }, 2000);
+    };
+    input.focus(); input.select();
+  }
 
   async function getOrGenerateShareablePdfUrl(statusEl){
     // Aspetta un eventuale switchLanguage() ancora in corso PRIMA di leggere currentLang
@@ -1603,16 +1638,27 @@
     const btn = document.getElementById('shareBtn');
     const statusEl = document.getElementById('shareStatusMsg');
     const original = btn.textContent;
+    document.getElementById('manualCopyBox').style.display = 'none'; // nasconde un eventuale box rimasto da un tentativo precedente
     btn.disabled = true; btn.textContent = 'Preparazione link…';
+    let url;
     try {
-      const url = await getOrGenerateShareablePdfUrl(statusEl);
-      await navigator.clipboard.writeText(url);
-      btn.textContent = 'Link copiato ✓';
-      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+      url = await getOrGenerateShareablePdfUrl(statusEl);
     } catch (e) {
       hideShareStatus(statusEl);
       alert('Non è stato possibile preparare il link: ' + (e.message || e));
       btn.textContent = original; btn.disabled = false;
+      return;
+    }
+    btn.textContent = original; btn.disabled = false;
+    try {
+      await navigator.clipboard.writeText(url);
+      btn.textContent = 'Link copiato ✓';
+      setTimeout(() => { btn.textContent = original; }, 2000);
+    } catch (e) {
+      // Il link è pronto e valido — il fallimento riguarda SOLO la copia automatica
+      // (quasi sempre perché la pagina ha perso il focus durante l'attesa), quindi non
+      // è un errore da segnalare con un alert: si mostra il link per la copia manuale.
+      showManualCopyLink(url);
     }
   }
 
