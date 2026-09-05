@@ -716,13 +716,13 @@
   // disponibili), contenuti dinamici (dati verificati/analisi AI/territorio)
   // via immonova-translate-public-content (chiamata diretta, cache su DB).
   const UI_LABELS = {
-    it: { photos:'Foto immobile', verified:'Dati verificati', destination:'Zona e dintorni', population:'Popolazione della zona', income:'Reddito medio della zona', market:'Analisi di mercato', territory:'Territorio e accessibilità', dedicated:'Spazio dedicato', proposal:'Presentazione della proposta', areaAttractiveness:'Attrattività della zona', touristContext:'Contesto turistico', propertySummary:"Sintesi dell'immobile", assetLocation:'Posizione e localizzazione', neighborhoodServices:'Servizi nelle vicinanze', territoryData:'Dati del territorio', agencySummary:'Riepilogo agenzia' },
-    en: { photos:'Property photos', verified:'Verified data', destination:'Area & surroundings', population:'Local population', income:'Average local income', market:'Market analysis', territory:'Territory & accessibility', dedicated:'Dedicated space', proposal:'Presentation of the proposal', areaAttractiveness:'Area appeal', touristContext:'Tourism context', propertySummary:'Property summary', assetLocation:'Location', neighborhoodServices:'Nearby services', territoryData:'Territory data', agencySummary:'Agency summary' },
-    fr: { photos:'Photos du bien', verified:'Données vérifiées', destination:'Zone et alentours', population:'Population locale', income:'Revenu moyen local', market:'Analyse de marché', territory:'Territoire et accessibilité', dedicated:'Espace dédié', proposal:'Présentation de la proposition', areaAttractiveness:'Attractivité de la zone', touristContext:'Contexte touristique', propertySummary:'Synthèse du bien', assetLocation:'Emplacement', neighborhoodServices:'Services à proximité', territoryData:'Données territoriales', agencySummary:"Résumé de l'agence" },
-    de: { photos:'Immobilienfotos', verified:'Verifizierte Daten', destination:'Umgebung', population:'Bevölkerung der Zone', income:'Durchschnittseinkommen', market:'Marktanalyse', territory:'Gebiet und Erreichbarkeit', dedicated:'Werbefläche', proposal:'Vorstellung des Angebots', areaAttractiveness:'Attraktivität der Gegend', touristContext:'Touristischer Kontext', propertySummary:'Objektübersicht', assetLocation:'Lage', neighborhoodServices:'Dienste in der Nähe', territoryData:'Gebietsdaten', agencySummary:'Übersicht Agentur' },
-    es: { photos:'Fotos del inmueble', verified:'Datos verificados', destination:'Zona y alrededores', population:'Población de la zona', income:'Renta media de la zona', market:'Análisis de mercado', territory:'Territorio y accesibilidad', dedicated:'Espacio dedicado', proposal:'Presentación de la propuesta', areaAttractiveness:'Atractivo de la zona', touristContext:'Contexto turístico', propertySummary:'Resumen del inmueble', assetLocation:'Ubicación', neighborhoodServices:'Servicios cercanos', territoryData:'Datos del territorio', agencySummary:'Resumen de la agencia' },
-    ar: { photos:'صور العقار', verified:'بيانات موثقة', destination:'المنطقة المحيطة', population:'سكان المنطقة', income:'متوسط دخل المنطقة', market:'تحليل السوق', territory:'المنطقة وإمكانية الوصول', dedicated:'مساحة مخصصة', proposal:'عرض المقترح', areaAttractiveness:'جاذبية المنطقة', touristContext:'السياق السياحي', propertySummary:'ملخص العقار', assetLocation:'الموقع', neighborhoodServices:'الخدمات القريبة', territoryData:'بيانات المنطقة', agencySummary:'ملخص الوكالة' },
-    zh: { photos:'房产照片', verified:'核实数据', destination:'周边区域', population:'该地区人口', income:'该地区平均收入', market:'市场分析', territory:'区域与交通', dedicated:'广告位', proposal:'提案介绍', areaAttractiveness:'区域吸引力', touristContext:'旅游背景', propertySummary:'房产概要', assetLocation:'位置', neighborhoodServices:'周边服务', territoryData:'区域数据', agencySummary:'中介摘要' },
+    it: { photos:'Foto immobile', verified:'Dati verificati', destination:'Zona e dintorni', population:'Popolazione della zona', income:'Reddito medio della zona', market:'Analisi di mercato', territory:'Territorio e accessibilità', dedicated:'Spazio dedicato', proposal:'Presentazione della proposta', areaAttractiveness:'Attrattività della zona', touristContext:'Contesto turistico', propertySummary:"Sintesi dell'immobile", assetLocation:'Posizione e localizzazione', neighborhoodServices:'Servizi nelle vicinanze', territoryData:'Dati del territorio', agencySummary:'Riepilogo agenzia', typology:'Tipologia', surface:'Superficie', priceRequested:'Prezzo richiesto', onRequest:'Su richiesta', address:'Indirizzo', postalCode:'CAP', municipality:'Comune', province:'Provincia', region:'Regione', schools:'Scuole', hospitals:'Ospedali', pharmacies:'Farmacie', supermarkets:'Supermercati', nearbyServicesIntro:"Scuole, ospedali, farmacie e supermercati entro 1,5 km dall'immobile — dati OpenStreetMap, aggiornati in tempo reale.", populationShort:'Popolazione', altitude:'Altitudine', noAdditionalData:'Nessun dato aggiuntivo inserito.', agencyAgent:'Agenzia / Agente', email:'Email', phone:'Telefono', propertyAddressRef:'Indirizzo immobile di riferimento', dataSources:'Fonti dei dati' },
+    en: { photos:'Property photos', verified:'Verified data', destination:'Area & surroundings', population:'Local population', income:'Average local income', market:'Market analysis', territory:'Territory & accessibility', dedicated:'Dedicated space', proposal:'Presentation of the proposal', areaAttractiveness:'Area appeal', touristContext:'Tourism context', propertySummary:'Property summary', assetLocation:'Location', neighborhoodServices:'Nearby services', territoryData:'Territory data', agencySummary:'Agency summary', typology:'Type', surface:'Size', priceRequested:'Asking price', onRequest:'On request', address:'Address', postalCode:'Postal code', municipality:'Municipality', province:'Province', region:'Region', schools:'Schools', hospitals:'Hospitals', pharmacies:'Pharmacies', supermarkets:'Supermarkets', nearbyServicesIntro:'Schools, hospitals, pharmacies and supermarkets within 1.5 km of the property — OpenStreetMap data, updated in real time.', populationShort:'Population', altitude:'Altitude', noAdditionalData:'No additional data provided.', agencyAgent:'Agency / Agent', email:'Email', phone:'Phone', propertyAddressRef:'Reference property address', dataSources:'Data sources' },
+    fr: { photos:'Photos du bien', verified:'Données vérifiées', destination:'Zone et alentours', population:'Population locale', income:'Revenu moyen local', market:'Analyse de marché', territory:'Territoire et accessibilité', dedicated:'Espace dédié', proposal:'Présentation de la proposition', areaAttractiveness:'Attractivité de la zone', touristContext:'Contexte touristique', propertySummary:'Synthèse du bien', assetLocation:'Emplacement', neighborhoodServices:'Services à proximité', territoryData:'Données territoriales', agencySummary:"Résumé de l'agence", typology:'Typologie', surface:'Surface', priceRequested:'Prix demandé', onRequest:'Sur demande', address:'Adresse', postalCode:'Code postal', municipality:'Commune', province:'Province', region:'Région', schools:'Écoles', hospitals:'Hôpitaux', pharmacies:'Pharmacies', supermarkets:'Supermarchés', nearbyServicesIntro:'Écoles, hôpitaux, pharmacies et supermarchés dans un rayon de 1,5 km du bien — données OpenStreetMap, mises à jour en temps réel.', populationShort:'Population', altitude:'Altitude', noAdditionalData:'Aucune donnée supplémentaire fournie.', agencyAgent:'Agence / Agent', email:'E-mail', phone:'Téléphone', propertyAddressRef:'Adresse du bien de référence', dataSources:'Sources des données' },
+    de: { photos:'Immobilienfotos', verified:'Verifizierte Daten', destination:'Umgebung', population:'Bevölkerung der Zone', income:'Durchschnittseinkommen', market:'Marktanalyse', territory:'Gebiet und Erreichbarkeit', dedicated:'Werbefläche', proposal:'Vorstellung des Angebots', areaAttractiveness:'Attraktivität der Gegend', touristContext:'Touristischer Kontext', propertySummary:'Objektübersicht', assetLocation:'Lage', neighborhoodServices:'Dienste in der Nähe', territoryData:'Gebietsdaten', agencySummary:'Übersicht Agentur', typology:'Objektart', surface:'Fläche', priceRequested:'Geforderter Preis', onRequest:'Auf Anfrage', address:'Adresse', postalCode:'PLZ', municipality:'Gemeinde', province:'Provinz', region:'Region', schools:'Schulen', hospitals:'Krankenhäuser', pharmacies:'Apotheken', supermarkets:'Supermärkte', nearbyServicesIntro:'Schulen, Krankenhäuser, Apotheken und Supermärkte im Umkreis von 1,5 km der Immobilie — OpenStreetMap-Daten, in Echtzeit aktualisiert.', populationShort:'Bevölkerung', altitude:'Höhe', noAdditionalData:'Keine zusätzlichen Daten vorhanden.', agencyAgent:'Agentur / Makler', email:'E-Mail', phone:'Telefon', propertyAddressRef:'Referenzadresse der Immobilie', dataSources:'Datenquellen' },
+    es: { photos:'Fotos del inmueble', verified:'Datos verificados', destination:'Zona y alrededores', population:'Población de la zona', income:'Renta media de la zona', market:'Análisis de mercado', territory:'Territorio y accesibilidad', dedicated:'Espacio dedicado', proposal:'Presentación de la propuesta', areaAttractiveness:'Atractivo de la zona', touristContext:'Contexto turístico', propertySummary:'Resumen del inmueble', assetLocation:'Ubicación', neighborhoodServices:'Servicios cercanos', territoryData:'Datos del territorio', agencySummary:'Resumen de la agencia', typology:'Tipología', surface:'Superficie', priceRequested:'Precio solicitado', onRequest:'A consultar', address:'Dirección', postalCode:'Código postal', municipality:'Municipio', province:'Provincia', region:'Región', schools:'Colegios', hospitals:'Hospitales', pharmacies:'Farmacias', supermarkets:'Supermercados', nearbyServicesIntro:'Colegios, hospitales, farmacias y supermercados a menos de 1,5 km del inmueble — datos de OpenStreetMap, actualizados en tiempo real.', populationShort:'Población', altitude:'Altitud', noAdditionalData:'No se han indicado datos adicionales.', agencyAgent:'Agencia / Agente', email:'Correo electrónico', phone:'Teléfono', propertyAddressRef:'Dirección del inmueble de referencia', dataSources:'Fuentes de datos' },
+    ar: { photos:'صور العقار', verified:'بيانات موثقة', destination:'المنطقة المحيطة', population:'سكان المنطقة', income:'متوسط دخل المنطقة', market:'تحليل السوق', territory:'المنطقة وإمكانية الوصول', dedicated:'مساحة مخصصة', proposal:'عرض المقترح', areaAttractiveness:'جاذبية المنطقة', touristContext:'السياق السياحي', propertySummary:'ملخص العقار', assetLocation:'الموقع', neighborhoodServices:'الخدمات القريبة', territoryData:'بيانات المنطقة', agencySummary:'ملخص الوكالة', typology:'النوع', surface:'المساحة', priceRequested:'السعر المطلوب', onRequest:'عند الطلب', address:'العنوان', postalCode:'الرمز البريدي', municipality:'البلدية', province:'المقاطعة', region:'المنطقة', schools:'المدارس', hospitals:'المستشفيات', pharmacies:'الصيدليات', supermarkets:'السوبرماركت', nearbyServicesIntro:'المدارس والمستشفيات والصيدليات والسوبرماركت في نطاق 1.5 كم من العقار — بيانات OpenStreetMap، محدثة في الوقت الفعلي.', populationShort:'السكان', altitude:'الارتفاع', noAdditionalData:'لا توجد بيانات إضافية.', agencyAgent:'الوكالة / الوكيل', email:'البريد الإلكتروني', phone:'الهاتف', propertyAddressRef:'عنوان العقار المرجعي', dataSources:'مصادر البيانات' },
+    zh: { photos:'房产照片', verified:'核实数据', destination:'周边区域', population:'该地区人口', income:'该地区平均收入', market:'市场分析', territory:'区域与交通', dedicated:'广告位', proposal:'提案介绍', areaAttractiveness:'区域吸引力', touristContext:'旅游背景', propertySummary:'房产概要', assetLocation:'位置', neighborhoodServices:'周边服务', territoryData:'区域数据', agencySummary:'中介摘要', typology:'类型', surface:'面积', priceRequested:'要价', onRequest:'面议', address:'地址', postalCode:'邮编', municipality:'市镇', province:'省份', region:'大区', schools:'学校', hospitals:'医院', pharmacies:'药房', supermarkets:'超市', nearbyServicesIntro:'房产1.5公里范围内的学校、医院、药房和超市——OpenStreetMap数据，实时更新。', populationShort:'人口', altitude:'海拔', noAdditionalData:'未提供其他数据。', agencyAgent:'中介/经纪人', email:'电子邮件', phone:'电话', propertyAddressRef:'参考房产地址', dataSources:'数据来源' },
   };
   function t(key, lang){ return (UI_LABELS[lang] && UI_LABELS[lang][key]) || UI_LABELS.it[key] || key; }
 
@@ -848,7 +848,22 @@
     box.innerHTML = all.map(l => `<div class="lang-pill ${l === currentLang ? 'active' : ''}" onclick="switchLanguage('${l}')">${names[l] || l}</div>`).join('');
   }
 
-  function switchLanguage(lang){ render(lang); }
+  function switchLanguage(lang){
+    // Rete di sicurezza aggiuntiva rispetto all'await in getOrGenerateShareablePdfUrl/
+    // generateServerPdf: disabilita subito i pulsanti di export mentre la nuova lingua
+    // sta ancora caricando, così anche un click fisico rapidissimo non può partire.
+    ['pdfBtn', 'shareBtn', 'whatsappBtn', 'printBtn'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = true;
+    });
+    renderInFlight = render(lang);
+    renderInFlight.finally(() => {
+      ['pdfBtn', 'shareBtn', 'whatsappBtn', 'printBtn'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.disabled = false;
+      });
+    });
+  }
 
   async function render(lang, forcedTier){
     lang = lang || 'it';
@@ -999,9 +1014,9 @@
       ${header}
       ${sectionHead('Editorial Overview', t('propertySummary', lang))}
       <div class="metric-grid">
-        <div class="metric-card"><div class="metric-label">Tipologia</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_type)}</div></div>
-        <div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${dossier.property_size_sqm ? esc(dossier.property_size_sqm) + ' mq' : '—'}</div></div>
-        <div class="metric-card"><div class="metric-label">Prezzo richiesto</div><div class="metric-value" style="font-size:18px;">${dossier.property_price ? '€ ' + Number(dossier.property_price).toLocaleString('it-IT') : 'Su richiesta'}</div></div>
+        <div class="metric-card"><div class="metric-label">${t('typology', lang)}</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_type)}</div></div>
+        <div class="metric-card"><div class="metric-label">${t('surface', lang)}</div><div class="metric-value">${dossier.property_size_sqm ? esc(dossier.property_size_sqm) + ' mq' : '—'}</div></div>
+        <div class="metric-card"><div class="metric-label">${t('priceRequested', lang)}</div><div class="metric-value" style="font-size:18px;">${dossier.property_price ? '€ ' + Number(dossier.property_price).toLocaleString('it-IT') : t('onRequest', lang)}</div></div>
       </div>
       <div class="contact-box">
         <b>${esc(client?.company_name || client?.full_name)}</b><br>
@@ -1068,11 +1083,11 @@
         ${sectionHead('Asset Location', t('assetLocation', lang))}
         <div class="location-layout">
           <div>
-            ${addrRow('Indirizzo', dossier.property_address)}
-            ${addrRow('CAP', dossier.property_postal_code)}
-            ${addrRow('Comune', dossier.property_city)}
-            ${addrRow('Provincia', dossier.property_province)}
-            ${addrRow('Regione', dossier.property_region)}
+            ${addrRow(t('address', lang), dossier.property_address)}
+            ${addrRow(t('postalCode', lang), dossier.property_postal_code)}
+            ${addrRow(t('municipality', lang), dossier.property_city)}
+            ${addrRow(t('province', lang), dossier.property_province)}
+            ${addrRow(t('region', lang), dossier.property_region)}
           </div>
           ${mapHTML}
         </div>
@@ -1086,7 +1101,7 @@
         const services = await ensureNearbyServices(dossier.property_lat, dossier.property_lng);
         if (services && services.length) {
           const ICONS = { school: '🏫', hospital: '🏥', pharmacy: '💊', supermarket: '🛒' };
-          const LABELS = { school: 'Scuole', hospital: 'Ospedali', pharmacy: 'Farmacie', supermarket: 'Supermercati' };
+          const LABELS = { school: t('schools', lang), hospital: t('hospitals', lang), pharmacy: t('pharmacies', lang), supermarket: t('supermarkets', lang) };
           const byType = { school: [], hospital: [], pharmacy: [], supermarket: [] };
           services.forEach(s => { if (byType[s.type]) byType[s.type].push(s); });
           const blockHTML = Object.keys(byType).filter(k => byType[k].length).map(k => `
@@ -1099,7 +1114,7 @@
             pages.push(pageWrapper(`
               ${header}
               ${sectionHead('Neighborhood Services', t('neighborhoodServices', lang))}
-              <div class="verified-note" style="margin-bottom:16px;font-size:12px;">Scuole, ospedali, farmacie e supermercati entro 1,5 km dall'immobile — dati OpenStreetMap, aggiornati in tempo reale.</div>
+              <div class="verified-note" style="margin-bottom:16px;font-size:12px;">${t('nearbyServicesIntro', lang)}</div>
               ${blockHTML}
             `, false, false, t('neighborhoodServices', lang)));
           }
@@ -1121,9 +1136,9 @@
         ${sectionHead('Territory Data', t('territoryData', lang))}
         <div class="verified-note" style="margin-bottom:20px;">${esc(buildTerritoryNarrative(dossier.property_city, dossier.property_province, territory))}</div>
         <div class="metric-grid">
-          ${territory.population ? `<div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${Number(territory.population).toLocaleString('it-IT')}</div></div>` : ''}
-          ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
-          ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">Altitudine</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
+          ${territory.population ? `<div class="metric-card"><div class="metric-label">${t('populationShort', lang)}</div><div class="metric-value">${Number(territory.population).toLocaleString('it-IT')}</div></div>` : ''}
+          ${territory.area_kmq ? `<div class="metric-card"><div class="metric-label">${t('surface', lang)}</div><div class="metric-value">${Number(territory.area_kmq).toLocaleString('it-IT')} km²</div></div>` : ''}
+          ${territory.altitude_m != null ? `<div class="metric-card"><div class="metric-label">${t('altitude', lang)}</div><div class="metric-value">${territory.altitude_m} m</div></div>` : ''}
         </div>
       `));
     } else if (isOwnerViewing && territoryError) {
@@ -1249,7 +1264,7 @@
     // "Sintesi dell'immobile" (vedi annexesHTML), su richiesta esplicita.
 
     // Pagina dati verificati
-    const verifiedText = (lang !== 'it' && translated?.verified_notes) || dossier.verified_data?.notes || 'Nessun dato aggiuntivo inserito.';
+    const verifiedText = (lang !== 'it' && translated?.verified_notes) || dossier.verified_data?.notes || t('noAdditionalData', lang);
     pages.push(pageWrapper(`
       ${header}
       ${sectionHead('Verified Data', t('verified', lang))}
@@ -1269,16 +1284,16 @@
     // (dataSources popolato man mano che le sezioni sopra vengono generate) — mai una
     // lista fissa che citerebbe motori non usati (es. dossier Light senza Discovery).
     const sourcesHTML = dataSources.size
-      ? `<div class="verified-note" style="margin-top:22px;font-size:11.5px;color:var(--gold4);">Fonti dei dati: ${[...dataSources].map(esc).join(' · ')}.</div>`
+      ? `<div class="verified-note" style="margin-top:22px;font-size:11.5px;color:var(--gold4);">${t('dataSources', lang)}: ${[...dataSources].map(esc).join(' · ')}.</div>`
       : '';
     pages.push(pageWrapper(`
       ${header}
       ${sectionHead('Agency Contact', t('agencySummary', lang))}
       <div class="metric-grid" style="grid-template-columns:1fr 1fr;">
-        <div class="metric-card"><div class="metric-label">Agenzia / Agente</div><div class="metric-value" style="font-size:16px;">${esc(client?.company_name || client?.full_name || '—')}</div></div>
-        <div class="metric-card"><div class="metric-label">Email</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_email || '—')}</div></div>
-        <div class="metric-card"><div class="metric-label">Telefono</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_phone || '—')}</div></div>
-        <div class="metric-card"><div class="metric-label">Indirizzo immobile di riferimento</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_address || '—')}</div></div>
+        <div class="metric-card"><div class="metric-label">${t('agencyAgent', lang)}</div><div class="metric-value" style="font-size:16px;">${esc(client?.company_name || client?.full_name || '—')}</div></div>
+        <div class="metric-card"><div class="metric-label">${t('email', lang)}</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_email || '—')}</div></div>
+        <div class="metric-card"><div class="metric-label">${t('phone', lang)}</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_phone || '—')}</div></div>
+        <div class="metric-card"><div class="metric-label">${t('propertyAddressRef', lang)}</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_address || '—')}</div></div>
       </div>
       ${sourcesHTML}
     `, false, false, t('agencySummary', lang)));
@@ -1428,12 +1443,24 @@
   // Riusa generateDossierPdfBlob() già esistente (stessa funzione di "Scarica PDF").
   let cachedShareUrl = {}; // una entry per lingua: {it: '...', en: '...', ...}
   let currentLang = 'it';
+  // Traccia il render() in corso: switchLanguage() NON lo aspettava (fire-and-forget),
+  // quindi un click veloce su una lingua seguito subito da "Condividi"/"Scarica PDF"
+  // fotografava il DOM ancora fermo alla lingua precedente — currentLang era già
+  // aggiornato (impostato all'inizio di render(), riga ~859) ma il DOM no. Risultato:
+  // un PDF nominato "-fr.pdf" ma con dentro ancora il contenuto tedesco del render
+  // precedente. Bug reale segnalato dall'utente 2026-09-05 con VIA_ROSSINI-fr.pdf.
+  let renderInFlight = null;
 
   function escHtml(s){
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   async function getOrGenerateShareablePdfUrl(statusEl){
+    // Aspetta un eventuale switchLanguage() ancora in corso PRIMA di leggere currentLang
+    // o fotografare il DOM — altrimenti si rischia di generare un PDF nominato per la
+    // nuova lingua ma con dentro ancora il contenuto (non tradotto) della lingua
+    // precedente. Vedi nota su renderInFlight più sopra.
+    if (renderInFlight) { try { await renderInFlight; } catch (e) { /* un eventuale errore di render è già gestito dentro render() stesso */ } }
     // Un dossier tradotto ha lingue diverse mostrate a persone diverse — ognuna deve
     // avere il proprio PDF e il proprio link, mai condividere lo stesso file/URL tra
     // lingue diverse (altrimenti l'ultima lingua generata sovrascrive le precedenti).
@@ -1553,10 +1580,15 @@
     const original = btn.textContent;
     btn.disabled = true; btn.textContent = 'Generazione PDF in corso…';
     try {
+      // Stesso motivo di getOrGenerateShareablePdfUrl(): non fotografare il DOM se un
+      // cambio lingua è ancora in corso, altrimenti "Scarica PDF" può catturare la
+      // lingua precedente anche se il pulsante lingua attivo è già quello nuovo.
+      if (renderInFlight) { try { await renderInFlight; } catch (e) { /* già gestito dentro render() */ } }
+      const langSuffix = currentLang !== 'it' ? ` (${currentLang.toUpperCase()})` : '';
       const blob = await generateDossierPdfBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `Folium - ${currentFooterText.replace('FOLIUM · ', '') || 'dossier'}.pdf`;
+      a.href = url; a.download = `Folium - ${currentFooterText.replace('FOLIUM · ', '') || 'dossier'}${langSuffix}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (e) {
@@ -1585,7 +1617,7 @@
       // "Modifica" solo per il vero proprietario del dossier — l'account sviluppatore
       // che sta solo TESTANDO il dossier di qualcun altro non deve poterlo modificare.
       if (isDossierOwner) document.getElementById('editBtn').style.display = '';
-      render('it');
+      renderInFlight = render('it');
       return;
     }
 
@@ -1611,7 +1643,8 @@
 
       document.getElementById('leadGate').style.display = 'none';
       document.getElementById('printBtn').style.display = '';
-      await render('it');
+      renderInFlight = render('it');
+      await renderInFlight;
       window.print(); // avvia subito il download/salvataggio PDF come richiesto
     } catch (e) {
       msg.textContent = 'Errore: ' + (e.message || e);
