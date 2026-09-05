@@ -1632,9 +1632,21 @@
           // traduzioni pagate) come se tutto fosse andato bene — un cliente poteva
           // vedere il dossier in italiano pensando di aver acquistato la traduzione.
           // Ora ci si ferma e si avvisa chiaramente, senza procedere al dossier.
+          // checkoutError.message è sempre il generico "Edge Function returned a
+          // non-2xx status code" — il messaggio VERO è dentro checkoutError.context
+          // (la Response grezza), va letto esplicitamente come JSON.
+          let realMessage = checkoutError?.message || 'errore sconosciuto';
+          if (checkoutError?.context && typeof checkoutError.context.json === 'function') {
+            try {
+              const body = await checkoutError.context.json();
+              if (body?.error) realMessage = body.error;
+            } catch (parseErr) {
+              // risposta non JSON: teniamo il messaggio generico, meglio di niente
+            }
+          }
           console.error('Checkout traduzioni non avviato:', checkoutError);
           closeGenerationWindow();
-          showMsg('Il dossier è stato salvato, ma il pagamento delle traduzioni non è partito correttamente: ' + (checkoutError?.message || 'errore sconosciuto') + '. Riprova a salvare per completare il pagamento — il dossier non mostrerà le lingue nuove finché non lo fai.', false);
+          showMsg('Il dossier è stato salvato, ma il pagamento delle traduzioni non è partito correttamente: ' + realMessage + '. Riprova a salvare per completare il pagamento — il dossier non mostrerà le lingue nuove finché non lo fai.', false);
           btn.disabled = false; btn.textContent = editDossierId ? 'Salva modifiche' : 'Genera il mio dossier';
           return;
         }
