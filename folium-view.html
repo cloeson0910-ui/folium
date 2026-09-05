@@ -1120,8 +1120,12 @@
     const immobileDividerPage = nextDividerPage('Property Overview', "L'Immobile");
     if (immobileDividerPage) pages.push(immobileDividerPage);
 
-    if (propertyPhotos.length) {
-      chunk(propertyPhotos, 1).forEach((pair, idx) => {
+    // slice(1): la prima foto (propertyPhotos[0]) è già usata come copertina in
+    // pagina 1 (coverPhoto) — includerla di nuovo qui la faceva comparire due
+    // volte nel dossier, segnalato dall'utente.
+    const galleryPropertyPhotos = propertyPhotos.slice(1);
+    if (galleryPropertyPhotos.length) {
+      chunk(galleryPropertyPhotos, 1).forEach((pair, idx) => {
         pages.push(pageWrapper(`
           ${header}
           ${idx === 0 ? sectionHead('Media Gallery', t('photos', lang)) : sectionHead('Media Gallery', `${t('photos', lang)} (${idx + 1})`)}
