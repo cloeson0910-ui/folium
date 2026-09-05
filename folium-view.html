@@ -731,74 +731,111 @@
   // lingua, ben visibile, per non dover più usare gli strumenti sviluppatore.
   let lastTranslationDebugInfo = null;
 
+  // Le 3 funzioni sotto sono PORTATE 1:1 dal codice di riferimento Immonova
+  // (report-view.html), dove risolvono un problema reale già osservato in
+  // produzione: mandare PIÙ testi in un solo array a translate-public-content fa
+  // sì che il servizio a volte disallinei le risposte (ne salta una, o ne unisce
+  // due), e da quel punto ogni chiave successiva riceve la traduzione sbagliata o
+  // vuota — la funzione risponde comunque "success:true", quindi non è un errore
+  // rilevabile dalla forma della risposta. La soluzione di Immonova (e ora anche di
+  // Folium): UNA chiamata separata per ogni singolo testo, mai un array.
+  function protectPlaceholders(text){
+    const tokens = [];
+    const protectedText = String(text).replace(/\{[a-zA-Z0-9_]+\}/g, (m) => { tokens.push(m); return '§' + (tokens.length - 1) + '§'; });
+    return { text: protectedText, tokens };
+  }
+  function restorePlaceholders(text, tokens){
+    if (!tokens.length) return text;
+    return String(text).replace(/§(\d+)§/g, (m, idx) => { const t = tokens[Number(idx)]; return t != null ? t : m; });
+  }
+  function translationLooksSuspicious(source, candidate){
+    if (candidate == null) return true;
+    const srcTokens = (String(source).match(/\{[a-zA-Z0-9_]+\}/g) || []);
+    for (const tok of srcTokens) { if (String(candidate).indexOf(tok) === -1) return true; }
+    const srcLen = String(source).length;
+    const candLen = String(candidate).length;
+    if (srcLen > 20 && (candLen > srcLen * 4 || candLen < srcLen * 0.2)) return true;
+    return false;
+  }
+  async function translateOneText(lang, text, context){
+    if (!text) return '';
+    const protectedItem = protectPlaceholders(text);
+    let result = null;
+    try {
+      const data = await callImmonovaFunction('translate-public-content', {
+        language: lang, source_language: 'it', context: context || '', texts: [protectedItem.text]
+      });
+      result = data;
+    } catch (e) {
+      lastTranslationDebugInfo = 'Chiamata al motore di traduzione fallita: ' + (e.message || String(e));
+      return null;
+    }
+    if (!result || !result.success || !Array.isArray(result.translations) || result.translations.length !== 1) {
+      lastTranslationDebugInfo = 'Risposta malformata dal motore di traduzione: ' + JSON.stringify(result);
+      return null;
+    }
+    const raw = result.translations[0];
+    if (raw == null) {
+      lastTranslationDebugInfo = 'Il motore ha risposto "successo" ma con traduzione vuota per un testo.';
+      return null;
+    }
+    return restorePlaceholders(raw, protectedItem.tokens);
+  }
+
   async function ensureDynamicTranslation(dossier, lang){
     lastTranslationDebugInfo = null;
     if (lang === 'it') return null;
-    const cached = dossier.translations && dossier.translations[lang];
-    const REQUIRED_KEYS = ['verified_notes', 'full_description', 'location_summary', 'tourism_summary', 'discovery_summary'];
 
     const { data: editorial } = await ensureEditorialAnalysis(dossier);
     const disc = await ensureDiscoveryData(dossier);
 
-    const verifiedNotes = dossier.verified_data?.notes || '';
-    const fullDescription = editorial?.full_description || editorial?.short_description || '';
-    const locationSummary = editorial?.location_summary || '';
-    const tourismSummary = editorial?.tourism_summary || '';
-    const discoverySummary = disc?.summary || disc?.narrative || '';
-    const texts = [verifiedNotes, fullDescription, locationSummary, tourismSummary, discoverySummary];
+    const SOURCE = {
+      verified_notes: dossier.verified_data?.notes || '',
+      full_description: editorial?.full_description || editorial?.short_description || '',
+      location_summary: editorial?.location_summary || '',
+      tourism_summary: editorial?.tourism_summary || '',
+      discovery_summary: disc?.summary || disc?.narrative || '',
+    };
+    const keys = Object.keys(SOURCE);
 
-    // Una cache è valida solo se ha TUTTE le chiavi E, per ogni testo sorgente non
-    // vuoto, la traduzione corrispondente non è vuota — una cache "completa ma
-    // vuota" (salvata per errore in un tentativo precedente) va scartata e
-    // rigenerata, non trattata come già tradotta.
-    if (cached && REQUIRED_KEYS.every(k => k in cached)) {
-      const cachedValues = REQUIRED_KEYS.map(k => cached[k]);
-      const staleEmpty = texts.some((src, i) => src && !cachedValues[i]);
+    // Cache valida solo se ha tutte le chiavi e, per ogni testo sorgente non vuoto,
+    // una traduzione corrispondente non vuota — una cache "completa ma vuota"
+    // (salvata per errore in un tentativo precedente, prima di questa correzione)
+    // va scartata e rigenerata, non trattata come già tradotta.
+    const cached = dossier.translations && dossier.translations[lang];
+    if (cached && keys.every(k => k in cached)) {
+      const staleEmpty = keys.some(k => SOURCE[k] && !cached[k]);
       if (!staleEmpty) return cached;
     }
 
-    if (!texts.some(x => x)) {
-      lastTranslationDebugInfo = 'Nessun testo sorgente da tradurre trovato (narrativa editoriale non ancora generata su questo dossier — editorial: ' + JSON.stringify(editorial) + ').';
+    if (!keys.some(k => SOURCE[k])) {
+      lastTranslationDebugInfo = 'Nessun testo sorgente da tradurre trovato (narrativa editoriale non ancora generata su questo dossier).';
       return null;
     }
 
-    try {
-      const data = await callImmonovaFunction('translate-public-content', {
-        language: lang, source_language: 'it',
-        context: 'Dossier immobiliare FOLIUM per investitori privati.',
-        texts
-      });
-      if (!data?.success || !Array.isArray(data.translations)) {
-        lastTranslationDebugInfo = 'Il motore di traduzione ha risposto in modo inatteso: ' + JSON.stringify(data);
-        return null;
+    const context = 'Dossier immobiliare FOLIUM per investitori privati.';
+    const result = {};
+    // Concorrenza limitata invece di 5 richieste tutte insieme in parallelo puro —
+    // stesso principio di Immonova, gentile col motore anche quando in futuro le
+    // chiavi da tradurre dovessero aumentare.
+    const CONCURRENCY = 5;
+    let idx = 0;
+    async function worker(){
+      while (idx < keys.length) {
+        const i = idx++;
+        const k = keys[i];
+        const source = SOURCE[k];
+        if (!source) { result[k] = ''; continue; }
+        const translated = await translateOneText(lang, source, context);
+        result[k] = translationLooksSuspicious(source, translated) ? '' : translated;
       }
-      if (data.translations.length < texts.length) {
-        lastTranslationDebugInfo = `Traduzione parziale: attesi ${texts.length} testi, ricevuti ${data.translations.length}.`;
-      }
-      const result = {
-        verified_notes: data.translations[0] || '',
-        full_description: data.translations[1] || '',
-        location_summary: data.translations[2] || '',
-        tourism_summary: data.translations[3] || '',
-        discovery_summary: data.translations[4] || '',
-      };
-      // Se un testo SORGENTE era pieno ma il risultato tradotto è vuoto, non è un
-      // errore che l'API segnala (risponde comunque "success:true"), ma è comunque
-      // un fallimento — mostrarlo, altrimenti il fallback silenzioso all'italiano
-      // sembra "nessun problema" quando in realtà lo è.
-      const labels = ['dati verificati', 'presentazione', 'attrattività zona', 'contesto turistico', 'territorio'];
-      const emptyResults = texts.map((src, i) => (src && !Object.values(result)[i]) ? labels[i] : null).filter(Boolean);
-      if (emptyResults.length) {
-        lastTranslationDebugInfo = `Il motore ha risposto "successo" ma ha restituito testo VUOTO per: ${emptyResults.join(', ')} (testo sorgente presente, traduzione assente).`;
-      }
-      const updatedTranslations = { ...(dossier.translations || {}), [lang]: result };
-      await sb.from('folium_dossiers').update({ translations: updatedTranslations }).eq('id', dossier.id);
-      dossier.translations = updatedTranslations;
-      return result;
-    } catch (e) {
-      lastTranslationDebugInfo = 'Errore durante la chiamata al motore di traduzione: ' + (e.message || String(e));
-      return null;
     }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, keys.length) }, worker));
+
+    const updatedTranslations = { ...(dossier.translations || {}), [lang]: result };
+    await sb.from('folium_dossiers').update({ translations: updatedTranslations }).eq('id', dossier.id);
+    dossier.translations = updatedTranslations;
+    return result;
   }
 
   function renderLanguageSwitcher(dossier, currentLang){
