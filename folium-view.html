@@ -1316,6 +1316,10 @@
   // Riusa generateDossierPdfBlob() già esistente (stessa funzione di "Scarica PDF").
   let cachedShareUrl = null;
 
+  function escHtml(s){
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
   async function getOrGenerateShareablePdfUrl(statusEl){
     if (cachedShareUrl) return cachedShareUrl;
     if (statusEl) statusEl.textContent = 'Generazione PDF in corso…';
@@ -1324,17 +1328,61 @@
     const path = `dossier-${dossierId}/${filename}`;
     const { error } = await sb.storage.from('folium-dossier-pdfs').upload(path, blob, { contentType: 'application/pdf', upsert: true });
     if (error) throw error;
-    // Il link condiviso NON è più l'URL diretto del PDF (troppo lungo, nessuna
-    // anteprima su WhatsApp) ma una pagina ponte (edge function folium-share) che
-    // genera i tag Open Graph (titolo=indirizzo, immagine=copertina) lato server —
-    // necessario perché WhatsApp legge l'HTML senza eseguire JavaScript — e poi
-    // reindirizza al vero PDF appena caricato sopra.
-    // Parametro "v" invisibile alla funzione (che legge solo "id") ma rende il link
-    // unico ad ogni nuova generazione: WhatsApp ha una cache propria dell'anteprima
-    // per URL, separata da quella di Facebook e senza uno strumento pubblico per
-    // svuotarla — un link "mai visto prima" evita di restare bloccati su
-    // un'anteprima vecchia salvata durante i test precedenti.
-    cachedShareUrl = `${SUPABASE_URL}/functions/v1/folium-share?id=${encodeURIComponent(dossierId)}&v=${Date.now()}`;
+    const { data: pdfPub } = sb.storage.from('folium-dossier-pdfs').getPublicUrl(path);
+    const pdfUrl = pdfPub.publicUrl;
+
+    // dossier/coverPhoto NON sono visibili qui (sono locali a render()) — query
+    // dedicata e leggera, solo i 2 campi che servono per i tag della pagina ponte.
+    const { data: shareDossier } = await sb.from('folium_dossiers').select('property_address').eq('id', dossierId).single();
+    const { data: shareCoverPhotoRow } = await sb.from('folium_dossier_photos').select('photo_url').eq('dossier_id', dossierId).eq('photo_kind', 'property').order('sort_order').limit(1).maybeSingle();
+    const coverPhoto = shareCoverPhotoRow?.photo_url || '';
+    const dossier = shareDossier || {};
+
+    // Pagina ponte STATICA (nessuna edge function): generata qui nel browser, dove i
+    // dati (indirizzo, foto copertina) sono già disponibili, e caricata come file .html
+    // già pronto su Storage. Stesso identico principio del riferimento Immonova
+    // (pagina statica pre-generata, zero calcoli al momento della richiesta) — la
+    // versione precedente con edge function era corretta nei tag (verificato più volte
+    // col debugger Facebook) ma il tempo di risposta (query DB + storage ad ogni
+    // richiesta) era probabilmente troppo lento per il crawler di WhatsApp, più
+    // intollerante di quello di Facebook. Una pagina statica elimina il problema alla
+    // radice: caricarla è veloce quanto qualsiasi altro sito.
+    const address = dossier.property_address || 'Dossier immobiliare';
+    const title = `Dossier FOLIUM - ${address}`;
+    const description = `Scopri il dossier completo di ${address}, realizzato con FOLIUM.`;
+    const sharePagePath = `${dossierId}.html`;
+    const shareHtml = `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>${escHtml(title)}</title>
+<meta name="description" content="${escHtml(description)}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${escHtml(title)}">
+<meta property="og:description" content="${escHtml(description)}">
+${coverPhoto ? `<meta property="og:image" content="${escHtml(coverPhoto)}">
+<meta property="og:image:secure_url" content="${escHtml(coverPhoto)}">` : ''}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escHtml(title)}">
+<meta name="twitter:description" content="${escHtml(description)}">
+${coverPhoto ? `<meta name="twitter:image" content="${escHtml(coverPhoto)}">` : ''}
+<style>body{font-family:-apple-system,Helvetica,Arial,sans-serif;text-align:center;padding:60px 20px;color:#333;background:#faf8f4;}a{color:#8a6d3b;}</style>
+</head>
+<body>
+  <p>Apertura del dossier in corso…</p>
+  <p>Se non si apre automaticamente, <a href="${escHtml(pdfUrl)}">clicca qui per aprire il PDF</a>.</p>
+  <scr${''}ipt>window.location.replace(${JSON.stringify(pdfUrl)});</scr${''}ipt>
+</body>
+</html>`;
+    const { error: shareErr } = await sb.storage.from('folium-share-pages').upload(sharePagePath, new Blob([shareHtml], { type: 'text/html' }), { contentType: 'text/html', upsert: true, cacheControl: 'no-store' });
+    if (shareErr) throw shareErr;
+    const { data: sharePub } = sb.storage.from('folium-share-pages').getPublicUrl(sharePagePath);
+    // Parametro "v" invisibile (il file HTML sopra ignora la query string) ma rende
+    // il link unico ad ogni nuova generazione: WhatsApp ha una cache propria
+    // dell'anteprima per URL, separata da quella di Facebook e senza uno strumento
+    // pubblico per svuotarla — un link "mai visto prima" evita di restare bloccati
+    // su un'anteprima vecchia salvata durante i test precedenti.
+    cachedShareUrl = `${sharePub.publicUrl}?v=${Date.now()}`;
     return cachedShareUrl;
   }
 
