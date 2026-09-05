@@ -10,6 +10,7 @@
   body{margin:0;font-family:'Poppins',Arial,sans-serif;background:#e8e2d2;color:#2b2416;}
   .toolbar{position:sticky;top:0;background:var(--bronze);color:var(--gold3);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;z-index:50;}
   .toolbar button{background:linear-gradient(120deg,var(--gold1),var(--gold2));border:none;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;}
+  .toolbar button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.3);}
 
   /* ---- Formato orizzontale (A4 landscape), come il report reale di riferimento ---- */
   /* Dimensioni di default: verticale. applyTheme() le sovrascrive in orizzontale
@@ -875,6 +876,12 @@
     // Rete di sicurezza aggiuntiva rispetto all'await in getOrGenerateShareablePdfUrl/
     // generateServerPdf: disabilita subito i pulsanti di export mentre la nuova lingua
     // sta ancora caricando, così anche un click fisico rapidissimo non può partire.
+    // NUOVO 2026-09-06: i pulsanti disabilitati sembravano IDENTICI a quelli attivi
+    // (nessuno stile :disabled prima d'ora) — un click sopra non faceva letteralmente
+    // nulla e sembrava un pulsante rotto, non "spento". Ora anche lo stile lo rende
+    // visibile, e qui si spiega SUBITO perché, non solo se poi si clicca "Condividi".
+    const statusEl = document.getElementById('shareStatusMsg');
+    if (lang !== 'it') showShareStatus(statusEl, `Caricamento della versione in ${(({en:'inglese',fr:'francese',de:'tedesco',es:'spagnolo',ar:'arabo',zh:'cinese'})[lang] || lang)} in corso…`);
     ['pdfBtn', 'shareBtn', 'whatsappBtn', 'printBtn'].forEach(id => {
       const b = document.getElementById(id);
       if (b) b.disabled = true;
@@ -885,6 +892,7 @@
         const b = document.getElementById(id);
         if (b) b.disabled = false;
       });
+      hideShareStatus(statusEl);
     });
   }
 
