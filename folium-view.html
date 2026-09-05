@@ -716,13 +716,13 @@
   // disponibili), contenuti dinamici (dati verificati/analisi AI/territorio)
   // via immonova-translate-public-content (chiamata diretta, cache su DB).
   const UI_LABELS = {
-    it: { photos:'Foto immobile', verified:'Dati verificati', destination:'Zona e dintorni', population:'Popolazione della zona', income:'Reddito medio della zona', market:'Analisi di mercato', territory:'Territorio e accessibilità', dedicated:'Spazio dedicato' },
-    en: { photos:'Property photos', verified:'Verified data', destination:'Area & surroundings', population:'Local population', income:'Average local income', market:'Market analysis', territory:'Territory & accessibility', dedicated:'Dedicated space' },
-    fr: { photos:'Photos du bien', verified:'Données vérifiées', destination:'Zone et alentours', population:'Population locale', income:'Revenu moyen local', market:'Analyse de marché', territory:'Territoire et accessibilité', dedicated:'Espace dédié' },
-    de: { photos:'Immobilienfotos', verified:'Verifizierte Daten', destination:'Umgebung', population:'Bevölkerung der Zone', income:'Durchschnittseinkommen', market:'Marktanalyse', territory:'Gebiet und Erreichbarkeit', dedicated:'Werbefläche' },
-    es: { photos:'Fotos del inmueble', verified:'Datos verificados', destination:'Zona y alrededores', population:'Población de la zona', income:'Renta media de la zona', market:'Análisis de mercado', territory:'Territorio y accesibilidad', dedicated:'Espacio dedicado' },
-    ar: { photos:'صور العقار', verified:'بيانات موثقة', destination:'المنطقة المحيطة', population:'سكان المنطقة', income:'متوسط دخل المنطقة', market:'تحليل السوق', territory:'المنطقة وإمكانية الوصول', dedicated:'مساحة مخصصة' },
-    zh: { photos:'房产照片', verified:'核实数据', destination:'周边区域', population:'该地区人口', income:'该地区平均收入', market:'市场分析', territory:'区域与交通', dedicated:'广告位' },
+    it: { photos:'Foto immobile', verified:'Dati verificati', destination:'Zona e dintorni', population:'Popolazione della zona', income:'Reddito medio della zona', market:'Analisi di mercato', territory:'Territorio e accessibilità', dedicated:'Spazio dedicato', proposal:'Presentazione della proposta', areaAttractiveness:'Attrattività della zona', touristContext:'Contesto turistico', propertySummary:"Sintesi dell'immobile", assetLocation:'Posizione e localizzazione', neighborhoodServices:'Servizi nelle vicinanze', territoryData:'Dati del territorio', agencySummary:'Riepilogo agenzia' },
+    en: { photos:'Property photos', verified:'Verified data', destination:'Area & surroundings', population:'Local population', income:'Average local income', market:'Market analysis', territory:'Territory & accessibility', dedicated:'Dedicated space', proposal:'Presentation of the proposal', areaAttractiveness:'Area appeal', touristContext:'Tourism context', propertySummary:'Property summary', assetLocation:'Location', neighborhoodServices:'Nearby services', territoryData:'Territory data', agencySummary:'Agency summary' },
+    fr: { photos:'Photos du bien', verified:'Données vérifiées', destination:'Zone et alentours', population:'Population locale', income:'Revenu moyen local', market:'Analyse de marché', territory:'Territoire et accessibilité', dedicated:'Espace dédié', proposal:'Présentation de la proposition', areaAttractiveness:'Attractivité de la zone', touristContext:'Contexte touristique', propertySummary:'Synthèse du bien', assetLocation:'Emplacement', neighborhoodServices:'Services à proximité', territoryData:'Données territoriales', agencySummary:"Résumé de l'agence" },
+    de: { photos:'Immobilienfotos', verified:'Verifizierte Daten', destination:'Umgebung', population:'Bevölkerung der Zone', income:'Durchschnittseinkommen', market:'Marktanalyse', territory:'Gebiet und Erreichbarkeit', dedicated:'Werbefläche', proposal:'Vorstellung des Angebots', areaAttractiveness:'Attraktivität der Gegend', touristContext:'Touristischer Kontext', propertySummary:'Objektübersicht', assetLocation:'Lage', neighborhoodServices:'Dienste in der Nähe', territoryData:'Gebietsdaten', agencySummary:'Übersicht Agentur' },
+    es: { photos:'Fotos del inmueble', verified:'Datos verificados', destination:'Zona y alrededores', population:'Población de la zona', income:'Renta media de la zona', market:'Análisis de mercado', territory:'Territorio y accesibilidad', dedicated:'Espacio dedicado', proposal:'Presentación de la propuesta', areaAttractiveness:'Atractivo de la zona', touristContext:'Contexto turístico', propertySummary:'Resumen del inmueble', assetLocation:'Ubicación', neighborhoodServices:'Servicios cercanos', territoryData:'Datos del territorio', agencySummary:'Resumen de la agencia' },
+    ar: { photos:'صور العقار', verified:'بيانات موثقة', destination:'المنطقة المحيطة', population:'سكان المنطقة', income:'متوسط دخل المنطقة', market:'تحليل السوق', territory:'المنطقة وإمكانية الوصول', dedicated:'مساحة مخصصة', proposal:'عرض المقترح', areaAttractiveness:'جاذبية المنطقة', touristContext:'السياق السياحي', propertySummary:'ملخص العقار', assetLocation:'الموقع', neighborhoodServices:'الخدمات القريبة', territoryData:'بيانات المنطقة', agencySummary:'ملخص الوكالة' },
+    zh: { photos:'房产照片', verified:'核实数据', destination:'周边区域', population:'该地区人口', income:'该地区平均收入', market:'市场分析', territory:'区域与交通', dedicated:'广告位', proposal:'提案介绍', areaAttractiveness:'区域吸引力', touristContext:'旅游背景', propertySummary:'房产概要', assetLocation:'位置', neighborhoodServices:'周边服务', territoryData:'区域数据', agencySummary:'中介摘要' },
   };
   function t(key, lang){ return (UI_LABELS[lang] && UI_LABELS[lang][key]) || UI_LABELS.it[key] || key; }
 
@@ -997,7 +997,7 @@
     // integrati subito sotto (vedi annexesHTML sopra), non più una sezione a parte.
     pages.push(pageWrapper(`
       ${header}
-      ${sectionHead('Editorial Overview', "Sintesi dell'immobile")}
+      ${sectionHead('Editorial Overview', t('propertySummary', lang))}
       <div class="metric-grid">
         <div class="metric-card"><div class="metric-label">Tipologia</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_type)}</div></div>
         <div class="metric-card"><div class="metric-label">Superficie</div><div class="metric-value">${dossier.property_size_sqm ? esc(dossier.property_size_sqm) + ' mq' : '—'}</div></div>
@@ -1008,7 +1008,7 @@
         ${esc(client?.contact_email)} · ${esc(client?.contact_phone)}
       </div>
       ${annexesHTML}
-    `, false, false, "Sintesi dell'immobile"));
+    `, false, false, t('propertySummary', lang)));
 
     // Posizione e mappa — indirizzo sempre mostrato (dato gratuito, nessuna chiamata
     // esterna). La mappa invece: Light usa SOLO OpenStreetMap (iframe embed gratuito,
@@ -1061,11 +1061,11 @@
         dataSources.add('Google Maps (mappa)');
       }
       const addrRow = (label, val) => val ? `<div class="addr-row"><strong>${esc(label)}</strong><span>${esc(val)}</span></div>` : '';
-      const locationDividerPage = nextDividerPage('Asset Location', 'Posizione e Localizzazione');
+      const locationDividerPage = nextDividerPage('Asset Location', t('assetLocation', lang));
       if (locationDividerPage) pages.push(locationDividerPage);
       pages.push(pageWrapper(`
         ${header}
-        ${sectionHead('Asset Location', 'Posizione e localizzazione')}
+        ${sectionHead('Asset Location', t('assetLocation', lang))}
         <div class="location-layout">
           <div>
             ${addrRow('Indirizzo', dossier.property_address)}
@@ -1076,7 +1076,7 @@
           </div>
           ${mapHTML}
         </div>
-      `, false, false, 'Posizione e localizzazione'));
+      `, false, false, t('assetLocation', lang)));
 
       // Servizi nelle vicinanze — GRATIS su tutti i piani (Geoapify Places API, stessa
       // chiave già usata per la mappa, 3.000 richieste/giorno gratuite): scuole, ospedali,
@@ -1098,10 +1098,10 @@
             dataSources.add('Geoapify Places (servizi nelle vicinanze)');
             pages.push(pageWrapper(`
               ${header}
-              ${sectionHead('Neighborhood Services', 'Servizi nelle vicinanze')}
+              ${sectionHead('Neighborhood Services', t('neighborhoodServices', lang))}
               <div class="verified-note" style="margin-bottom:16px;font-size:12px;">Scuole, ospedali, farmacie e supermercati entro 1,5 km dall'immobile — dati OpenStreetMap, aggiornati in tempo reale.</div>
               ${blockHTML}
-            `, false, false, 'Servizi nelle vicinanze'));
+            `, false, false, t('neighborhoodServices', lang)));
           }
         }
       }
@@ -1118,7 +1118,7 @@
       dataSources.add('ISTAT (dati territoriali)');
       pages.push(pageWrapper(`
         ${header}
-        ${sectionHead('Territory Data', 'Dati del territorio')}
+        ${sectionHead('Territory Data', t('territoryData', lang))}
         <div class="verified-note" style="margin-bottom:20px;">${esc(buildTerritoryNarrative(dossier.property_city, dossier.property_province, territory))}</div>
         <div class="metric-grid">
           ${territory.population ? `<div class="metric-card"><div class="metric-label">Popolazione</div><div class="metric-value">${Number(territory.population).toLocaleString('it-IT')}</div></div>` : ''}
@@ -1129,7 +1129,7 @@
     } else if (isOwnerViewing && territoryError) {
       pages.push(pageWrapper(`
         ${header}
-        ${sectionHead('Territory Data', 'Dati del territorio')}
+        ${sectionHead('Territory Data', t('territoryData', lang))}
         <div class="verified-note" style="color:#a33;">[Solo account test] Dati territoriali generali non disponibili: ${esc(territoryError)}</div>
       `));
     }
@@ -1168,7 +1168,7 @@
     // se il testo non entra in una pagina sola — mai più tagliata in silenzio.
     if (dossier.include_editorial_analysis || isOwnerViewing) {
       const { data: editorial, error: editorialError } = await ensureEditorialAnalysis(dossier);
-      const narrativeDividerPage = nextDividerPage('Editorial Overview', 'Presentazione della Proposta');
+      const narrativeDividerPage = nextDividerPage('Editorial Overview', t('proposal', lang));
       if (narrativeDividerPage) pages.push(narrativeDividerPage);
       if (editorial) {
         const MAX_CHARS = 2600;
@@ -1182,13 +1182,13 @@
             `, false, false, idx === 0 ? title : null));
           });
         };
-        addTextPages('Editorial Overview', 'Presentazione della proposta', (lang !== 'it' && translated?.full_description) || editorial.full_description || editorial.short_description || '');
-        if (editorial.location_summary) addTextPages('Editorial Overview', 'Attrattività della zona', (lang !== 'it' && translated?.location_summary) || editorial.location_summary);
-        if (editorial.tourism_summary) addTextPages('Editorial Overview', 'Contesto turistico', (lang !== 'it' && translated?.tourism_summary) || editorial.tourism_summary);
+        addTextPages('Editorial Overview', t('proposal', lang), (lang !== 'it' && translated?.full_description) || editorial.full_description || editorial.short_description || '');
+        if (editorial.location_summary) addTextPages('Editorial Overview', t('areaAttractiveness', lang), (lang !== 'it' && translated?.location_summary) || editorial.location_summary);
+        if (editorial.tourism_summary) addTextPages('Editorial Overview', t('touristContext', lang), (lang !== 'it' && translated?.tourism_summary) || editorial.tourism_summary);
       } else if (isOwnerViewing && editorialError) {
         pages.push(pageWrapper(`
           ${header}
-          ${sectionHead('Editorial Overview', 'Presentazione della proposta')}
+          ${sectionHead('Editorial Overview', t('proposal', lang))}
           <div class="verified-note" style="color:#a33;">[Solo account test] Analisi editoriale non disponibile: ${esc(editorialError)}</div>
         `));
       }
@@ -1273,7 +1273,7 @@
       : '';
     pages.push(pageWrapper(`
       ${header}
-      ${sectionHead('Agency Contact', 'Riepilogo agenzia')}
+      ${sectionHead('Agency Contact', t('agencySummary', lang))}
       <div class="metric-grid" style="grid-template-columns:1fr 1fr;">
         <div class="metric-card"><div class="metric-label">Agenzia / Agente</div><div class="metric-value" style="font-size:16px;">${esc(client?.company_name || client?.full_name || '—')}</div></div>
         <div class="metric-card"><div class="metric-label">Email</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_email || '—')}</div></div>
@@ -1281,7 +1281,7 @@
         <div class="metric-card"><div class="metric-label">Indirizzo immobile di riferimento</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_address || '—')}</div></div>
       </div>
       ${sourcesHTML}
-    `, false, false, 'Riepilogo agenzia'));
+    `, false, false, t('agencySummary', lang)));
 
 
     // Inserimento pagine pubblicitarie tra una sezione e l'altra (Light e Gold)
@@ -1444,10 +1444,22 @@
     const langSuffix = lang !== 'it' ? `-${lang}` : ''; // 'it' resta senza suffisso per compatibilità con i link italiani già condivisi in passato
     const filename = `${(currentFooterText.replace('FOLIUM · ', '') || 'dossier')}${langSuffix}.pdf`;
     const path = `dossier-${dossierId}/${filename}`;
-    const { error } = await sb.storage.from('folium-dossier-pdfs').upload(path, blob, { contentType: 'application/pdf', upsert: true });
+    // cacheControl:'0' — STESSO bug già visto sulle edge function (vedi nota in cima al
+    // file): senza questo, Supabase Storage applica il default (Cache-Control max-age
+    // 3600) sull'oggetto, e la CDN davanti al bucket può continuare a servire i vecchi
+    // byte anche dopo un upsert riuscito con contenuto corretto — un hard reload del
+    // browser NON risolve, perché la cache stantia è lato server/edge, non lato client.
+    // Bug reale trovato 2026-09-05: un dossier tradotto PRIMA del fix delle traduzioni
+    // (quando mancavano 3 sezioni su 5) aveva già occupato questo stesso path — il
+    // re-upload con la traduzione corretta non bastava a far vedere il PDF aggiornato.
+    const { error } = await sb.storage.from('folium-dossier-pdfs').upload(path, blob, { contentType: 'application/pdf', upsert: true, cacheControl: '0' });
     if (error) throw error;
     const { data: pdfPub } = sb.storage.from('folium-dossier-pdfs').getPublicUrl(path);
-    const pdfUrl = pdfPub.publicUrl;
+    // Cache-buster anche sul PDF stesso (prima ce l'aveva solo la pagina HTML ponte
+    // share/<id>-<lang>.html, mai il PDF a cui quella pagina reindirizza) — garantisce
+    // che ogni nuova generazione sia raggiungibile con un URL "mai visto prima" dalla
+    // CDN, invece di sperare che l'invalidazione post-upsert sia già propagata.
+    const pdfUrl = `${pdfPub.publicUrl}?v=${Date.now()}`;
 
     // dossier/coverPhoto NON sono visibili qui (sono locali a render()) — query
     // dedicata e leggera, solo i 2 campi che servono per i tag della pagina ponte.
