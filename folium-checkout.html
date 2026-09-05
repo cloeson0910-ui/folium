@@ -75,6 +75,9 @@
   function showMsg(text){
     const el = document.getElementById('msg');
     el.textContent = text; el.className = 'msg err';
+    // Prima l'errore restava in fondo alla pagina, fuori dalla vista — sembrava che
+    // il pulsante non facesse nulla. Ora lo scorre in vista automaticamente.
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // Codice promo: la validazione qui è SOLO per un feedback immediato all'utente (mostra lo
@@ -133,7 +136,7 @@
           <h3>${PACKAGE_TITLE[packageType] || packageType}</h3>
           <div class="price">${priceHTML}</div>
           <div class="desc">${PACKAGE_DESC[tier][packageType] || ''}</div>
-          <button onclick="startCheckout('${tier}','${packageType}')">Acquista</button>
+          <button onclick="startCheckout('${tier}','${packageType}', this)">Acquista</button>
         </div>`;
       }).join('');
       document.getElementById(tier + 'Block').innerHTML = `
@@ -175,9 +178,15 @@
     status.innerHTML = `<span style="color:#2f7d3a;">Codice applicato: ${discountLabel} — sarà calcolato sul totale al passaggio a Stripe.</span>`;
   }
 
-  async function startCheckout(tier, packageType){
+  async function startCheckout(tier, packageType, clickedBtn){
     const { data: { user } } = await sb.auth.getUser();
     if (!user) { window.location.href = 'folium-register.html'; return; }
+
+    // Feedback visivo IMMEDIATO al click: prima non c'era nulla, un errore poteva
+    // comparire in fondo alla pagina (fuori dalla vista) dando l'impressione che
+    // "non succedesse niente" anche quando in realtà qualcosa falliva subito.
+    const originalBtnText = clickedBtn ? clickedBtn.textContent : null;
+    if (clickedBtn) { clickedBtn.disabled = true; clickedBtn.textContent = 'Attendere…'; }
 
     try {
       const { data, error } = await sb.functions.invoke('folium-create-checkout', {
@@ -191,6 +200,7 @@
       }
     } catch (err) {
       showMsg('Errore avvio pagamento: ' + (err.message || err));
+      if (clickedBtn) { clickedBtn.disabled = false; clickedBtn.textContent = originalBtnText; }
     }
   }
 </script>
