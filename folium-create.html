@@ -435,6 +435,9 @@
   let alreadyPaidLanguages = []; // lingue già pagate/incluse al caricamento, per far pagare SOLO quelle nuove aggiunte in modifica
   let currentTier = 'light';
   let logoFile = null;
+  // true se il cliente ha già un logo salvato (a livello di agenzia) — usato per
+  // capire quando un nuovo upload è una SOSTITUZIONE, non un primo caricamento.
+  let hasExistingLogo = false;
   let propertyFiles = [];
   let destinationFiles = [];
   // Foto GIÀ salvate sul dossier (popolate solo in modalità modifica) — mostrate come
@@ -524,6 +527,19 @@
       document.getElementById('contactEmail').value = client.contact_email || user.email || '';
       document.getElementById('contactPhone').value = client.contact_phone || '';
       document.getElementById('displayName').value = client.company_name || client.full_name || '';
+
+      // Anteprima del logo già salvato (a livello di agenzia, non del singolo
+      // dossier) — stesso principio delle foto: mostrare quello che c'è davvero,
+      // non farlo sparire dalla vista. hasExistingLogo distingue "c'è già un logo
+      // dell'agenzia" da "nessun logo mai caricato", usato più sotto per capire se
+      // un nuovo upload è una SOSTITUZIONE (serve poi rigenerare le foto in watermark).
+      if (client.logo_url) {
+        hasExistingLogo = true;
+        renderThumbFromUrl(document.getElementById('logoPreview'), client.logo_url, ()=>{
+          document.getElementById('logoPreview').innerHTML = '';
+          hasExistingLogo = false;
+        });
+      }
 
       updatePlanUI();
       initLanguageChips();
@@ -905,10 +921,31 @@
   }
 
   document.getElementById('logoInput').addEventListener('change', (e)=>{
-    logoFile = e.target.files[0] || null;
+    const newFile = e.target.files[0] || null;
+    if (!newFile) return;
+    // Il logo viene "bruciato" dentro ogni foto (watermark) al momento del
+    // caricamento — cambiarlo NON aggiorna le foto già presenti, che restano col
+    // vecchio logo impresso per sempre nel file. L'unico modo per avere il logo
+    // nuovo su quelle foto è ricaricarle da capo. Avviso e, se confermato, tolgo
+    // le foto esistenti di QUESTO dossier (l'utente dovrà ricaricarle) — non
+    // tocco gli altri dossier dell'agenzia, che restano un problema noto ma fuori
+    // dalla portata di questa singola pagina di modifica.
+    const hasPhotosToRedo = existingPropertyPhotos.length > 0 || existingDestinationPhotos.length > 0;
+    if (hasExistingLogo && hasPhotosToRedo) {
+      const ok = confirm('Stai sostituendo il logo. Le foto già caricate hanno il vecchio logo impresso e non possono essere aggiornate automaticamente: verranno rimosse da questo dossier e dovrai ricaricarle perché abbiano il nuovo logo. Vuoi continuare?');
+      if (!ok) { e.target.value = ''; return; }
+      existingPropertyPhotos.forEach(p => removedExistingPhotoIds.push(p.id));
+      existingDestinationPhotos.forEach(p => removedExistingPhotoIds.push(p.id));
+      existingPropertyPhotos = [];
+      existingDestinationPhotos = [];
+      renderPropPreview();
+      renderDestPreview();
+    }
+    logoFile = newFile;
+    hasExistingLogo = true;
     const box = document.getElementById('logoPreview');
     box.innerHTML = '';
-    if (logoFile) renderThumb(box, logoFile, ()=>{ logoFile=null; box.innerHTML=''; });
+    renderThumb(box, logoFile, ()=>{ logoFile=null; box.innerHTML=''; });
   });
 
   document.getElementById('propPhotos').addEventListener('change', (e)=>{
