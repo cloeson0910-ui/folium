@@ -1620,11 +1620,14 @@
           body: { dossier_id: dossier.id, languages: newLanguagesToPay }
         });
         if (checkoutError || !checkoutData?.url) {
-          // Il dossier esiste comunque senza le nuove traduzioni: non blocchiamo l'utente,
-          // ma le lingue nuove NON vengono aggiunte (restano da pagare al prossimo tentativo).
+          // PRIMA: in caso di errore si mostrava comunque il dossier (senza le
+          // traduzioni pagate) come se tutto fosse andato bene — un cliente poteva
+          // vedere il dossier in italiano pensando di aver acquistato la traduzione.
+          // Ora ci si ferma e si avvisa chiaramente, senza procedere al dossier.
           console.error('Checkout traduzioni non avviato:', checkoutError);
           closeGenerationWindow();
-          window.location.href = `folium-view.html?id=${dossier.id}`;
+          showMsg('Il dossier è stato salvato, ma il pagamento delle traduzioni non è partito correttamente: ' + (checkoutError?.message || 'errore sconosciuto') + '. Riprova a salvare per completare il pagamento — il dossier non mostrerà le lingue nuove finché non lo fai.', false);
+          btn.disabled = false; btn.textContent = editDossierId ? 'Salva modifiche' : 'Genera il mio dossier';
           return;
         }
         closeGenerationWindow();

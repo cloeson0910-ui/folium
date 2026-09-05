@@ -1492,7 +1492,47 @@
     }
   }
 
-  checkAccessAndRender();
+  // Ritorno da Stripe dopo il pagamento di una o più traduzioni (folium-translation-
+  // checkout): NON procede col render normale finché il pagamento non risulta
+  // 'completed' (aggiornato dal webhook Stripe) — altrimenti si rischierebbe di
+  // mostrare il dossier come se le lingue nuove fossero già pronte quando magari il
+  // webhook non ha ancora fatto in tempo a processare il pagamento.
+  async function waitForTranslationPurchase(purchaseId){
+    const content = document.getElementById('content');
+    content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#8a7a52;">Conferma del pagamento traduzione in corso…<br><span style="font-size:12px;">Non chiudere questa pagina, di solito richiede pochi secondi.</span></div>`;
+
+    const { data: purchase, error } = await sb.from('folium_translation_purchases').select('*').eq('id', purchaseId).maybeSingle();
+    if (error || !purchase) {
+      content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#a33;">Impossibile verificare il pagamento della traduzione. Se hai completato il pagamento, ricarica questa pagina tra qualche istante.</div>`;
+      return;
+    }
+    if (purchase.status === 'completed') {
+      // Query pulita, senza il parametro, per non ripetere il controllo ad ogni refresh
+      const cleanUrl = window.location.href.split('?')[0] + `?id=${dossierId}`;
+      window.history.replaceState({}, '', cleanUrl);
+      return; // procede col checkAccessAndRender/render normale, sotto
+    }
+    if (purchase.status === 'failed') {
+      content.innerHTML = `<div style="text-align:center;padding:60px 20px;color:#a33;">Il pagamento della traduzione non è andato a buon fine. Le lingue nuove non sono state aggiunte al dossier.</div>`;
+      return;
+    }
+    // ancora 'pending': ricontrolla ogni 4 secondi, stesso pattern di folium-checkout-success.html
+    setTimeout(() => waitForTranslationPurchase(purchaseId), 4000);
+  }
+
+  async function init(){
+    const translationPurchaseId = new URLSearchParams(window.location.search).get('translation_purchase_id');
+    if (translationPurchaseId) {
+      await waitForTranslationPurchase(translationPurchaseId);
+      // Se il pagamento non è ancora confermato, waitForTranslationPurchase resta in
+      // attesa/polling e NON deve proseguire oltre in questa chiamata.
+      const stillPending = new URLSearchParams(window.location.search).get('translation_purchase_id');
+      if (stillPending) return;
+    }
+    checkAccessAndRender();
+  }
+
+  init();
 </script>
 </body>
 </html>
