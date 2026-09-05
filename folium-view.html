@@ -1335,7 +1335,43 @@
     // dedicata e leggera, solo i 2 campi che servono per i tag della pagina ponte.
     const { data: shareDossier } = await sb.from('folium_dossiers').select('property_address').eq('id', dossierId).single();
     const { data: shareCoverPhotoRow } = await sb.from('folium_dossier_photos').select('photo_url').eq('dossier_id', dossierId).eq('photo_kind', 'property').order('sort_order').limit(1).maybeSingle();
-    const coverPhoto = shareCoverPhotoRow?.photo_url || '';
+    const rawCoverPhoto = shareCoverPhotoRow?.photo_url || '';
+    // Copertina ridimensionata/compressa in un vero file JPEG piccolo (max 1200px,
+    // qualità 0.82) caricato su Storage — stesso principio della copertina di
+    // riferimento Immonova (file reale pre-generato, non l'originale potenzialmente
+    // pesante caricato dal cliente, e non un proxy di terzi che può comportarsi in
+    // modo imprevedibile con i crawler, come verificato con wsrv.nl). Se per
+    // qualunque motivo il ridimensionamento fallisce, si usa comunque l'originale
+    // piuttosto che non avere nessuna immagine.
+    let coverPhoto = rawCoverPhoto;
+    if (rawCoverPhoto) {
+      try {
+        const img = await new Promise((resolve, reject) => {
+          const im = new Image();
+          im.crossOrigin = 'anonymous';
+          im.onload = () => resolve(im);
+          im.onerror = reject;
+          im.src = rawCoverPhoto;
+        });
+        const maxW = 1200;
+        const scale = Math.min(1, maxW / img.naturalWidth);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const coverBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+        if (coverBlob) {
+          const coverPath = `${dossierId}-cover.jpg`;
+          const { error: coverErr } = await sb.storage.from('folium-share-pages').upload(coverPath, coverBlob, { contentType: 'image/jpeg', upsert: true, cacheControl: 'no-store' });
+          if (!coverErr) {
+            const { data: coverPub } = sb.storage.from('folium-share-pages').getPublicUrl(coverPath);
+            coverPhoto = coverPub.publicUrl;
+          }
+        }
+      } catch (e) {
+        console.error('Ridimensionamento copertina condivisione fallito, uso originale:', e);
+      }
+    }
     const dossier = shareDossier || {};
 
     // Pagina ponte STATICA (nessuna edge function): generata qui nel browser, dove i
@@ -1361,7 +1397,8 @@
 <meta property="og:title" content="${escHtml(title)}">
 <meta property="og:description" content="${escHtml(description)}">
 ${coverPhoto ? `<meta property="og:image" content="${escHtml(coverPhoto)}">
-<meta property="og:image:secure_url" content="${escHtml(coverPhoto)}">` : ''}
+<meta property="og:image:secure_url" content="${escHtml(coverPhoto)}">
+<meta property="og:image:type" content="image/jpeg">` : ''}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escHtml(title)}">
 <meta name="twitter:description" content="${escHtml(description)}">
