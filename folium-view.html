@@ -1314,9 +1314,12 @@
     const path = `dossier-${dossierId}/${filename}`;
     const { error } = await sb.storage.from('folium-dossier-pdfs').upload(path, blob, { contentType: 'application/pdf', upsert: true });
     if (error) throw error;
-    const { data: pub } = sb.storage.from('folium-dossier-pdfs').getPublicUrl(path);
-    if (!pub?.publicUrl) throw new Error('URL pubblico del PDF non disponibile dopo il caricamento.');
-    cachedShareUrl = pub.publicUrl;
+    // Il link condiviso NON è più l'URL diretto del PDF (troppo lungo, nessuna
+    // anteprima su WhatsApp) ma una pagina ponte (edge function folium-share) che
+    // genera i tag Open Graph (titolo=indirizzo, immagine=copertina) lato server —
+    // necessario perché WhatsApp legge l'HTML senza eseguire JavaScript — e poi
+    // reindirizza al vero PDF appena caricato sopra.
+    cachedShareUrl = `${SUPABASE_URL}/functions/v1/folium-share?id=${encodeURIComponent(dossierId)}`;
     return cachedShareUrl;
   }
 
