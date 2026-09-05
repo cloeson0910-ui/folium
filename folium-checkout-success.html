@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagamento confermato | FOLIUM</title>
+<style>
+  :root{--gold1:#8f6f2c;--gold2:#c79c43;--gold3:#f1d27a;--gold4:#a77d31;--bronze:#20180a;--bronze2:#3a2c14;--cream:#f6f2ea;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',Arial,sans-serif;background:var(--cream);color:#2b2416;}
+  header{background:radial-gradient(circle at 30% 20%, var(--bronze2), var(--bronze));padding:32px 18px;text-align:center;color:var(--gold3);}
+  header .brand{font-weight:300;letter-spacing:4px;font-size:22px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold3),var(--gold4));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .wrap{max-width:480px;margin:0 auto;padding:40px 16px 60px;text-align:center;}
+  .icon{font-size:52px;margin-bottom:8px;}
+  h1{font-size:19px;margin:0 0 10px;}
+  p{font-size:14px;color:#6b5c3a;line-height:1.6;}
+  .card{background:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.08);padding:22px 20px;margin-top:20px;text-align:left;}
+  .row{display:flex;justify-content:space-between;font-size:13.5px;padding:7px 0;border-bottom:1px dashed #eee2c8;}
+  .row:last-child{border-bottom:none;}
+  .row b{color:#6b5314;}
+  .btn{display:inline-block;margin-top:26px;padding:13px 26px;border-radius:10px;background:linear-gradient(120deg,var(--gold1),var(--gold2),var(--gold4));color:#fff;text-decoration:none;font-size:14px;letter-spacing:.5px;}
+  .pending{color:#a77d31;}
+  .err{color:#a33;}
+</style>
+</head>
+<body>
+<header><div class="brand">FOLIUM</div></header>
+<div class="wrap">
+  <div id="content">
+    <div class="icon">⏳</div>
+    <h1>Verifica del pagamento in corso…</h1>
+    <p>Non chiudere questa pagina, di solito richiede pochi secondi.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://jgsmebtiwgwegjcytmee.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_ToGgNAX4tIn6O7gb6hMa4A_kRi1yztz";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const TIER_LABELS = { gold: 'Gold', platinum: 'Platinum' };
+  const PACKAGE_LABELS = { single: 'Dossier singolo', pack10: 'Pacchetto 10 dossier', pack50: 'Pacchetto 50 dossier' };
+
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmtEuro(cents){ return (cents/100).toLocaleString('it-IT', { minimumFractionDigits: 2 }) + '€'; }
+
+  const purchaseId = new URLSearchParams(window.location.search).get('purchase_id');
+  const content = document.getElementById('content');
+
+  function renderConfirmed(p){
+    content.innerHTML = `
+      <div class="icon">✅</div>
+      <h1>Pagamento confermato!</h1>
+      <p>Il tuo acquisto è andato a buon fine. Puoi iniziare subito a generare i tuoi dossier ${esc(TIER_LABELS[p.tier] || p.tier)}.</p>
+      <div class="card">
+        <div class="row"><span>Piano</span><b>${esc(TIER_LABELS[p.tier] || p.tier)}</b></div>
+        <div class="row"><span>Pacchetto</span><b>${esc(PACKAGE_LABELS[p.package_type] || p.package_type)}</b></div>
+        <div class="row"><span>Dossier inclusi</span><b>${esc(p.dossier_count)}</b></div>
+        <div class="row"><span>Totale pagato</span><b>${fmtEuro(p.total_amount_cents)}</b></div>
+      </div>
+      <a class="btn" href="folium-create.html">Crea il tuo dossier →</a>
+    `;
+  }
+
+  function renderPending(){
+    content.innerHTML = `
+      <div class="icon">⏳</div>
+      <h1 class="pending">Pagamento in fase di conferma…</h1>
+      <p>Stripe sta confermando il pagamento — ricontrolliamo automaticamente ogni pochi secondi, non chiudere la pagina.</p>
+    `;
+  }
+
+  function renderError(msg){
+    content.innerHTML = `
+      <div class="icon">⚠️</div>
+      <h1 class="err">Qualcosa non torna</h1>
+      <p>${esc(msg)}</p>
+      <a class="btn" href="folium-checkout.html">Torna ai piani</a>
+    `;
+  }
+
+  async function checkPurchase(){
+    if (!purchaseId) { renderError('Nessun riferimento al pagamento trovato nel link.'); return; }
+    const { data: purchase, error } = await sb.from('folium_purchases').select('*').eq('id', purchaseId).maybeSingle();
+    if (error || !purchase) { renderError('Impossibile trovare i dettagli di questo acquisto.'); return; }
+
+    if (purchase.status === 'completed' || purchase.status === 'paid') {
+      renderConfirmed(purchase);
+    } else if (purchase.status === 'pending') {
+      renderPending();
+      setTimeout(checkPurchase, 4000); // ricontrolla ogni 4s, come folium-ads-success.html
+    } else {
+      renderError(`Stato pagamento: ${purchase.status}. Contatta l'assistenza se il problema persiste.`);
+    }
+  }
+
+  checkPurchase();
+</script>
+</body>
+</html>
