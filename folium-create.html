@@ -1591,8 +1591,9 @@
       for (let i = 0; i < destinationFiles.length; i++) {
         let file = destinationFiles[i];
         if (currentTier !== 'light') { btn.textContent = `Miglioramento qualità foto (${uploaded+1}/${totalPhotos})…`; file = await enhancePhotoIfNeeded(file); }
-        btn.textContent = `Applicazione logo (${uploaded+1}/${totalPhotos})…`;
-        file = await applyPhotoWatermark(file, currentTier, logoUrl, watermarkPosition, applyClientLogo);
+        // Richiesta esplicita 2026-09-06: NESSUN logo sulle foto dei dintorni/zona —
+        // solo sulle foto dell'immobile. Prima veniva applicato lo stesso
+        // applyPhotoWatermark() di sopra, identico per entrambe le categorie.
         btn.textContent = `Caricamento foto (${uploaded+1}/${totalPhotos})…`;
         const url = await uploadFile('folium-photos', file, dossier.id);
         await sb.from('folium_dossier_photos').insert({
