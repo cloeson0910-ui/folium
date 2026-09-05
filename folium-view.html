@@ -1062,7 +1062,6 @@
       const narrativeDividerPage = nextDividerPage('Editorial Overview', 'Presentazione della Proposta');
       if (narrativeDividerPage) pages.push(narrativeDividerPage);
       if (editorial) {
-        dataSources.add('Elaborazione editoriale FOLIUM (assistita da intelligenza artificiale)');
         const MAX_CHARS = 2600;
         const addTextPages = (kicker, title, text) => {
           const parts = paginateText(text, MAX_CHARS);
