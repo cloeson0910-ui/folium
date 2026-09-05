@@ -819,6 +819,10 @@
 
     const propertyPhotos = (photos || []).filter(p => p.photo_kind === 'property');
     const destPhotos = (photos || []).filter(p => p.photo_kind === 'destination');
+    // Fonti dei dati: raccolte man mano che le sezioni vengono generate (solo quelle
+    // realmente usate in QUESTO dossier), stampate poi nell'ultima pagina insieme ai
+    // dati agenzia. Un Set evita duplicati se una fonte serve più sezioni.
+    const dataSources = new Set();
 
     const header = `
       <div class="page-header">
@@ -942,8 +946,10 @@
         mapHTML = hasCoords
           ? `<img class="map-frame" crossorigin="anonymous" src="https://maps.geoapify.com/v1/staticmap?style=osm-bright&width=1000&height=650&center=lonlat:${dossier.property_lng},${dossier.property_lat}&zoom=15&marker=lonlat:${dossier.property_lng},${dossier.property_lat};color:%23e74c3c;size:large&apiKey=${GEOAPIFY_KEY}" onerror="this.outerHTML='&lt;div class=&quot;map-frame&quot; style=&quot;display:flex;align-items:center;justify-content:center;color:#8a7a52;font-size:12px;&quot;&gt;Mappa non disponibile al momento.&lt;/div&gt;'">`
           : `<div class="map-frame" style="display:flex;align-items:center;justify-content:center;color:#8a7a52;font-size:12px;">Coordinate non disponibili per questo indirizzo.</div>`;
+        if (hasCoords) dataSources.add('Geoapify (mappa)');
       } else {
         mapHTML = `<img class="map-frame" id="locationMapImg" data-lat="${esc(String(dossier.property_lat))}" data-lng="${esc(String(dossier.property_lng))}">`;
+        dataSources.add('Google Maps (mappa)');
       }
       const addrRow = (label, val) => val ? `<div class="addr-row"><strong>${esc(label)}</strong><span>${esc(val)}</span></div>` : '';
       const locationDividerPage = nextDividerPage('Asset Location', 'Posizione e Localizzazione');
@@ -980,6 +986,7 @@
               ${byType[k].slice(0, 3).map(s => `<div class="addr-row"><strong>${esc(s.name)}</strong><span>${(s.distance / 1000).toFixed(1)} km</span></div>`).join('')}
             </div>`).join('');
           if (blockHTML) {
+            dataSources.add('Geoapify Places (servizi nelle vicinanze)');
             pages.push(pageWrapper(`
               ${header}
               ${sectionHead('Neighborhood Services', 'Servizi nelle vicinanze')}
@@ -999,6 +1006,7 @@
 
     const { data: territory, error: territoryError } = await ensureTerritoryFacts(dossier);
     if (territory) {
+      dataSources.add('ISTAT (dati territoriali)');
       pages.push(pageWrapper(`
         ${header}
         ${sectionHead('Territory Data', 'Dati del territorio')}
@@ -1019,6 +1027,7 @@
 
     const { data: popData, error: popError } = await ensurePopulationComposition(dossier);
     if (popData) {
+      dataSources.add('ISTAT (dati demografici)');
       pages.push(pageWrapper(`
         ${header}
         ${sectionHead('Demographics', t('population', lang))}
@@ -1053,6 +1062,7 @@
       const narrativeDividerPage = nextDividerPage('Editorial Overview', 'Presentazione della Proposta');
       if (narrativeDividerPage) pages.push(narrativeDividerPage);
       if (editorial) {
+        dataSources.add('Elaborazione editoriale FOLIUM (assistita da intelligenza artificiale)');
         const MAX_CHARS = 2600;
         const addTextPages = (kicker, title, text) => {
           const parts = paginateText(text, MAX_CHARS);
@@ -1080,6 +1090,7 @@
     if (dossier.include_discovery || (isOwnerViewing && tier !== 'light')) {
       const disc = await ensureDiscoveryData(dossier);
       if (disc) {
+        dataSources.add('Discovery Engine FOLIUM (analisi territorio e turismo)');
         const territoryText = (lang !== 'it' && translated?.discovery_summary) || disc.summary || disc.narrative || 'Dati territoriali non disponibili per questa zona.';
         const territoryParts = paginateText(territoryText, 2600);
         territoryParts.forEach((part, idx) => {
@@ -1133,23 +1144,21 @@
       <div class="verified-note">${esc(verifiedText)}</div>
     `, false, false, t('verified', lang)));
 
-    // Pagine foto destinazione (facoltative) — stessa regola: 1 foto per pagina, mai deformata
-    if (destPhotos.length) {
-      chunk(destPhotos, 1).forEach((pair, idx) => {
-        pages.push(pageWrapper(`
-          ${header}
-          ${idx === 0 ? sectionHead('Location Gallery', t('destination', lang)) : sectionHead('Location Gallery', `${t('destination', lang)} (${idx + 1})`)}
-          <div class="gallery-photo-grid">
-            ${pair.map(p => `<div class="gallery-photo-cell" style="background-image:url('${esc(p.photo_url)}');"></div>`).join('')}
-          </div>
-        `, false, false, idx === 0 ? t('destination', lang) : null));
-      });
-    }
+    // NOTA: le foto "dintorni" (destPhotos) NON hanno più una galleria dedicata qui in
+    // fondo al dossier — su richiesta esplicita dell'utente vanno usate SOLO come sfondo
+    // dei divisori di sezione (nextDividerPage, sopra), mai ripetute anche come sezione
+    // a sé alla fine. Rimossa la vecchia "Galleria dintorni" che le duplicava.
 
     // Pagina finale — riepilogo agenzia/agente: indirizzo, nome, contatti. Sempre inclusa,
     // ogni piano, è informazione del cliente stesso (nessun motore, nessun costo).
     const closingDividerPage = nextDividerPage('Agency Contact', 'Un\'Ultima Vista');
     if (closingDividerPage) pages.push(closingDividerPage);
+    // Fonti dei dati: elenco dinamico, SOLO quelle realmente usate in questo dossier
+    // (dataSources popolato man mano che le sezioni sopra vengono generate) — mai una
+    // lista fissa che citerebbe motori non usati (es. dossier Light senza Discovery).
+    const sourcesHTML = dataSources.size
+      ? `<div class="verified-note" style="margin-top:22px;font-size:11.5px;color:var(--gold4);">Fonti dei dati: ${[...dataSources].map(esc).join(' · ')}.</div>`
+      : '';
     pages.push(pageWrapper(`
       ${header}
       ${sectionHead('Agency Contact', 'Riepilogo agenzia')}
@@ -1159,6 +1168,7 @@
         <div class="metric-card"><div class="metric-label">Telefono</div><div class="metric-value" style="font-size:16px;">${esc(client?.contact_phone || '—')}</div></div>
         <div class="metric-card"><div class="metric-label">Indirizzo immobile di riferimento</div><div class="metric-value" style="font-size:16px;">${esc(dossier.property_address || '—')}</div></div>
       </div>
+      ${sourcesHTML}
     `, false, false, 'Riepilogo agenzia'));
 
 
@@ -1319,7 +1329,12 @@
     // genera i tag Open Graph (titolo=indirizzo, immagine=copertina) lato server —
     // necessario perché WhatsApp legge l'HTML senza eseguire JavaScript — e poi
     // reindirizza al vero PDF appena caricato sopra.
-    cachedShareUrl = `${SUPABASE_URL}/functions/v1/folium-share?id=${encodeURIComponent(dossierId)}`;
+    // Parametro "v" invisibile alla funzione (che legge solo "id") ma rende il link
+    // unico ad ogni nuova generazione: WhatsApp ha una cache propria dell'anteprima
+    // per URL, separata da quella di Facebook e senza uno strumento pubblico per
+    // svuotarla — un link "mai visto prima" evita di restare bloccati su
+    // un'anteprima vecchia salvata durante i test precedenti.
+    cachedShareUrl = `${SUPABASE_URL}/functions/v1/folium-share?id=${encodeURIComponent(dossierId)}&v=${Date.now()}`;
     return cachedShareUrl;
   }
 
