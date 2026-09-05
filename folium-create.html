@@ -141,6 +141,7 @@
         <div class="data-choice" style="margin-bottom:10px;">Piano Gold/Platinum: nessun logo Folium in ogni caso. Deselezionando la casella sopra, le foto restano senza alcun logo.</div>
         <label>Posizione logo</label>
         <select id="watermarkPosition">
+          <option value="center">Al centro</option>
           <option value="bottom-right">In basso a destra</option>
           <option value="bottom-left">In basso a sinistra</option>
           <option value="top-right">In alto a destra</option>
@@ -1334,7 +1335,7 @@
     // BUG REALE trovato: 0.30 = logo grande il 30% della larghezza della foto, enorme e
     // "ridicolo" specialmente sulla copertina a piena pagina. Ridotto a una dimensione
     // da watermark vero (proporzioni tipiche 10-14% della larghezza).
-    const sizeRatio = isCenter ? 0.22 : 0.13;
+    const sizeRatio = isCenter ? 0.34 : 0.13;
     const wmWidth = canvasWidth * sizeRatio;
     const wmHeight = wmWidth * logoAspectRatio;
     const margin = canvasWidth * 0.035;
@@ -1369,7 +1370,11 @@
         if (applyClientLogo) {
           const clientLogo = await loadClientLogo(clientLogoUrl);
           if (clientLogo) {
-            const rect = computeWatermarkRect(canvas.width, canvas.height, clientLogo.height / clientLogo.width, 'bottom-left');
+            // Richiesta esplicita 2026-09-06: logo agenzia al CENTRO della foto, grande
+            // (prima era forzato in basso a sinistra al 13% della larghezza — piccolo,
+            // in un angolo, poco leggibile una volta generato il dossier). 'center' fa
+            // già usare un sizeRatio maggiore in computeWatermarkRect (vedi sotto).
+            const rect = computeWatermarkRect(canvas.width, canvas.height, clientLogo.height / clientLogo.width, 'center');
             ctx.save(); ctx.globalAlpha = 0.9; ctx.drawImage(clientLogo, rect.x, rect.y, rect.width, rect.height); ctx.restore();
           }
         }
@@ -1381,7 +1386,7 @@
       } else if (applyClientLogo) {
         const clientLogo = await loadClientLogo(clientLogoUrl);
         if (clientLogo) {
-          const pos = ['top-left','top-right','bottom-left','bottom-right'].includes(watermarkPosition) ? watermarkPosition : 'bottom-right';
+          const pos = ['center','top-left','top-right','bottom-left','bottom-right'].includes(watermarkPosition) ? watermarkPosition : 'bottom-right';
           const rect = computeWatermarkRect(canvas.width, canvas.height, clientLogo.height / clientLogo.width, pos);
           ctx.save(); ctx.globalAlpha = 0.9; ctx.drawImage(clientLogo, rect.x, rect.y, rect.width, rect.height); ctx.restore();
         }
