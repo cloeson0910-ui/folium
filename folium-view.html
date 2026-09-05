@@ -736,7 +736,6 @@
     if (lang === 'it') return null;
     const cached = dossier.translations && dossier.translations[lang];
     const REQUIRED_KEYS = ['verified_notes', 'full_description', 'location_summary', 'tourism_summary', 'discovery_summary'];
-    if (cached && REQUIRED_KEYS.every(k => k in cached)) return cached;
 
     const { data: editorial } = await ensureEditorialAnalysis(dossier);
     const disc = await ensureDiscoveryData(dossier);
@@ -747,6 +746,17 @@
     const tourismSummary = editorial?.tourism_summary || '';
     const discoverySummary = disc?.summary || disc?.narrative || '';
     const texts = [verifiedNotes, fullDescription, locationSummary, tourismSummary, discoverySummary];
+
+    // Una cache è valida solo se ha TUTTE le chiavi E, per ogni testo sorgente non
+    // vuoto, la traduzione corrispondente non è vuota — una cache "completa ma
+    // vuota" (salvata per errore in un tentativo precedente) va scartata e
+    // rigenerata, non trattata come già tradotta.
+    if (cached && REQUIRED_KEYS.every(k => k in cached)) {
+      const cachedValues = REQUIRED_KEYS.map(k => cached[k]);
+      const staleEmpty = texts.some((src, i) => src && !cachedValues[i]);
+      if (!staleEmpty) return cached;
+    }
+
     if (!texts.some(x => x)) {
       lastTranslationDebugInfo = 'Nessun testo sorgente da tradurre trovato (narrativa editoriale non ancora generata su questo dossier — editorial: ' + JSON.stringify(editorial) + ').';
       return null;
@@ -772,6 +782,15 @@
         tourism_summary: data.translations[3] || '',
         discovery_summary: data.translations[4] || '',
       };
+      // Se un testo SORGENTE era pieno ma il risultato tradotto è vuoto, non è un
+      // errore che l'API segnala (risponde comunque "success:true"), ma è comunque
+      // un fallimento — mostrarlo, altrimenti il fallback silenzioso all'italiano
+      // sembra "nessun problema" quando in realtà lo è.
+      const labels = ['dati verificati', 'presentazione', 'attrattività zona', 'contesto turistico', 'territorio'];
+      const emptyResults = texts.map((src, i) => (src && !Object.values(result)[i]) ? labels[i] : null).filter(Boolean);
+      if (emptyResults.length) {
+        lastTranslationDebugInfo = `Il motore ha risposto "successo" ma ha restituito testo VUOTO per: ${emptyResults.join(', ')} (testo sorgente presente, traduzione assente).`;
+      }
       const updatedTranslations = { ...(dossier.translations || {}), [lang]: result };
       await sb.from('folium_dossiers').update({ translations: updatedTranslations }).eq('id', dossier.id);
       dossier.translations = updatedTranslations;
