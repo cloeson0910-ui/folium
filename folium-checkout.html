@@ -199,7 +199,20 @@
         throw new Error('URL di pagamento non ricevuto');
       }
     } catch (err) {
-      showMsg('Errore avvio pagamento: ' + (err.message || err));
+      // err.message per un errore di edge function è sempre il generico "Edge
+      // Function returned a non-2xx status code" — il messaggio VERO (quello che
+      // la funzione ha davvero risposto, es. "Prezzo non configurato...") è dentro
+      // err.context (la Response grezza), va letto esplicitamente come JSON.
+      let realMessage = err.message || String(err);
+      if (err?.context && typeof err.context.json === 'function') {
+        try {
+          const body = await err.context.json();
+          if (body?.error) realMessage = body.error;
+        } catch (parseErr) {
+          // risposta non JSON: teniamo il messaggio generico, meglio di niente
+        }
+      }
+      showMsg('Errore avvio pagamento: ' + realMessage);
       if (clickedBtn) { clickedBtn.disabled = false; clickedBtn.textContent = originalBtnText; }
     }
   }
