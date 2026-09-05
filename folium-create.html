@@ -626,8 +626,10 @@
     document.getElementById(`chip-${code}`).classList.toggle('on', selectedLanguages.includes(code));
     const box = document.getElementById('translationPriceBox');
     if (!selectedLanguages.length) { box.textContent = 'Nessuna lingua selezionata — 0€'; return; }
-    if (currentTier !== 'light') {
-      box.textContent = `${selectedLanguages.length} lingua/e selezionata/e — INCLUSE GRATIS (piano ${currentTier === 'gold' ? 'Gold' : 'Platinum'})`;
+    if (currentTier !== 'light' || isOwner) {
+      box.textContent = isOwner && currentTier === 'light'
+        ? `${selectedLanguages.length} lingua/e selezionata/e — GRATIS (account sviluppatore, nessun pagamento richiesto)`
+        : `${selectedLanguages.length} lingua/e selezionata/e — INCLUSE GRATIS (piano ${currentTier === 'gold' ? 'Gold' : 'Platinum'})`;
     } else {
       const total = selectedLanguages.length * TRANSLATION_PRICE_EUR;
       box.textContent = `${selectedLanguages.length} lingua/e selezionata/e — ${total}€ totali (${TRANSLATION_PRICE_EUR}€ a lingua)`;
@@ -1464,7 +1466,10 @@
 
       // Gold/Platinum: le traduzioni sono incluse gratis, si salvano subito sul dossier
       // senza passare da Stripe. Light: restano un add-on a pagamento (gestito dopo l'insert).
-      const freeLanguages = (currentTier !== 'light') ? selectedLanguages : [];
+      // isOwner incluso qui: se l'account sviluppatore salta il pagamento (sopra),
+      // la lingua deve comunque risultare aggiunta, altrimenti si salterebbe il
+      // pagamento senza che la traduzione compaia mai — impossibile da testare.
+      const freeLanguages = (currentTier !== 'light' || isOwner) ? selectedLanguages : [];
 
       const geoStatus = document.getElementById('geoStatus');
       if (geoStatus) geoStatus.textContent = 'Localizzazione indirizzo…';
@@ -1501,7 +1506,7 @@
         // watermark/crediti (quelli restano quelli della generazione originale).
         // Le lingue: se Gold/Platinum sono gratis, le scrivo subito qui; se Light
         // restano da scrivere SOLO dopo il pagamento (lo fa il webhook Stripe più sotto).
-        if (currentTier !== 'light') dossierFields.translated_languages = selectedLanguages;
+        if (currentTier !== 'light' || isOwner) dossierFields.translated_languages = selectedLanguages;
         // BUG REALE trovato: in modifica non venivano mai riscritti questi due flag,
         // restavano bloccati al valore della primissima creazione del dossier — un
         // dossier creato prima di oggi restava per sempre senza narrativa anche
@@ -1612,9 +1617,12 @@
         ? selectedLanguages.filter(l => !alreadyPaidLanguages.includes(l))
         : selectedLanguages;
 
-      if (currentTier === 'light' && newLanguagesToPay.length > 0) {
+      if (currentTier === 'light' && newLanguagesToPay.length > 0 && !isOwner) {
         // Traduzioni: add-on a pagamento indipendente dal piano, checkout dedicato
-        // prima di mostrare il dossier finale.
+        // prima di mostrare il dossier finale. isOwner ESCLUSO qui sotto (aggiunto):
+        // stesso bypass già in vigore per crediti/pubblicità — l'account sviluppatore
+        // non deve mai passare da un pagamento vero nemmeno quando simula il piano
+        // Light, per poter testare la generazione della traduzione senza costi.
         btn.textContent = 'Avvio pagamento traduzioni…';
         const { data: checkoutData, error: checkoutError } = await sb.functions.invoke('folium-translation-checkout', {
           body: { dossier_id: dossier.id, languages: newLanguagesToPay }
