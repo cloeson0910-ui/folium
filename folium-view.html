@@ -1336,14 +1336,12 @@
     const { data: shareDossier } = await sb.from('folium_dossiers').select('property_address').eq('id', dossierId).single();
     const { data: shareCoverPhotoRow } = await sb.from('folium_dossier_photos').select('photo_url').eq('dossier_id', dossierId).eq('photo_kind', 'property').order('sort_order').limit(1).maybeSingle();
     const rawCoverPhoto = shareCoverPhotoRow?.photo_url || '';
-    // Copertina ridimensionata/compressa in un vero file JPEG piccolo (max 1200px,
-    // qualità 0.82) caricato su Storage — stesso principio della copertina di
-    // riferimento Immonova (file reale pre-generato, non l'originale potenzialmente
-    // pesante caricato dal cliente, e non un proxy di terzi che può comportarsi in
-    // modo imprevedibile con i crawler, come verificato con wsrv.nl). Se per
-    // qualunque motivo il ridimensionamento fallisce, si usa comunque l'originale
-    // piuttosto che non avere nessuna immagine.
-    let coverPhoto = rawCoverPhoto;
+    const address = shareDossier?.property_address || 'Dossier immobiliare';
+
+    // Copertina ridimensionata in un JPEG piccolo (max 1200px, qualità 0.82) —
+    // stesso principio della copertina di riferimento Immonova (file reale
+    // pre-generato, non l'originale potenzialmente pesante caricato dal cliente).
+    let coverImageBase64 = null;
     if (rawCoverPhoto) {
       try {
         const img = await new Promise((resolve, reject) => {
@@ -1359,72 +1357,33 @@
         canvas.width = Math.round(img.naturalWidth * scale);
         canvas.height = Math.round(img.naturalHeight * scale);
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        const coverBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
-        if (coverBlob) {
-          const coverPath = `${dossierId}-cover.jpg`;
-          const { error: coverErr } = await sb.storage.from('folium-share-pages').upload(coverPath, coverBlob, { contentType: 'image/jpeg', upsert: true, cacheControl: 'no-store' });
-          if (!coverErr) {
-            const { data: coverPub } = sb.storage.from('folium-share-pages').getPublicUrl(coverPath);
-            coverPhoto = coverPub.publicUrl;
-          }
-        }
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        coverImageBase64 = dataUrl.split(',')[1]; // solo la parte base64, senza "data:image/jpeg;base64,"
       } catch (e) {
-        console.error('Ridimensionamento copertina condivisione fallito, uso originale:', e);
+        console.error('Ridimensionamento copertina condivisione fallito, si procede senza immagine:', e);
       }
     }
-    const dossier = shareDossier || {};
 
-    // Pagina ponte STATICA (nessuna edge function): generata qui nel browser, dove i
-    // dati (indirizzo, foto copertina) sono già disponibili, e caricata come file .html
-    // già pronto su Storage. Stesso identico principio del riferimento Immonova
-    // (pagina statica pre-generata, zero calcoli al momento della richiesta) — la
-    // versione precedente con edge function era corretta nei tag (verificato più volte
-    // col debugger Facebook) ma il tempo di risposta (query DB + storage ad ogni
-    // richiesta) era probabilmente troppo lento per il crawler di WhatsApp, più
-    // intollerante di quello di Facebook. Una pagina statica elimina il problema alla
-    // radice: caricarla è veloce quanto qualsiasi altro sito.
-    const address = dossier.property_address || 'Dossier immobiliare';
-    const title = `Dossier FOLIUM - ${address}`;
-    const description = `Scopri il dossier completo di ${address}, realizzato con FOLIUM.`;
-    const sharePagePath = `${dossierId}.html`;
-    // URL pubblico prevedibile (deterministico su path+bucket): lo componiamo PRIMA
-    // dell'upload così può comparire come og:url dentro l'HTML stesso, senza dover
-    // fare un giro extra di upload→lettura URL→riscrittura del file.
-    const predictedShareUrl = `${SUPABASE_URL}/storage/v1/object/public/folium-share-pages/${sharePagePath}`;
-    const shareHtml = `<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<title>${escHtml(title)}</title>
-<meta name="description" content="${escHtml(description)}">
-<meta property="og:type" content="website">
-<meta property="og:title" content="${escHtml(title)}">
-<meta property="og:description" content="${escHtml(description)}">
-<meta property="og:url" content="${escHtml(predictedShareUrl)}">
-${coverPhoto ? `<meta property="og:image" content="${escHtml(coverPhoto)}">
-<meta property="og:image:secure_url" content="${escHtml(coverPhoto)}">
-<meta property="og:image:type" content="image/jpeg">` : ''}
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${escHtml(title)}">
-<meta name="twitter:description" content="${escHtml(description)}">
-${coverPhoto ? `<meta name="twitter:image" content="${escHtml(coverPhoto)}">` : ''}
-<style>body{font-family:-apple-system,Helvetica,Arial,sans-serif;text-align:center;padding:60px 20px;color:#333;background:#faf8f4;}a{color:#8a6d3b;}</style>
-</head>
-<body>
-  <p>Apertura del dossier in corso…</p>
-  <p>Se non si apre automaticamente, <a href="${escHtml(pdfUrl)}">clicca qui per aprire il PDF</a>.</p>
-  <scr${''}ipt>window.location.replace(${JSON.stringify(pdfUrl)});</scr${''}ipt>
-</body>
-</html>`;
-    const { error: shareErr } = await sb.storage.from('folium-share-pages').upload(sharePagePath, new Blob([shareHtml], { type: 'text/html' }), { contentType: 'text/html', upsert: true, cacheControl: 'no-store' });
-    if (shareErr) throw shareErr;
-    const { data: sharePub } = sb.storage.from('folium-share-pages').getPublicUrl(sharePagePath);
-    // Parametro "v" invisibile (il file HTML sopra ignora la query string) ma rende
-    // il link unico ad ogni nuova generazione: WhatsApp ha una cache propria
-    // dell'anteprima per URL, separata da quella di Facebook e senza uno strumento
-    // pubblico per svuotarla — un link "mai visto prima" evita di restare bloccati
-    // su un'anteprima vecchia salvata durante i test precedenti.
-    cachedShareUrl = `${sharePub.publicUrl}?v=${Date.now()}`;
+    // Pagina ponte pubblicata come file VERO sul dominio proprio
+    // (folium.dominus-suite.it, repository GitHub) invece che su storage.supabase.co —
+    // ogni link *.supabase.co testato oggi non ha mai mostrato l'anteprima su
+    // WhatsApp nonostante contenuto/tag corretti (verificato col debugger Facebook),
+    // mentre domini "normali" funzionano sempre: un dominio proprio elimina questa
+    // variabile alla radice.
+    const publishRes = await fetch(`${SUPABASE_URL}/functions/v1/folium-publish-share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dossierId, address, pdfUrl, coverImageBase64 }),
+    });
+    const publishData = await publishRes.json();
+    if (!publishRes.ok || !publishData.url) throw new Error(publishData.error || 'Pubblicazione della pagina di condivisione fallita');
+
+    // Parametro "v" invisibile ma rende il link unico ad ogni nuova generazione:
+    // WhatsApp ha una cache propria dell'anteprima per URL, separata da quella di
+    // Facebook e senza uno strumento pubblico per svuotarla — un link "mai visto
+    // prima" evita di restare bloccati su un'anteprima vecchia salvata durante i
+    // test precedenti.
+    cachedShareUrl = `${publishData.url}?v=${Date.now()}`;
     return cachedShareUrl;
   }
 
