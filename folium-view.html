@@ -151,7 +151,11 @@
     <button id="printBtn" onclick="window.print()" style="display:none;background:transparent;border:1px solid var(--gold3);color:var(--gold3);">Stampa dal browser</button>
   </div>
 </div>
-<div id="shareStatusMsg" style="display:none;text-align:right;padding:6px 24px 0;font-size:12px;color:var(--gold4);"></div>
+<div id="shareStatusMsg" style="display:none;align-items:center;justify-content:center;gap:10px;padding:12px 24px;font-size:13.5px;font-weight:500;color:#5c4a1f;background:#fbf3de;border-bottom:1px solid #e6d5a8;">
+  <span class="share-status-spinner" style="width:14px;height:14px;border:2px solid #c9a75c;border-top-color:transparent;border-radius:50%;display:inline-block;animation:shareStatusSpin .8s linear infinite;flex:none;"></span>
+  <span id="shareStatusText"></span>
+</div>
+<style>@keyframes shareStatusSpin{to{transform:rotate(360deg);}}</style>
 
 <div id="devTierSimulatorView" style="display:none;align-items:center;gap:8px;padding:8px 16px;background:#eef4ff;border-bottom:1px solid #c9d9f5;"></div>
 <div id="langSwitcher" class="lang-switcher" style="display:none;"></div>
@@ -886,6 +890,7 @@
     // esisteva per l'intero dossier, e passare a un'altra lingua sovrascriveva
     // silenziosamente il link già condiviso in precedenza in un'altra lingua).
     currentLang = lang;
+    const myGeneration = ++renderGeneration; // vedi nota su renderGeneration più sopra
     const el = document.getElementById('content');
     const { data: dossier, error } = await sb.from('folium_dossiers').select('*').eq('id', dossierId).single();
     if (error || !dossier) { el.textContent = 'Dossier non trovato.'; return; }
@@ -895,6 +900,7 @@
 
     applyTheme(dossier);
     currentPageOrientation = dossier.page_orientation === 'landscape' ? 'landscape' : 'portrait'; // letto qui per la generazione PDF client-side (jsPDF), stesso valore usato da applyTheme
+    if (myGeneration !== renderGeneration) return; // un render più recente è già partito: non far tornare indietro il pallino lingua attivo
     renderLanguageSwitcher(dossier, lang);
 
     // Gate lato viewer: le sezioni a costo (AI valuation/Discovery) si generano SOLO se
@@ -1354,6 +1360,7 @@
       });
       const withToc = [finalPages[0], buildTocPage(tocEntries, header), ...finalPages.slice(1)];
       const sponsorFooterText = sponsorNames.length ? `  ·  Con il supporto di: ${sponsorNames.join(', ')}` : '';
+      if (myGeneration !== renderGeneration) return; // un render più recente è già partito nel frattempo: non sovrascrivere il suo risultato
       el.innerHTML = numberPages(withToc).map(html => html.replaceAll('{{SPONSORS}}', esc(sponsorFooterText))).join('');
     } else {
       const tocEntries = [];
@@ -1362,8 +1369,10 @@
         if (m) tocEntries.push({ label: m[1].replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>'), page: idx + 2 });
       });
       const withToc = [pages[0], buildTocPage(tocEntries, header), ...pages.slice(1)];
+      if (myGeneration !== renderGeneration) return; // idem
       el.innerHTML = numberPages(withToc).map(html => html.replaceAll('{{SPONSORS}}', '')).join('');
     }
+    if (myGeneration !== renderGeneration) return; // non caricare la mappa per un render ormai superato
     try { await loadLocationMapImage(); } catch (e) { console.error('Errore imprevisto nel caricamento mappa (non bloccante):', e); } // mai deve fermare il resto del dossier
   }
 
@@ -1464,9 +1473,32 @@
   // un PDF nominato "-fr.pdf" ma con dentro ancora il contenuto tedesco del render
   // precedente. Bug reale segnalato dall'utente 2026-09-05 con VIA_ROSSINI-fr.pdf.
   let renderInFlight = null;
+  // NUOVO 2026-09-06: "numero di serie" del render più recente richiesto. Risolve un
+  // bug diverso e più subdolo di quello sopra — segnalato come "devo cliccare la
+  // lingua 2 volte": se si clicca una lingua MENTRE il render della lingua precedente
+  // sta ancora finendo (query DB + traduzione, alcuni secondi), NON esisteva nulla che
+  // impedisse al render vecchio di scrivere per ultimo nel DOM, sovrascrivendo quello
+  // nuovo appena avviato — il risultato visibile era "ho cliccato ma non è successo
+  // niente" (in realtà qualcosa succedeva, ma veniva subito ricoperto dal render
+  // superato). Ogni render() cattura il proprio numero all'inizio; se al momento di
+  // scrivere nel DOM non è più il più recente, si ritira senza toccare nulla.
+  let renderGeneration = 0;
 
   function escHtml(s){
     return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // Helper per il banner di stato tra i pulsanti e il dossier: usa uno span interno
+  // per il testo (serve un'icona animata sempre visibile accanto), quindi centralizzato
+  // qui invece di ripetere la stessa manipolazione DOM in ogni punto di chiamata.
+  function showShareStatus(statusEl, text){
+    if (!statusEl) return;
+    statusEl.style.display = 'flex';
+    const textEl = document.getElementById('shareStatusText');
+    if (textEl) textEl.textContent = text;
+  }
+  function hideShareStatus(statusEl){
+    if (statusEl) statusEl.style.display = 'none';
   }
 
   async function getOrGenerateShareablePdfUrl(statusEl){
@@ -1479,15 +1511,15 @@
     // cliente che ha appena pagato 5€ per una lingua non deve vedere un pulsante
     // bloccato senza spiegazione e pensare a un malfunzionamento: lo diciamo esplicitamente.
     if (renderInFlight) {
-      if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = `Stiamo traducendo i contenuti in ${(({it:'italiano',en:'inglese',fr:'francese',de:'tedesco',es:'spagnolo',ar:'arabo',zh:'cinese'})[currentLang] || currentLang)} — succede solo la prima volta che si apre questa lingua, può richiedere fino a 20-30 secondi.`; }
+      showShareStatus(statusEl, `Stiamo traducendo i contenuti in ${(({it:'italiano',en:'inglese',fr:'francese',de:'tedesco',es:'spagnolo',ar:'arabo',zh:'cinese'})[currentLang] || currentLang)} — succede solo la prima volta che si apre questa lingua, può richiedere fino a 20-30 secondi.`);
       try { await renderInFlight; } catch (e) { /* un eventuale errore di render è già gestito dentro render() stesso */ }
     }
     // Un dossier tradotto ha lingue diverse mostrate a persone diverse — ognuna deve
     // avere il proprio PDF e il proprio link, mai condividere lo stesso file/URL tra
     // lingue diverse (altrimenti l'ultima lingua generata sovrascrive le precedenti).
     const lang = currentLang;
-    if (cachedShareUrl[lang]) { if (statusEl) statusEl.style.display = 'none'; return cachedShareUrl[lang]; }
-    if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = 'Generazione del PDF in corso…'; }
+    if (cachedShareUrl[lang]) { hideShareStatus(statusEl); return cachedShareUrl[lang]; }
+    showShareStatus(statusEl, 'Generazione del PDF in corso…');
     const blob = await generateDossierPdfBlob();
     const langSuffix = lang !== 'it' ? `-${lang}` : ''; // 'it' resta senza suffisso per compatibilità con i link italiani già condivisi in passato
     const filename = `${(currentFooterText.replace('FOLIUM · ', '') || 'dossier')}${langSuffix}.pdf`;
@@ -1508,7 +1540,7 @@
     // che ogni nuova generazione sia raggiungibile con un URL "mai visto prima" dalla
     // CDN, invece di sperare che l'invalidazione post-upsert sia già propagata.
     const pdfUrl = `${pdfPub.publicUrl}?v=${Date.now()}`;
-    if (statusEl) statusEl.textContent = 'Pubblicazione della pagina di condivisione…';
+    showShareStatus(statusEl, 'Pubblicazione della pagina di condivisione… può richiedere fino a un minuto la prima volta, così il link che riceverai sarà già attivo.');
 
     // dossier/coverPhoto NON sono visibili qui (sono locali a render()) — query
     // dedicata e leggera, solo i 2 campi che servono per i tag della pagina ponte.
@@ -1563,7 +1595,7 @@
     // prima" evita di restare bloccati su un'anteprima vecchia salvata durante i
     // test precedenti.
     cachedShareUrl[lang] = `${publishData.url}?v=${Date.now()}`;
-    if (statusEl) statusEl.style.display = 'none';
+    hideShareStatus(statusEl);
     return cachedShareUrl[lang];
   }
 
@@ -1578,7 +1610,7 @@
       btn.textContent = 'Link copiato ✓';
       setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
     } catch (e) {
-      if (statusEl) statusEl.style.display = 'none';
+      hideShareStatus(statusEl);
       alert('Non è stato possibile preparare il link: ' + (e.message || e));
       btn.textContent = original; btn.disabled = false;
     }
@@ -1595,7 +1627,7 @@
       const message = `Ecco il dossier di ${address}:\n${url}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     } catch (e) {
-      if (statusEl) statusEl.style.display = 'none';
+      hideShareStatus(statusEl);
       alert('Non è stato possibile preparare il PDF da inviare: ' + (e.message || e));
     } finally {
       btn.disabled = false; btn.textContent = original;
@@ -1612,10 +1644,10 @@
       // cambio lingua è ancora in corso, altrimenti "Scarica PDF" può catturare la
       // lingua precedente anche se il pulsante lingua attivo è già quello nuovo.
       if (renderInFlight) {
-        if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = `Stiamo traducendo i contenuti in ${(({it:'italiano',en:'inglese',fr:'francese',de:'tedesco',es:'spagnolo',ar:'arabo',zh:'cinese'})[currentLang] || currentLang)} — succede solo la prima volta che si apre questa lingua, può richiedere fino a 20-30 secondi.`; }
+        showShareStatus(statusEl, `Stiamo traducendo i contenuti in ${(({it:'italiano',en:'inglese',fr:'francese',de:'tedesco',es:'spagnolo',ar:'arabo',zh:'cinese'})[currentLang] || currentLang)} — succede solo la prima volta che si apre questa lingua, può richiedere fino a 20-30 secondi.`);
         try { await renderInFlight; } catch (e) { /* già gestito dentro render() */ }
       }
-      if (statusEl) statusEl.style.display = 'none';
+      hideShareStatus(statusEl);
       const langSuffix = currentLang !== 'it' ? ` (${currentLang.toUpperCase()})` : '';
       const blob = await generateDossierPdfBlob();
       const url = URL.createObjectURL(blob);
@@ -1624,7 +1656,7 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (e) {
-      if (statusEl) statusEl.style.display = 'none';
+      hideShareStatus(statusEl);
       alert('Generazione PDF non riuscita: ' + (e.message || e) + '\n\nPuoi comunque usare "Stampa dal browser" nel frattempo.');
     } finally {
       btn.disabled = false; btn.textContent = original;
