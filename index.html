@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOLIUM — Scegli il tuo piano</title>
+<style>
+  :root{
+    --gold:#b08d3f; --gold2:#8a6d2f; --gold3:#6b5314; --gold4:#a49470;
+    --bronze:#7a5c2e; --bronze2:#c9a45c; --cream:#faf8f4; --ink:#2b2416;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:var(--cream);color:var(--ink);margin:0;padding:0;}
+  header{text-align:center;padding:48px 20px 28px;}
+  header h1{font-size:28px;margin:0 0 8px;letter-spacing:.02em;}
+  header p{color:var(--gold4);font-size:14.5px;max-width:560px;margin:0 auto;}
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1080px;margin:0 auto;padding:0 20px 20px;}
+  @media (max-width:900px){ .plans{grid-template-columns:1fr;} }
+  .plan{background:#fff;border:1px solid #eee0bd;border-radius:16px;padding:26px 24px;display:flex;flex-direction:column;position:relative;}
+  .plan.featured{border-color:var(--gold);box-shadow:0 4px 18px rgba(176,141,63,.18);}
+  .plan-tag{position:absolute;top:-12px;left:24px;background:var(--gold3);color:#fff;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 12px;border-radius:20px;}
+  .plan h2{font-size:20px;margin:6px 0 2px;}
+  .plan .price{font-size:26px;font-weight:700;color:var(--gold3);margin:6px 0 2px;}
+  .plan .price small{font-size:12.5px;font-weight:400;color:#8a7a52;}
+  .plan .price-note{font-size:11.5px;color:#8a7a52;margin-bottom:16px;}
+  .plan ul{list-style:none;margin:0 0 18px;padding:0;flex:1;}
+  .plan li{font-size:13.5px;padding:6px 0;border-bottom:1px dashed #eee2c8;display:flex;gap:8px;}
+  .plan li:last-child{border-bottom:none;}
+  .plan li.limit{color:#a3401f;}
+  .yes::before{content:"✓ ";color:#3a7a3a;font-weight:700;}
+  .no::before{content:"✕ ";color:#b23;font-weight:700;}
+  .plan a.cta{display:block;text-align:center;text-decoration:none;padding:12px;border-radius:10px;font-weight:600;font-size:14.5px;background:var(--gold3);color:#fff;}
+  .plan.featured a.cta{background:var(--gold);}
+  .plan:not(.featured) a.cta{background:#fff;color:var(--gold3);border:1.5px solid var(--gold3);}
+  .expiry-note{max-width:1080px;margin:0 auto;padding:0 24px 40px;font-size:12.5px;color:#8a7a52;text-align:center;}
+  .expiry-note b{color:var(--gold3);}
+  footer{text-align:center;padding:20px;font-size:11.5px;color:#a49470;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Scegli il piano più adatto</h1>
+  <p>FOLIUM genera dossier immobiliari professionali in pochi minuti. Prima di iniziare, ecco esattamente cosa include ogni piano — nessuna sorpresa dopo.</p>
+</header>
+
+<div class="plans">
+
+  <div class="plan">
+    <h2>Light</h2>
+    <div class="price">Gratis</div>
+    <div class="price-note">Nessuna carta richiesta</div>
+    <ul>
+      <li class="yes">Dossier completo con narrativa editoriale</li>
+      <li class="yes">Dati di popolazione (ISTAT)</li>
+      <li class="yes">Servizi nelle vicinanze (scuole, ospedali, farmacie, supermercati)</li>
+      <li class="yes">Mappa di localizzazione (OpenStreetMap)</li>
+      <li class="yes">Calcolo costi ristrutturazione stimati</li>
+      <li class="yes">Fino a 15 foto immobile + foto dintorni</li>
+      <li class="yes">Fino a 2 dossier gratuiti a settimana</li>
+      <li class="no">Discovery Engine (analisi territorio/turismo approfondita)</li>
+      <li class="no">Render IA ristrutturazione</li>
+      <li class="limit">Con pubblicità di terzi + logo FOLIUM nel dossier</li>
+      <li class="limit">Traduzioni a pagamento (5€/lingua)</li>
+      <li class="limit"><b>Il dossier viene conservato 1 mese</b>, poi cancellato automaticamente</li>
+    </ul>
+    <a class="cta" href="folium-create.html">Inizia gratis</a>
+  </div>
+
+  <div class="plan featured">
+    <span class="plan-tag">Più scelto</span>
+    <h2>Gold</h2>
+    <div class="price">22€ <small>/ dossier singolo</small></div>
+    <div class="price-note">15€ pack da 10 · 11€ pack da 50</div>
+    <ul>
+      <li class="yes">Tutto quello di Light, incluso</li>
+      <li class="yes">Discovery Engine — analisi territorio e turismo approfondita</li>
+      <li class="yes">Render IA ristrutturazione (fino a 2 stili per generazione)</li>
+      <li class="yes">Mappa avanzata (Google Maps)</li>
+      <li class="yes">Traduzioni incluse gratis (fino a 6 lingue)</li>
+      <li class="yes">Nessun limite di dossier a settimana</li>
+      <li class="limit">Con pubblicità di terzi + logo FOLIUM nel dossier (fino a 6 slot)</li>
+      <li class="limit"><b>Il dossier viene conservato 3 mesi</b>, poi cancellato automaticamente</li>
+    </ul>
+    <a class="cta" href="folium-checkout.html?tier=gold">Scegli Gold</a>
+  </div>
+
+  <div class="plan">
+    <h2>Platinum</h2>
+    <div class="price">25€ <small>/ dossier singolo</small></div>
+    <div class="price-note">19€ pack da 10 · 12,50€ pack da 50</div>
+    <ul>
+      <li class="yes">Tutto quello di Gold, incluso</li>
+      <li class="yes"><b>Nessuna pubblicità</b> di terzi nel dossier</li>
+      <li class="yes"><b>Nessun logo/marchio FOLIUM</b> — dossier a marchio esclusivo tuo</li>
+      <li class="yes">Traduzioni incluse gratis (fino a 6 lingue)</li>
+      <li class="yes">Nessun limite di dossier a settimana</li>
+      <li class="limit"><b>Il dossier viene conservato 12 mesi</b>, poi cancellato automaticamente</li>
+    </ul>
+    <a class="cta" href="folium-checkout.html?tier=platinum">Scegli Platinum</a>
+  </div>
+
+</div>
+
+<p class="expiry-note">
+  ⏳ <b>Nota importante sulla conservazione:</b> ogni dossier viene cancellato automaticamente e definitivamente alla scadenza del proprio piano (1 mese Light, 3 mesi Gold, 12 mesi Platinum) — foto, PDF e link inclusi. Puoi sempre riaprire e modificare un dossier prima della scadenza per rinnovarne la conservazione. Se vuoi conservarlo più a lungo, riesportane il PDF prima della scadenza.
+</p>
+
+<footer>FOLIUM · un servizio Dominus Suite</footer>
+
+</body>
+</html>
